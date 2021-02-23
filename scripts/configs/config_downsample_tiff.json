@@ -1,0 +1,7 @@
+[
+{ 
+  "raw_file": "/ispim1_data/487748_48_NeuN_NFH_488_25X_0.5XPBS/global_l40_Pos010/global_l40_Pos010_MMStack_Pos0_5.ome.tif",
+  "downsampled_file": "data/downsampled.tif",
+  "metadata_file": "data/metadata.json"
+}
+]
