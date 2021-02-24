@@ -2,6 +2,7 @@ from .utils import io
 from .utils import convert
 import numpy as np
 import os
+from PIL import Image
 
 def downsample_tiff_and_extract_metadata(config):
 	
