@@ -3,7 +3,7 @@ from .utils import convert
 import numpy as np
 import os
 
-def downsample_tiffs_and_extract_metadata(config):
+def downsample_tiff_and_extract_metadata(config):
 	
 	print(config)
 
