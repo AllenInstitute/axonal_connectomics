@@ -7,7 +7,7 @@ from multiprocessing import Pool
 
 #configs/config_downsample_tifs_487748_36_NeuN_NFH488_25X_1XPBS.json
 
-with open("configs/test36.json", 'r') as j:
+with open("configs/testconfig.json", 'r') as j:
      cfg = json.loads(j.read())
 
 random.shuffle(cfg)
