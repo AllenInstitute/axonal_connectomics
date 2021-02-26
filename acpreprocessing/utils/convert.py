@@ -2,7 +2,7 @@
 """
 Created on Sun Jan 31 19:21:02 2021
 
-@author: kevint, sharmishtaas
+@authors: kevint, clayr, sharmishtaas
 """
 
 import os

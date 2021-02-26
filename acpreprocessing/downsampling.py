@@ -1,3 +1,5 @@
+
+
 from .utils import io
 from .utils import convert
 import numpy as np
@@ -12,10 +14,7 @@ def downsample_tiff_and_extract_metadata(config):
 	input_filename = config['raw_file']
 	output_image_file = config['downsampled_file']
 	output_metadata_file = config['metadata_file']
-	print("These are the files: ")
-	print(input_filename)
-	print(output_image_file)
-
+	
 	if not os.path.exists(output_image_file):
 
 		if not os.path.exists(output_image_file.rsplit('/',1)[0]):
@@ -46,16 +45,13 @@ def downsample_gif(config):
 	input_filename = config['raw_file']
 	output_image_file = config['downsampled_file']
 
-	print("These are the files: ")
-	print(input_filename)
-	print(output_image_file)
 	iftimer = True
 
 	if not os.path.exists(output_image_file):
 		if not os.path.exists(output_image_file.rsplit('/',1)[0]):
 			os.makedirs(output_image_file.rsplit('/',1)[0])
 		time0=time.time()
-		#print(time0)
+
 		I = io.get_tiff_image(input_filename)
 		if iftimer: print ("Read file: ", time.time() - time0)
 		I_ds = convert.downsample_stack(I,4)
@@ -63,5 +59,5 @@ def downsample_gif(config):
 		I_ds_c = convert.clip_and_adjust_range_values(I_ds)
 		if iftimer: print ("converted to 8 bit ", time.time() - time0) 
 		imgs = [Image.fromarray(img) for img in I_ds_c]
-		imgs[0].save(fpath, save_all=True, append_images=imgs[1:], duration=25, loop=0)
+		imgs[0].save(output_image_file, save_all=True, append_images=imgs[1:], duration=25, loop=0)
 		if iftimer: print ("wrote gif ", time.time() - time0)

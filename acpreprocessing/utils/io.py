@@ -1,3 +1,9 @@
+"""
+Created on Sun Jan 31 19:21:02 2021
+
+@author:  sharmishtaas
+"""
+
 import json
 from PIL import Image
 from PIL.TiffTags import TAGS
