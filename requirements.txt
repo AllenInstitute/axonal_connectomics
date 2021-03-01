@@ -1,1 +1,4 @@
 pillow
+tifffile
+scikit-image
+numpy
