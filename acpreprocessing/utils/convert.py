@@ -42,7 +42,7 @@ def downsample_stack(imstack, dsfactor=4, method=None, dtype=float):
         dtype = imstack.dtype
 
     default_method = (
-        "blockreduce_average_downsample"
+        "block_reduce"
         if any([d % dsfactor for d in imstack.shape[1:]])
         else "area_average_downsample")
     ds_functions = {
