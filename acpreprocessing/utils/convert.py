@@ -50,8 +50,7 @@ def downsample_stack(imstack, dsfactor=4, method=None, dtype=float):
             x, (1, dsfactor, dsfactor), dtype),
         "block_reduce": lambda x: skimage.measure.block_reduce(
             x, (1, dsfactor, dsfactor),
-            func=np.mean,
-            func_kwargs={"dtype": dtype}),
+            func=np.mean).astype(dtype),
         "legacy": lambda x: downsample_stack_legacy(x, dsfactor)
         }
     dsstack = ds_functions.get(
