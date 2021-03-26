@@ -7,7 +7,7 @@ import os
 from PIL import Image
 import time
 
-def downsample_tiff_and_extract_metadata(config):
+def downsample_tiffs_and_extract_metadata(config):
 	
 	print(config)
 
