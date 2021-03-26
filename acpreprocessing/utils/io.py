@@ -18,6 +18,7 @@ def get_metadata(filename):
 
 def get_tiff_image(filename):
 	data = tf.imread(filename,multifile=False)
+	print(data.shape)
 	return data
 
 def save_tiff_image(I, filename):
