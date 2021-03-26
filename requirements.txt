@@ -2,3 +2,4 @@ pillow
 tifffile
 scikit-image
 numpy
+imageio
