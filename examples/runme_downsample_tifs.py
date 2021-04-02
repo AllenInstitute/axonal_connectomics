@@ -12,9 +12,9 @@ with open("configs/example_ds_tiff.json", 'r') as j:
 
 random.shuffle(cfg)
 
-with Pool(5) as p:
-	p.map(downsampling.downsample_tiff_and_extract_metadata, cfg)
+#with Pool(5) as p:
+#	p.map(downsampling.downsample_tiffs_and_extract_metadata, cfg)
 
 
-#for c in cfg:
-#	downsample_tiffs_and_extract_metadata.downsample_tiffs_and_extract_metadata(c)
+for c in cfg:
+	downsampling.downsample_tiffs_and_extract_metadata(c)
