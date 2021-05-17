@@ -1,8 +1,11 @@
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Spyder Editor
-
-This is a temporary script file.
+Description: Parses all tiff file headers in specified directory. Outputs json file containing specific stitching information.
+Input arguments: -crop   whether tiff files are cropped or not (boolean)
+                 -i      input directory path (string
+                 -o      output filename prefix
+@author: shubha.bhaskaran
 """
 
 import json
@@ -23,14 +26,18 @@ def parse_uncropped(res, head):
 
 def main():
      args = sys.argv[1:]
-     if len(args) == 5 and args[1] == '-i' and args[3] == '-o':
-         input_dir = args[2]
-         fo = args[4]
-         cropped = args[0]
+     if len(args) == 6 and args[0] == '-crop' and args[2] == '-i' and args[4] == '-o':
+         input_dir = args[3]
+         fo = args[5]
+         cropped = args[1]
          data = []
          k = 0
          direct = os.listdir(input_dir)
          direct.sort()
+         #TODO fix magic numebrs
+         #FOV in um
+         FOV = 2048*6.5/25
+         pixeloverlap = 510
          for file in direct:
              if file.endswith(".tif"):
                  print("parsing "+ file)
@@ -40,9 +47,10 @@ def main():
                  # print(meta_dict)
                  head = {"index":[],"file":[],"position":[],"size":[],"pixelResolution":[],"type":[]}
                  head['index'] = k
+                 #TODO: fix filepath to be on s3 instead of local if running on emr
                  head['file'] = input_dir+"/"+file
                  #TODO change this when we get more information
-                 head['position'] = [0,0-(400*k),0]
+                 head['position'] = [0,0-(pixeloverlap*k),0]
                  head['size'] = [si[0],si[1],img.n_frames]
                  #if cropped tiff
                  if cropped == "True":
@@ -51,7 +59,7 @@ def main():
                      parse_uncropped(json.loads(meta_dict['51123'][0]), head)
                  data.append(head)
                  k=k+1
-         io.save_metadata(input_dir+"/"+fo+".json", data)
+         io.save_metadata(input_dir+fo+".json", data)
          
      else:
          sys.exit("Input Argument Error")
