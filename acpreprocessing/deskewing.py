@@ -15,9 +15,14 @@ import numpy as np
 import os
 from PIL import Image
 import time
+from lls_dd.transform_helpers import *
+from lls_dd.transforms import *
+
 
 
 def deskew_and_save_tiff(cfg):
+
+	#this function does not use dzstage
 
 	inputfile = cfg["raw_file"]
 	outputfile = cfg["deskewed_file"] 
@@ -49,3 +54,23 @@ def deskew_and_save_tiff(cfg):
 	endtime = time.time()
 	print("Done deskewing!, %d seconds"%(endtime-starttime))
 	io.save_tiff_image(deskewed,outputfile)
+
+
+def deskew_from_config(vol,config):
+	
+	xypixelsize = config['xypixelsize']
+	angle = config ['angle']
+	dzstage = config['zstage']
+
+	dz = np.sin(angle*np.pi/180.0)*dzstage
+	dx = xypixelsize
+	deskewfactor = np.cos(angle*np.pi/180.0)*dzstage/dx
+	dzdx_aspect = dz/dx
+
+	print("deskewing..")
+	skew = np.eye(4)
+	skew[2,0] = deskewfactor
+	print(skew)
+	output_shape = get_output_dimensions(skew, vol)
+	deskewed = affine_transform(vol, np.linalg.inv(skew),output_shape=output_shape,order=1)
+	return deskewed
