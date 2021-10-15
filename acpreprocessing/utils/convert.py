@@ -100,6 +100,8 @@ def downsample_stack(imstack, dsfactor=4, method=None, dtype=float):
         "block_reduce"
         if any([d % dsfactor for d in imstack.shape[1:]])
         else "area_average_downsample")
+    if default_method == "block_reduce":
+        raise Exception("FAIL!")
     ds_functions = {
         "area_average_downsample": lambda x: area_average_downsample(
             x, (1, dsfactor, dsfactor), dtype),
