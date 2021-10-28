@@ -114,6 +114,29 @@ def downsample_stack(imstack, dsfactor=4, method=None, dtype=float):
     return dsstack
 
 
+def downsample_stack_volume(imstack, dsfactors=(2, 2, 2),
+                            method=None, dtype=float):
+    if dtype is None:
+        dtype = imstack.dtype
+    default_method = (
+        "block_reduce"
+        if any([d % dsfactor for d, dsfactor in zip(imstack.shape, dsfactors)])
+        else "area_average_downsample"
+        )
+    ds_functions = {
+        "area_average_downsample": lambda x: area_average_downsample(
+            x, dsfactors, dtype),
+        "block_reduce": lambda x: skimage.measure.block_reduce(
+            x, dsfactors,
+            func=np.mean).astype(dtype),
+        "sample": lambda x: x[::dsfactors[0], ::dsfactors[1], ::dsfactors[2]]
+    }
+    dsstack = ds_functions.get(
+        method, ds_functions[default_method])(
+            imstack)
+    return dsstack
+
+
 def clip_and_adjust_range_values(stack,clippercentile=95,minforpercentile=500,maxval=255):
     p = np.percentile(stack[stack>minforpercentile],clippercentile)
     stack = stack*maxval/p
