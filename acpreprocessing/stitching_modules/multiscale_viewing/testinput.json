@@ -1,6 +1,6 @@
 {
-            "output_root": "/ACdata/processed/testnglink/n5/",
-            "Position": 0,
+            "outputRoot": "/ACdata/processed/testnglink/n5/",
+            "position": 0,
             "pixelResolution": [0.26, 0.26, 1]
 
     }
