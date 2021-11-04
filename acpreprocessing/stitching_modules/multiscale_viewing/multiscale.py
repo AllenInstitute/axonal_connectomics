@@ -1,4 +1,13 @@
 import os
+from argschema import ArgSchemaParser, ArgSchema
+from argschema.fields import NumpyArray, Boolean, Int, Str
+import numpy as np
+import argschema
+
+class MultiscaleSchema(argschema.ArgSchema):
+    Position = argschema.fields.Int(default=0, description='acquisition strip position number')
+    output_root = argschema.fields.String(default='', description='output root directory')
+    pixelResolution = NumpyArray(dtype=np.float, required=True,description='Pixel Resolution in um')
 
 def add_multiscale_attributes(output_root, pixelResolution,Position):
     curdir = os.getcwd()
@@ -13,3 +22,17 @@ def add_multiscale_attributes(output_root, pixelResolution,Position):
     os.system('ln -s ../pos%d pos%d'%(Position, Position))
     os.chdir(curdir)
 
+if __name__ == '__main__':
+
+    # this defines a default dictionary that will be used if input_json is not specified
+    example_input = {
+            "output_root": "/ACdata/processed/testnglink/n5/",
+            "Position": 0,
+            "pixelResolution": [0.26, 0.26, 1]
+
+    }
+    # here is my ArgSchemaParser that processes my inputs
+    mod = ArgSchemaParser(input_data=example_input,
+                          schema_type=MultiscaleSchema)
+
+    add_multiscale_attributes(mod.args['output_root'], mod.args['pixelResolution'], mod.args['Position'])
