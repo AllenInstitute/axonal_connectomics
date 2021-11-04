@@ -1,5 +1,5 @@
 
-def create_layer(output_root, Position, overlap. pixelResolution):
+def create_layer(output_root, Position, overlap, pixelResolution):
     layer_info = {"type": "image"}
     layer_info["shaderControls"] = { "normalized": { "range": [ 0, 5000 ] }}
     url = "n5://http://bigkahuna.corp.alleninstitute.org"
@@ -18,4 +18,3 @@ def create_layer(output_root, Position, overlap. pixelResolution):
 
 def add_layer(state, layer_info):
 	state["layers"].append(layer_info)
-
