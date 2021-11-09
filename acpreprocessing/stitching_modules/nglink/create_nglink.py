@@ -1,4 +1,4 @@
-import create_state
+from acpreprocessing.stitching_modules.nglink import create_state
 import write_nglink
 
 from argschema import ArgSchemaParser, ArgSchema
@@ -7,12 +7,12 @@ import numpy as np
 import argschema
 
 example_input = {
-            "outputRoot": "/ACdata/processed/testnglink/n5/",
-            "position": 0,
-            "pixelResolution": [0.26, 0.26, 1],
-            "overlap": 509.53846153846166,
-            'dsName':'testnglink'
-    }
+    "outputRoot": "/ACdata/processed/testnglink/n5/",
+    "position": 0,
+    "pixelResolution": [0.26, 0.26, 1],
+    "overlap": 509.53846153846166,
+    "dsName":"testnglink"
+}
 
 class CreateNglinkSchema(argschema.ArgSchema):
     position = argschema.fields.Int(default=0, description='acquisition strip position number')
