@@ -1,5 +1,5 @@
 from acpreprocessing.stitching_modules.nglink import create_state
-import write_nglink
+from acpreprocessing.stitching_modules.nglink import write_nglink
 
 from argschema import ArgSchemaParser, ArgSchema
 from argschema.fields import NumpyArray, Boolean,Float, Int, Str
