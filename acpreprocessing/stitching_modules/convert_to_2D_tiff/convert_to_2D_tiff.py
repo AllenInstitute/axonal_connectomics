@@ -1,8 +1,6 @@
 
 import os
-import sys 
-sys.path.append('../../')
-from utils import io
+from acpreprocessing.utils import io
 
 from argschema import ArgSchemaParser, ArgSchema
 from argschema.fields import NumpyArray, Boolean,Float, Int, Str
@@ -15,11 +13,11 @@ example_input = {
     'dsName':'ex1'
 }
 
-def stripfile(filelist, outputdir):
+def stripfile(filelist, outputdir, filedir):
     index = 0
     for inputfile in filelist:
         print(inputfile)
-        I = io.get_tiff_image(inputfile)
+        I = io.get_tiff_image(filedir+inputfile)
         for j in range(I.shape[0]):
             img = I[j,:,:]
             fname = outputdir + "/{0:05d}.tif".format(index)
@@ -37,11 +35,12 @@ class Convert2DTiff():
     def run(self):
         mod = ArgSchemaParser(input_data=example_input,schema_type=Convert2DTiffSchema)
 
-        filelist = os.listdir("%s%s_Pos%d/"%(mod.args['rootDir'],mod.args['dsName'],mod.args['position']))
+        filedir = "%s%s_Pos%d/"%(mod.args['rootDir'],mod.args['dsName'],mod.args['position'])
+        filelist = os.listdir(filedir)
         files = natsorted(filelist, alg=ns.IGNORECASE)
         tiffdir = '%s/Pos%d'%(mod.args['tiffDir'],mod.args['position'])
         os.makedirs(tiffdir, exist_ok=True)
-        stripfile(filelist, tiffdir)
+        stripfile(files, tiffdir, filedir)
         print("Finished 2D tiffs for Pos%d"%(mod.args['position']))
 
 
