@@ -33,7 +33,7 @@ class Convert2DTiffSchema(ArgSchema):
     position = Int(required=True, description='acquisition strip position number')
     rootDir = Str(required=True, description='raw tiff root directory')
     outputDir = Str(required=True, description='output directory')
-    dsName = Str(required=True, description='dataset name')    
+    dsName = Str(default='ex1', description='dataset name')    
 
 class Convert2DTiff():
     def run(self):

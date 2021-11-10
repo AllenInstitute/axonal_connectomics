@@ -32,6 +32,7 @@ class Multiscale():
     def run(self):
         mod = ArgSchemaParser(input_data=example_input,schema_type=MultiscaleSchema)
         add_multiscale_attributes(mod.args['outputRoot'], mod.args['pixelResolution'], mod.args['position'])
+        print("Finished multiscale conversion for Pos%d"%(mod.args['position']))
 
 if __name__ == '__main__':
     mod = Multiscale()
