@@ -6,7 +6,7 @@ import numpy as np
 import argschema
 
 example_input = {
-    "outputRoot": "/ACdata/processed/testModules/ngLink/n5/",
+    "outputRoot": "/ACdata/processed/testModules/testnglink/n5/",
     "position": 0,
     "pixelResolution": [0.26, 0.26, 1],
     "overlap": 509.53846153846166,
@@ -27,7 +27,7 @@ class Nglink():
 
         layer0 = create_state.create_layer(mod.args['outputRoot'], mod.args['position'],mod.args['overlap'], mod.args['pixelResolution'])
         create_state.add_layer(state, layer0)
-        write_nglink.write_url(mod.args['dsName'], state)
+        write_nglink.write_url(mod.args['outputRoot'], state)
 
 
 if __name__ == '__main__':
