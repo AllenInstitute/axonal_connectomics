@@ -1,5 +1,4 @@
-from acpreprocessing.stitching_modules.nglink import create_state
-from acpreprocessing.stitching_modules.nglink import write_nglink
+from acpreprocessing.stitching_modules.nglink import create_state, write_nglink
 
 from argschema import ArgSchemaParser, ArgSchema
 from argschema.fields import NumpyArray, Boolean,Float, Int, Str
@@ -7,7 +6,7 @@ import numpy as np
 import argschema
 
 example_input = {
-    "outputRoot": "/ACdata/processed/testnglink/n5/",
+    "outputRoot": "/ACdata/processed/testModules/ngLink/n5/",
     "position": 0,
     "pixelResolution": [0.26, 0.26, 1],
     "overlap": 509.53846153846166,
