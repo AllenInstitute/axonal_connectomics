@@ -7,10 +7,10 @@ example_input = {
     "outputDir": "/ACdata/processed/testModules/"
 }
 
-def slice_tiff_to_n5(outputDir,position):
+def slice_tiff_to_n5(tiffDir, n5Dir, position):
     curdir = os.getcwd()
     os.chdir('/allen/programs/celltypes/workgroups/em-connectomics/analysis_group/forSharmi/axonal/n5-spark/startup-scripts/')
-    os.system('python spark-local/slice-tiff-to-n5.py -i %s -n %s -o pos%d -b 64,64,64 -c RAW'%(outputDir+'2Dtiff/',outputDir+'n5/',position))
+    os.system('python spark-local/slice-tiff-to-n5.py -i %s -n %s -o pos%d -b 64,64,64 -c RAW'%(tiffDir,n5Dir,position))
     os.chdir(curdir)
     print("Finished n5 conversion for Pos%d"%(position))
 
@@ -21,7 +21,9 @@ class Convert2N5Schema(ArgSchema):
 class Convert2N5():
     def run(self):
         mod = ArgSchemaParser(input_data=example_input,schema_type=Convert2N5Schema)
-        slice_tiff_to_n5(mod.args['outputDir'],mod.args['position'])
+        tiffDir = mod.args['outputDir']+"2Dtiff/Pos%d/"%(mod.args['position'])
+        n5Dir = mod.args['outputDir']+"n5/Pos%d/"%(mod.args['position'])
+        slice_tiff_to_n5(tiffDir, n5Dir, mod.args['position'])
 
 
 if __name__ == '__main__':
