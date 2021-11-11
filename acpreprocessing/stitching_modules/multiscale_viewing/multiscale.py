@@ -3,17 +3,18 @@ from argschema import ArgSchemaParser, ArgSchema
 from argschema.fields import NumpyArray, Int, Str
 import numpy as np
 import argschema
+from acpreprocessing.stitching_modules.metadata  import parse_metadata
 
 example_input = {
-    "outputRoot": "/ACdata/processed/testModules/testnglink/n5/",
-    "position": 0,
-    "pixelResolution": [0.26, 0.26, 1]
+    "outputRoot": "/ACdata/processed/testModules/",
+    "rootDir": "/m2_data/iSPIM1/test/",
+    "position": 0
 }
 
 class MultiscaleSchema(argschema.ArgSchema):
     position = argschema.fields.Int(equired=True, description='acquisition strip position number')
     outputRoot = argschema.fields.String(equired=True, description='output root directory')
-    pixelResolution = NumpyArray(dtype=float, required=True,description='Pixel Resolution in um')
+    rootDir = Str(required=True, description='raw tiff root directory')
 
 def add_multiscale_attributes(outputRoot, pixelResolution,position):
     curdir = os.getcwd()
@@ -31,7 +32,9 @@ def add_multiscale_attributes(outputRoot, pixelResolution,position):
 class Multiscale():
     def run(self):
         mod = ArgSchemaParser(input_data=example_input,schema_type=MultiscaleSchema)
-        add_multiscale_attributes(mod.args['outputRoot'], mod.args['pixelResolution'], mod.args['position'])
+        md = parse_metadata.ParseMetadata()
+        pr = md.get_pixel_resolution()
+        add_multiscale_attributes(mod.args['outputRoot']+'n5/', pr, mod.args['position'])
         print("Finished multiscale conversion for Pos%d"%(mod.args['position']))
 
 if __name__ == '__main__':
