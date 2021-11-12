@@ -11,8 +11,9 @@ def make_neuroglancer_url(state, base_url="http://neuroglancer-demo.appspot.com/
 def write_url(output_root, state):
 	encoded_url = make_neuroglancer_url(state)
 	os.chdir(output_root)
-	with open("nglink.json", "w") as ng:
-		ng.write(encoded_url)
+	ng = open("nglink.json", "w")
+	ng.write(encoded_url)
+	ng.close()
 	print("Done! Neuroglancer Link:")
 	print(encoded_url)
 

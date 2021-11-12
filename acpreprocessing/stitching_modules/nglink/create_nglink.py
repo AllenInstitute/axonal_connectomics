@@ -5,7 +5,7 @@ from argschema.fields import NumpyArray, Boolean,Float, Int, Str
 import argschema
 
 example_input = {
-    "outputDir": "/ACdata/processed/testModules/"
+    "outputDir": "/ACdata/processed/demoModules/output/"
 }
 
 class CreateNglinkSchema(argschema.ArgSchema):

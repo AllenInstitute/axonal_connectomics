@@ -6,15 +6,13 @@ import argschema
 from acpreprocessing.stitching_modules.metadata  import parse_metadata
 
 example_input = {
-    "outputRoot": "/ACdata/processed/testModules/",
-    "rootDir": "/m2_data/iSPIM1/test/",
-    "position": 0
+    "outputDir": "/ACdata/processed/demoModules/output/",
+    "position": 2
 }
 
 class MultiscaleSchema(argschema.ArgSchema):
     position = argschema.fields.Int(equired=True, description='acquisition strip position number')
-    outputRoot = argschema.fields.String(equired=True, description='output root directory')
-    rootDir = Str(required=True, description='raw tiff root directory')
+    outputDir = argschema.fields.String(equired=True, description='output root directory')
 
 def add_multiscale_attributes(outputRoot, pixelResolution,position):
     curdir = os.getcwd()
@@ -34,7 +32,7 @@ class Multiscale():
         mod = ArgSchemaParser(input_data=example_input,schema_type=MultiscaleSchema)
         md = parse_metadata.ParseMetadata()
         pr = md.get_pixel_resolution()
-        add_multiscale_attributes(mod.args['outputRoot']+'n5/', pr, mod.args['position'])
+        add_multiscale_attributes(mod.args['outputDir']+'n5/', pr, mod.args['position'])
         print("Finished multiscale conversion for Pos%d"%(mod.args['position']))
 
 if __name__ == '__main__':
