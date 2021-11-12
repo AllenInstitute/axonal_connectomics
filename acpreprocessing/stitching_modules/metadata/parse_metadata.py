@@ -5,7 +5,7 @@ import json
 import numpy as np
 
 example_input = {
-    "rootDir": "/m2_data/iSPIM1/test/"
+    "rootDir": "/ACdata/processed/demoModules/raw/"
 }
 
 class ParseMetadataSchema(argschema.ArgSchema):

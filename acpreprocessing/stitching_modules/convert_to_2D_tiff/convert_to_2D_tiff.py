@@ -6,9 +6,9 @@ from argschema.fields import NumpyArray, Boolean,Float, Int, Str
 from natsort import natsorted, ns
 
 example_input = {
-    "position": 0,
-    "rootDir": "/m2_data/iSPIM1/test/",
-    "outputDir": "/ACdata/processed/testModules/",
+    "position": 2,
+    "rootDir": "/ACdata/processed/demoModules/raw/",
+    "outputDir": "/ACdata/processed/demoModules/output/",
     'dsName':'ex1'
 }
 

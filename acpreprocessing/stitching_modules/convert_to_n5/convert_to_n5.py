@@ -3,8 +3,8 @@ from argschema import ArgSchemaParser, ArgSchema
 from argschema.fields import NumpyArray, Boolean,Float, Int, Str
 
 example_input = {
-    "position": 0,
-    "outputDir": "/ACdata/processed/testModules/"
+    "position": 2,
+    "outputDir": "/ACdata/processed/demoModules/output/"
 }
 
 def slice_tiff_to_n5(tiffDir, n5Dir, position):

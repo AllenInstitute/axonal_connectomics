@@ -5,8 +5,8 @@ from argschema.fields import NumpyArray, Boolean,Float, Int, Str
 import argschema
 
 example_input = {
-    "outputDir": "/ACdata/processed/testModules/",
-    "position": 0
+    "outputDir": "/ACdata/processed/demoModules/output/",
+    "position": 2
 }
 
 def create_layer(outputDir, position, overlap, pixelResolution):
