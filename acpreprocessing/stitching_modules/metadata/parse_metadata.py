@@ -31,7 +31,19 @@ class ParseMetadata():
     
     def get_overlap(self):
         return self.md['settings']['strip_overlap_pixels']
-        
+    
+    #TODO:
+    def get_number_of_positions(self):
+       return 3
+    
+    #TODO
+    def get_size(self):
+        sz = [self.md['settings']['image_size_xy'][0],self.md['settings']['image_size_xy'][1],403*3]
+        return sz
+
+    def get_dtype(self):
+        return self.md['settings']['dtype']
+
 if __name__ == '__main__':
     mod = ParseMetadata()
     print(mod.get_md())

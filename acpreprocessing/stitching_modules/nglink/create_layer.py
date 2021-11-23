@@ -35,8 +35,11 @@ class CreateLayerSchema(argschema.ArgSchema):
     outputDir = argschema.fields.String(default='', description='output directory')
 
 class NgLayer():
+    def __init__(self, input_json=example_input):
+        self.input_data = input_json.copy()
+
     def run(self, state):
-        mod = ArgSchemaParser(input_data=example_input,schema_type=CreateLayerSchema)
+        mod = ArgSchemaParser(input_data=self.input_data,schema_type=CreateLayerSchema)
         md = parse_metadata.ParseMetadata()
         pr = md.get_pixel_resolution()
         overlap = md.get_overlap()
