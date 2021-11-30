@@ -1,4 +1,5 @@
 import imageio
+import imageio.plugins.tifffile
 
 
 class ACTiffFormat(imageio.plugins.tifffile.TiffFormat):
