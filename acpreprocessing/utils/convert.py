@@ -129,7 +129,7 @@ def downsample_stack_volume(imstack, dsfactors=(2, 2, 2),
         "block_reduce": lambda x: skimage.measure.block_reduce(
             x, dsfactors,
             func=np.mean).astype(dtype),
-        "sample": lambda x: x[::dsfactors[0], ::dsfactors[1], ::dsfactors[2]]
+        "sample": lambda x: x[tuple(np.s_[::dsf] for dsf in dsfactors)]
     }
     dsstack = ds_functions.get(
         method, ds_functions[default_method])(
