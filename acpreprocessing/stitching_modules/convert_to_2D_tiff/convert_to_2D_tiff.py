@@ -19,6 +19,8 @@ def sort_files(filedir):
 def strip_file(posdir,outputdir):
     index = 0
     for inputfile in sort_files(posdir):
+        if inputfile[0]=='.':
+            continue
         print(inputfile)
         I = io.get_tiff_image(posdir+inputfile)
         for j in range(I.shape[0]):
@@ -36,14 +38,19 @@ class Convert2DTiffSchema(ArgSchema):
     dsName = Str(default='ex1', description='dataset name')
 
 class Convert2DTiff():
+    def __init__(self, input_json=example_input):
+        self.input_data = input_json.copy()
+
     def run(self):
-        mod = ArgSchemaParser(input_data=example_input,schema_type=Convert2DTiffSchema)
+        mod = ArgSchemaParser(input_data=self.input_data,schema_type=Convert2DTiffSchema)
 
         posdir = "%s%s_Pos%d/"%(mod.args['rootDir'],mod.args['dsName'],mod.args['position'])
         os.makedirs(mod.args['outputDir']+"2Dtiff/Pos%d"%(mod.args['position']), exist_ok=True)
-        tiffdir = '%s/2Dtiff/Pos%d'%(mod.args['outputDir'],mod.args['position'])
-        os.makedirs(tiffdir, exist_ok=True)
-        strip_file(posdir, tiffdir)
+        tiffDir = '%s/2Dtiff/Pos%d'%(mod.args['outputDir'],mod.args['position'])
+        os.makedirs(tiffDir, exist_ok=True)
+        #if 2Dtiffs don't exist:
+        if os.listdir(tiffDir) == []:
+            strip_file(posdir, tiffDir)
         print("Finished 2D tiffs for Pos%d"%(mod.args['position']))
 
 

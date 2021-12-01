@@ -5,7 +5,7 @@ from acpreprocessing.stitching_modules.stitch import create_json
 
 def stitch(stitchjson):
     curdir = os.getcwd()
-    os.chdir('/home/shubhab/stitching-spark/startup-scripts/')
+    os.chdir('/ACdata/stitching-spark/startup-scripts/')
     os.system('python spark-local/stitch.py -i %s'%(stitchjson))
     os.chdir(curdir)
     print("Finished stitching")

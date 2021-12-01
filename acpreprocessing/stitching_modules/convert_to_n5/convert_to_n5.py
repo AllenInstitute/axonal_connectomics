@@ -4,7 +4,9 @@ from argschema.fields import NumpyArray, Boolean,Float, Int, Str
 
 example_input = {
     "position": 2,
-    "outputDir": "/ACdata/processed/demoModules/output/"
+    "rootDir": "/ACdata/processed/demoModules/raw/",
+    "outputDir": "/ACdata/processed/demoModules/output/",
+    'dsName':'ex1'
 }
 
 def slice_tiff_to_n5(tiffDir, n5Dir, position):
@@ -16,15 +18,20 @@ def slice_tiff_to_n5(tiffDir, n5Dir, position):
 
 class Convert2N5Schema(ArgSchema):
     position = Int(required=True, description='acquisition strip position number')
-    outputDir = Str(required=True, description='output directory') 
+    rootDir = Str(required=True, description='raw tiff root directory')
+    outputDir = Str(required=True, description='output directory')
+    dsName = Str(default='ex1', description='dataset name')
 
 class Convert2N5():
+    def __init__(self, input_json=example_input):
+        self.input_data = input_json.copy()
+
     def run(self):
-        mod = ArgSchemaParser(input_data=example_input,schema_type=Convert2N5Schema)
+        mod = ArgSchemaParser(input_data=self.input_data,schema_type=Convert2N5Schema)
         tiffDir = mod.args['outputDir']+"2Dtiff/Pos%d/"%(mod.args['position'])
         n5Dir = mod.args['outputDir']+"n5/Pos%d/"%(mod.args['position'])
-        slice_tiff_to_n5(tiffDir, n5Dir, mod.args['position'])
-
+        if os.listdir(tiffDir) != []:
+            slice_tiff_to_n5(tiffDir, n5Dir, mod.args['position'])
 
 if __name__ == '__main__':
     mod = Convert2N5()

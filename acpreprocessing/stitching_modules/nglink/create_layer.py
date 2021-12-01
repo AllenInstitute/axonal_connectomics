@@ -6,7 +6,9 @@ import argschema
 
 example_input = {
     "outputDir": "/ACdata/processed/demoModules/output/",
-    "position": 2
+    "position": 2,
+    "rootDir": "/ACdata/processed/demoModules/raw/",
+    'dsName':'ex1'
 }
 
 def create_layer(outputDir, position, overlap, pixelResolution):
@@ -33,6 +35,8 @@ def add_layer(state, layer_info):
 class CreateLayerSchema(argschema.ArgSchema):
     position = argschema.fields.Int(default=0, description='acquisition strip position number')
     outputDir = argschema.fields.String(default='', description='output directory')
+    rootDir = Str(required=True, description='raw tiff root directory')
+    dsName = Str(default='ex1', description='dataset name')
 
 class NgLayer():
     def __init__(self, input_json=example_input):
