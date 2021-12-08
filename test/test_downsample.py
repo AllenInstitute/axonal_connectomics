@@ -3,6 +3,7 @@ import itertools
 import pytest
 
 import acpreprocessing.utils.convert
+import acpreprocessing.downsampling
 
 from .voltest import fullsize_img_volumes, generate_array
 
