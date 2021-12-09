@@ -12,13 +12,13 @@ example_input = {
     'dsName':'ex1'
 }
 
-def get_pos_info(downdir, overlap, pos, pr):
+def get_pos_info(downdir, overlap, pos, pr, ind):
     att = io.get_json(downdir+"attributes.json")
     sz = att["dimensions"]
     yshift = overlap/4
     if att['dataType']=='uint16':
         dtype = 'GRAY16'
-    pos_info= {"file":downdir,"index":pos,"pixelResolution":pr,"position":[0,pos*yshift,0],"size":sz,"type":dtype}
+    pos_info= {"file":downdir,"index":ind,"pixelResolution":pr,"position":[0,pos*yshift,0],"size":sz,"type":dtype}
     return pos_info
 
 class CreateJsonSchema(argschema.ArgSchema):
@@ -36,10 +36,12 @@ class CreateJson():
         stitching_json = []
         md = parse_metadata.ParseMetadata()
         # n_pos = md.get_number_of_positions()
-        for pos in range(n_pos):
+        ind=0
+        for pos in range(n_start,n_end):
             downdir = mod.args['outputDir']+"/n5/Pos%d/multirespos%d/s2/"%(pos, pos)
-            pos_info = get_pos_info(downdir, md.get_overlap(), pos, md.get_pixel_resolution())
+            pos_info = get_pos_info(downdir, md.get_overlap(), pos, md.get_pixel_resolution(),ind)
             stitching_json.append(pos_info)
+            ind = ind+1
         io.save_metadata(mod.args['outputDir']+'stitch.json',stitching_json)
         
 if __name__ == '__main__':
