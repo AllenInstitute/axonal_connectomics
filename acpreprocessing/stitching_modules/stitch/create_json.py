@@ -31,11 +31,11 @@ class CreateJson():
     def __init__(self, input_json=example_input):
         self.input_data = input_json.copy()
         
-    def run(self):
+    def run(self, n_start, n_end):
         mod = ArgSchemaParser(input_data=self.input_data,schema_type=CreateJsonSchema)
         stitching_json = []
         md = parse_metadata.ParseMetadata()
-        n_pos = md.get_number_of_positions()
+        # n_pos = md.get_number_of_positions()
         for pos in range(n_pos):
             downdir = mod.args['outputDir']+"/n5/Pos%d/multirespos%d/s2/"%(pos, pos)
             pos_info = get_pos_info(downdir, md.get_overlap(), pos, md.get_pixel_resolution())
