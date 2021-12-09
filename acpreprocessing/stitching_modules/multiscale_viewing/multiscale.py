@@ -22,7 +22,8 @@ class MultiscaleSchema(argschema.ArgSchema):
 def add_multiscale_attributes(outputRoot, pixelResolution,position):
     curdir = os.getcwd()
     os.chdir(outputRoot)
-    io.save_metadata("attributes.json",'{"pixelResolution" : {"unit":"um","dimensions":[%f,%f,%f]},"scales":[[1,1,1],[2,2,2],[4,4,4],[8,8,8],[16,16,16],[32,32,32],[64,64,64],[128,128,128]]}'%(pixelResolution[0], pixelResolution[1], pixelResolution[2]))
+    attr = {"pixelResolution" : {"unit":"um","dimensions":[pixelResolution[0],pixelResolution[1],pixelResolution[2]]},"scales":[[1,1,1],[2,2,2],[4,4,4],[8,8,8],[16,16,16],[32,32,32],[64,64,64],[128,128,128]]}
+    io.save_metadata("attributes.json",attr)
     os.system('cp attributes.json %s/Pos%d/multirespos%d'%(outputRoot, position, position))
     os.chdir(outputRoot + 'Pos%d/multirespos%d'%(position, position))
     os.system('ln -s ../pos%d s0'%(position))
