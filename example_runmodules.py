@@ -11,16 +11,16 @@ import time
 start = time.time()
 mod0 = parse_metadata.ParseMetadata()
 n_pos = mod0.get_number_of_positions()
-n_start = 0
-n_end = n_pos
+n_start = 1
+n_end = 3
 
 state = {"layers": []}
 for pos in range (n_start,n_end):
     run_input = {
     "position": pos,
-    "rootDir": "/ispim2_data/MN_6_2_S14_4_ex1/",
-    "outputDir": "/ACdata/processed/test_MN_6_2_S14_4_ex1/",
-    'dsName':'ex1'
+    "rootDir": "/ispim2_data/MN6_2_S15_1_high_res_region/",
+    "outputDir": "/ACdata/processed/test2/",
+    'dsName':'high_res_region_1'
     }
 
     #convert to 2d tiff
@@ -61,10 +61,12 @@ statejson = io.read_json(run_input['outputDir'] + "state.json")
 #read stitch json in
 stitchoutjson = io.read_json(run_input['outputDir'] + "stitch-final.json")
 #update state json with stich coord
+ind = 0
 for pos in range(n_start,n_end):
-    statejson['layers'][pos]['source']['transform']['matrix'][0][3]=stitchoutjson[pos]['position'][0]*4
-    statejson['layers'][pos]['source']['transform']['matrix'][1][3]=stitchoutjson[pos]['position'][1]*4
-    statejson['layers'][pos]['source']['transform']['matrix'][2][3]=stitchoutjson[pos]['position'][2]*4
+    statejson['layers'][ind]['source']['transform']['matrix'][0][3]=stitchoutjson[ind]['position'][0]*4
+    statejson['layers'][ind]['source']['transform']['matrix'][1][3]=stitchoutjson[ind]['position'][1]*4
+    statejson['layers'][ind]['source']['transform']['matrix'][2][3]=stitchoutjson[ind]['position'][2]*4
+    ind = ind+1
 #create stitched nglink
 mod6.run(statejson, fname='stitched-nglink.txt')
 

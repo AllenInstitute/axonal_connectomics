@@ -18,7 +18,7 @@ def get_pos_info(downdir, overlap, pos, pr, ind):
     yshift = overlap/4
     if att['dataType']=='uint16':
         dtype = 'GRAY16'
-    pos_info= {"file":downdir,"index":ind,"pixelResolution":pr,"position":[0,pos*yshift,0],"size":sz,"type":dtype}
+    pos_info= {"file":downdir,"index":ind,"pixelResolution":pr,"position":[0,ind*yshift,0],"size":sz,"type":dtype}
     return pos_info
 
 class CreateJsonSchema(argschema.ArgSchema):
