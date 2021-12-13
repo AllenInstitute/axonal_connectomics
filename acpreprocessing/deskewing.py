@@ -7,8 +7,8 @@ import time
 from scipy.ndimage import affine_transform
 import logging
 logging.getLogger("tifffile").setLevel(logging.ERROR)
-from .utils import io
-from .utils import convert
+from acpreprocessing.utils import io
+from acpreprocessing.utils import convert
 import numpy as np
 import os
 from PIL import Image
