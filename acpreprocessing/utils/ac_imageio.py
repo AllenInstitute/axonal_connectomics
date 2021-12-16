@@ -1,7 +1,10 @@
 import json
+import packaging.version
 
 import imageio
 import imageio.plugins.tifffile
+import numpy
+import tifffile
 
 
 class ACTiffFormat(imageio.plugins.tifffile.TiffFormat):
@@ -10,6 +13,16 @@ class ACTiffFormat(imageio.plugins.tifffile.TiffFormat):
             51123,
             "MicroManagerMetadata"
             ]
+
+        def _open(self, multifile=False, **kwargs):
+            self._tf_multifile = multifile
+            if (packaging.version.parse(
+                    tifffile.__version__) >= packaging.version.parse(
+                        "2020.9.30")):
+                kwargs["_multifile"] = multifile
+            else:
+                kwargs["multifile"] = multifile
+            return super()._open(**kwargs)
 
         def _get_meta_data(self, index):
             meta = super()._get_meta_data(index)
@@ -23,7 +36,19 @@ class ACTiffFormat(imageio.plugins.tifffile.TiffFormat):
             return meta
 
         def _get_data(self, index):
-            im, meta = super()._get_data(index)
+            # reading as a volume and ignoring multifile is faster this way
+            #   and avoids tifffile log messages
+            if self.request.mode[1] in "vV" and not self._tf_multifile:
+                for i, p in enumerate(self._tf.series[index].pages):
+                    img = p.asarray()
+                    if i == 0:
+                        im = numpy.empty(
+                            (len(self._tf.series[index].pages),
+                             *img.shape),
+                            dtype=img.dtype)
+                    im[i, ...] = img
+            else:
+                im, meta = super()._get_data(index)
             return im, self._get_meta_data(index or 0)
 
     class Writer(imageio.plugins.tifffile.TiffFormat.Writer):
