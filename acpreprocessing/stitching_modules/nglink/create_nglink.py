@@ -12,18 +12,14 @@ example_input = {
 }
 
 class CreateNglinkSchema(argschema.ArgSchema):
-    position = Int(required=True, description='acquisition strip position number')
-    rootDir = Str(required=True, description='raw tiff root directory')
     outputDir = Str(required=True, description='output directory')
-    dsName = Str(default='ex1', description='dataset name')
+    fname = Str(default="nglink.txt", description='output filename for nglink')
 
-class Nglink():
-    def __init__(self, input_json=example_input):
-        self.input_data = input_json.copy()
-
-    def run(self, state, fname):
-        mod = ArgSchemaParser(input_data=self.input_data,schema_type=CreateNglinkSchema)
-        write_nglink.write_url(mod.args['outputDir'], state, fname)
+class Nglink(argschema.ArgSchemaParser):
+    default_schema = CreateNglinkSchema
+    def run(self, state):
+        #write_nglink.write_url(self.args['outputDir'], state, self.args['fname'])
+        write_nglink.write_tinyurl(self.args['outputDir'], state, self.args['fname'])
 
 if __name__ == '__main__':
     mod = Nglink()

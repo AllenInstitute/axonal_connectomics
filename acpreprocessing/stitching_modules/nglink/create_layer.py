@@ -7,15 +7,14 @@ import argschema
 example_input = {
     "outputDir": "/ACdata/processed/demoModules/output/",
     "position": 2,
-    "rootDir": "/ACdata/processed/demoModules/raw/",
-    'dsName':'ex1'
-}
+    "rootDir": "/ACdata/processed/demoModules/raw/"
+    }
 
 def create_layer(outputDir, position, overlap, pixelResolution):
     layer_info = {"type": "image"}
     layer_info["shaderControls"] = { "normalized": { "range": [ 0, 5000 ] }}
     url = "n5://http://bigkahuna.corp.alleninstitute.org"
-    url = url + outputDir + 'Pos%d/multirespos%d'%(position, position)
+    url = url + outputDir + '/Pos%d.n5/multirespos%d'%(position, position)
     layer_info["source"] = {"url": url}
     layer_info["name"] = "Pos%d"%(position)
     layer_info["source"]["transform"] = {
@@ -36,18 +35,18 @@ class CreateLayerSchema(argschema.ArgSchema):
     position = argschema.fields.Int(default=0, description='acquisition strip position number')
     outputDir = argschema.fields.String(default='', description='output directory')
     rootDir = Str(required=True, description='raw tiff root directory')
-    dsName = Str(default='ex1', description='dataset name')
 
-class NgLayer():
-    def __init__(self, input_json=example_input):
-        self.input_data = input_json.copy()
-
+class NgLayer(argschema.ArgSchemaParser):
+    default_schema = CreateLayerSchema 
     def run(self, state):
-        mod = ArgSchemaParser(input_data=self.input_data,schema_type=CreateLayerSchema)
-        md = parse_metadata.ParseMetadata()
+        #mod = ArgSchemaParser(input_data=self.args,schema_type=CreateLayerSchema)
+        md_input = {
+            "rootDir": "/ispim2_data/MN7_RH_3_b5_S16_1_high_res_region"
+        }
+        md = parse_metadata.ParseMetadata(input_data = md_input)
         pr = md.get_pixel_resolution()
         overlap = md.get_overlap()
-        layer0 = create_layer(mod.args['outputDir']+'n5/', mod.args['position'],overlap, pr)
+        layer0 = create_layer(self.args['outputDir'], self.args['position'],overlap, pr)
         add_layer(state, layer0)
 
 if __name__ == '__main__':
