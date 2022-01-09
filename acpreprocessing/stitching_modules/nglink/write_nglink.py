@@ -1,7 +1,7 @@
 import os
 import json
 import urllib.parse
-from acpreprocessing.utils import io
+from acpreprocessing.utils import io, make_tinyurl
 
 def make_neuroglancer_url(state, base_url="http://neuroglancer-demo.appspot.com/"):
     state_json = json.dumps(state, separators=(',', ':')).replace("'",'"')
@@ -11,9 +11,16 @@ def make_neuroglancer_url(state, base_url="http://neuroglancer-demo.appspot.com/
 
 def write_url(output_root, state, fname):
     encoded_url = make_neuroglancer_url(state)
-    os.chdir(output_root)
-    io.save_file(fname, encoded_url)
+    ff = os.path.join(output_root,fname)
+    io.save_file(ff, encoded_url)
     print("Done! Neuroglancer Link:")
     print(encoded_url)
 
+def write_tinyurl(output_root, state, fname):
+    encoded_url = make_neuroglancer_url(state)
+    url = make_tinyurl.make_tiny(encoded_url)
+    ff = os.path.join(output_root,fname)
+    io.save_file(ff, url)
+    print("Done! Neuroglancer Link:")
+    print(url)
 
