@@ -12,14 +12,21 @@ example_input = {
 
 class ParseMetadataSchema(argschema.ArgSchema):
     rootDir = Str(required=True, description='raw tiff root directory')
-    fname = Str(required=True, description='name of metadata json')
+    fname = Str(required=False,default = 'acqinfo_metadata.json', description='name of metadata json file')
 
-class ParseMetadata():
-    def __init__(self,input_json=example_input):
-        self.input_data = input_json.copy()
+class ParseMetadata(argschema.ArgSchemaParser):
+    #default_schema = ParseMetadataSchema
+    
+    #def run(self):
+        #self.rootDir = self.args["rootDir"]
+        #self.md = io.get_json(self.rootDir+'/'+self.args["fname"])
+        #return self
+    
+    def __init__(self,input_data=example_input):
+        self.input_data = input_data.copy()
         mod = ArgSchemaParser(input_data=self.input_data,schema_type=ParseMetadataSchema)
         self.rootDir = mod.args["rootDir"]
-        self.md = io.get_json(self.rootDir+mod.args["fname"])
+        self.md = io.get_json(self.rootDir+'/'+mod.args["fname"])
 
     #Return metadata json
     def get_md(self):
@@ -35,14 +42,13 @@ class ParseMetadata():
     def get_overlap(self):
         return self.md['settings']['strip_overlap_pixels']
     
-    #TODO: get from metadata file once updated
     def get_number_of_positions(self):
-       return 10
+       return len(self.md['positions'])
     
-    # #TODO:
-    # def get_size(self):
-    #     sz = [self.md['settings']['image_size_xy'][0],self.md['settings']['image_size_xy'][1],403*3]
-    #     return sz
+    #TODO doule check this usage:
+    def get_size(self):
+         sz = [self.md['settings']['image_size_xy'][0],self.md['settings']['image_size_xy'][1],self.md['settings']['frames_per_file']]
+         return sz
 
     #get data type
     def get_dtype(self):

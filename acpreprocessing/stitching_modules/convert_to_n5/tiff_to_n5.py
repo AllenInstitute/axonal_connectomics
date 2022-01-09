@@ -6,6 +6,7 @@ import dataclasses
 import itertools
 import math
 import pathlib
+from natsort import natsorted
 
 import imageio
 import numpy
@@ -215,8 +216,9 @@ class TiffDirToN5(argschema.ArgSchemaParser):
     default_schema = TiffDirToN5InputParameters
 
     def run(self):
-        mimgfns = [*sorted(pathlib.Path(self.args["input_dir"]).iterdir())]
-
+        
+        files = [*sorted(pathlib.Path(self.args["input_dir"]).iterdir())]
+        mimgfns = final = natsorted([str(p) for p in files]) 
         # FIXME argschema can and should do this
         chunk_size = ast.literal_eval(self.args["chunk_size"])
         mip_dsfactor = ast.literal_eval(self.args["mip_dsfactor"])
