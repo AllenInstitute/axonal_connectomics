@@ -10,8 +10,8 @@ from acpreprocessing.stitching_modules.stitch import create_json, stitch
 
 start = time.time()
 
-outputdir = "/ACdata/processed/MN7_RH_3_b5_S15_1_high_res_region/"
-rootdir = "/ispim2_data/MN7_RH_3_b5_S15_1_high_res_region/"
+outputdir = "/ACdata/processed/MN7_RH_3_b5_S17_1_high_res_region/"
+rootdir = "/ispim2_data//MN7_RH_3_b5_S17_1_high_res_region_1"
 
 md_input = {
         "rootDir":rootdir,
@@ -64,17 +64,19 @@ nglink_input={
 create_nglink.Nglink(input_data=nglink_input).run(state)
 
 
-#create_json_input = {
-#        'rootDir':'/ispim2_data/MN7_RH_3_b5_S16_1_high_res_region',
-#        'outputDir':'/ACdata/processed/MN7_RH_3_b5_S16_1_high_res_region'
-#        }
-#mod = create_json.CreateJson(input_data = create_json_input)
-#mod.run(0,8)
+create_json_input = {
+        'rootDir':rootdir,
+        'outputDir':outputdir
+        }
+mod = create_json.CreateJson(input_data = create_json_input)
+mod.run(0,8)
 
-#mod = stitch.Stitch()
-#outputDir = "/ACdata/processed/MN7_RH_3_b5_S16_1_high_res_region"
-#stitchjson = os.path.join(outputDir,"stitch.json")
-#mod.run(stitchjson)
+stitchjson=os.path.join(outputdir,"stitch.json")
+stitch_input={
+        "stitchjson":stitchjson
+        }
+mod = stitch.Stitch(input_data=stitch_input)
+mod.run()
 
 
 print('done testing')
