@@ -4,21 +4,24 @@ from argschema import ArgSchemaParser, ArgSchema
 from argschema.fields import NumpyArray, Int, Str
 import numpy as np
 import argschema
-from acpreprocessing.stitching_modules.metadata  import parse_metadata
+from acpreprocessing.stitching_modules.metadata import parse_metadata
 from acpreprocessing.utils import io
 
 example_input = {
     "position": 0,
     "outputDir": "/ACdata/processed/rmt_testKevin/ispim2/n5/",
-    "max_mip": 4
+    "max_mip": 4,
+    "rootDir": "/ACdata/processed/demoModules/raw/",
+    "fname":'acqinfo_metadata.json'
     }
 
 class MultiscaleSchema(argschema.ArgSchema):
     position = Int(required=True, description='acquisition strip position number')
     outputDir = Str(required=True, description='output directory')
     max_mip = Int(default=4, description='Number of downsamples')
-
-
+    rootDir = Str(required=True, description='raw tiff root directory')
+    fname = Str(required=False,default = 'acqinfo_metadata.json', description='name of metadata json file')
+ 
 def fix_version(outputRoot):
     att = {"n5":"2.5.0"}
     io.save_metadata(outputRoot+f"/attributes.json",att)
@@ -58,13 +61,14 @@ class Multiscale(argschema.ArgSchemaParser):
     default_schema = MultiscaleSchema
 
     def run(self):
+        #TODO: Should this be passed in from main runmodules file?
         md_input = {
-                "rootDir": "/ispim2_data/MN7_RH_3_b5_S16_1_high_res_region",
-                "fname":'acqinfo_metadata.json'
+                "rootDir": self.rootDir,
+                "fname": self.fname
                 }
         md = parse_metadata.ParseMetadata(input_data = md_input)
-        md.run()
         pr = md.get_pixel_resolution()
+
         add_multiscale_attributes(self.args['outputDir'], pr, self.args['position'],self.args['max_mip'])
         print("Finished multiscale conversion for Pos%d"%(self.args['position']))
 

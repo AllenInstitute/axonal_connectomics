@@ -228,6 +228,7 @@ class TiffDirToN5(argschema.ArgSchemaParser):
             chunk_size, self.args["max_mip"], mip_dsfactor,
             self.args["concurrency"], self.args["compression"])
 
+        #Fix dir structure
         multires = os.path.join(self.args["out_n5"],"multires"+self.args["ds_name"])
 
         fullres = os.path.join(self.args["out_n5"],"s0/"+self.args["ds_name"])

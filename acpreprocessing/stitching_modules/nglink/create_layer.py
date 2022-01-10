@@ -1,5 +1,4 @@
 from acpreprocessing.stitching_modules.metadata  import parse_metadata
-
 from argschema import ArgSchemaParser, ArgSchema
 from argschema.fields import NumpyArray, Boolean,Float, Int, Str
 import argschema
@@ -37,16 +36,18 @@ class CreateLayerSchema(argschema.ArgSchema):
     rootDir = Str(required=True, description='raw tiff root directory')
 
 class NgLayer(argschema.ArgSchemaParser):
-    default_schema = CreateLayerSchema 
+    default_schema = CreateLayerSchema
+    
     def run(self, state):
-        #mod = ArgSchemaParser(input_data=self.args,schema_type=CreateLayerSchema)
         md_input = {
-            "rootDir": "/ispim2_data/MN7_RH_3_b5_S16_1_high_res_region"
+            "rootDir": self.args['rootDir']
         }
         md = parse_metadata.ParseMetadata(input_data = md_input)
         pr = md.get_pixel_resolution()
-        overlap = md.get_overlap()
-        layer0 = create_layer(self.args['outputDir'], self.args['position'],overlap, pr)
+        sz = md.get_size()
+        overlap = sz[1]-md.get_overlap()
+
+        layer0 = create_layer(self.args['outputDir'], self.args['position'], overlap, pr)
         add_layer(state, layer0)
 
 if __name__ == '__main__':

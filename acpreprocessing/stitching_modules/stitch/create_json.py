@@ -4,12 +4,11 @@ from argschema.fields import NumpyArray, Boolean,Float, Int, Str
 import json
 import argschema
 from acpreprocessing.utils import io
+import os
 
 example_input = {
-    "position": 2,
     "rootDir": "/ACdata/processed/demoModules/raw/",
     "outputDir": "/ACdata/processed/demoModules/output/",
-    'dsName':'ex1'
 }
 
 def get_pos_info(downdir, overlap, pos, pr, ind):
@@ -22,29 +21,28 @@ def get_pos_info(downdir, overlap, pos, pr, ind):
     return pos_info
 
 class CreateJsonSchema(argschema.ArgSchema):
-    position = Int(required=True, description='acquisition strip position number')
     rootDir = Str(required=True, description='raw tiff root directory')
     outputDir = Str(required=True, description='output directory')
-    dsName = Str(default='ex1', description='dataset name')
 
-class CreateJson():
-    def __init__(self, input_json=example_input):
-        self.input_data = input_json.copy()
-        
+class CreateJson(argschema.ArgSchemaParser):
+    default_schema = CreateJsonSchema
+
     def run(self, n_start, n_end):
-        mod = ArgSchemaParser(input_data=self.input_data,schema_type=CreateJsonSchema)
         stitching_json = []
-        md = parse_metadata.ParseMetadata()
+        md_input = {
+                'rootDir':'/ispim2_data/MN7_RH_3_b5_S16_1_high_res_region'
+                }
+        md = parse_metadata.ParseMetadata(input_data =md_input)
         # n_pos = md.get_number_of_positions()
         ind=0
         for pos in range(n_start,n_end):
-            downdir = mod.args['outputDir']+"/n5/Pos%d/multirespos%d/s2/"%(pos, pos)
+            downdir = self.args['outputDir']+f"/Pos{pos}.n5/multirespos{pos}/s2/"
             pos_info = get_pos_info(downdir, md.get_overlap(), pos, md.get_pixel_resolution(),ind)
             stitching_json.append(pos_info)
             ind = ind+1
-        io.save_metadata(mod.args['outputDir']+'stitch.json',stitching_json)
+        fout = os.path.join(self.args['outputDir'],'stitch.json')
+        io.save_metadata(fout,stitching_json)
         
 if __name__ == '__main__':
     mod = CreateJson()
-    outputDir = "/ACdata/processed/demoModules/output/"
-    mod.run(outputDir)
+    mod.run()

@@ -4,6 +4,7 @@ from argschema.fields import Str
 import json
 import numpy as np
 from acpreprocessing.utils import io
+import os
 
 example_input = {
     "rootDir": "/ACdata/processed/demoModules/raw/",
@@ -26,7 +27,7 @@ class ParseMetadata(argschema.ArgSchemaParser):
         self.input_data = input_data.copy()
         mod = ArgSchemaParser(input_data=self.input_data,schema_type=ParseMetadataSchema)
         self.rootDir = mod.args["rootDir"]
-        self.md = io.get_json(self.rootDir+'/'+mod.args["fname"])
+        self.md = io.get_json(os.path.join(self.rootDir,mod.args["fname"]))
 
     #Return metadata json
     def get_md(self):
