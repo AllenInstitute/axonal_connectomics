@@ -10,8 +10,9 @@ from acpreprocessing.stitching_modules.stitch import create_json, stitch
 
 start = time.time()
 
-outputdir = "/ACdata/processed/MN7_RH_3_b5_S17_1_high_res_region/"
-rootdir = "/ispim2_data//MN7_RH_3_b5_S17_1_high_res_region_1"
+outputdir = "/ACdata/processed/MN6_2_s14_white_matter_high_res/"
+rootdir = "/ispim2_data/MN6_2_s14_white_matter_high_res/"
+ds_name = "ex1"
 
 md_input = {
         "rootDir":rootdir,
@@ -25,14 +26,14 @@ for pos in range(n_pos):
         "ds_name": f"pos{pos}",
         "max_mip": 4,
         "concurrency": 20,
-        "input_dir": f"{rootdir}high_res_region_1_Pos{pos}",
+        "input_dir": f"{rootdir}{ds_name}_Pos{pos}",
         "out_n5": f"{outputdir}Pos{pos}.n5"
         }
     multiscale_input = {
         "position": pos,
         "outputDir": f"{outputdir}Pos{pos}.n5",
         'max_mip':4,
-        "rootDir":f"{rootdir}high_res_region_1_Pos{pos}",
+        "rootDir":f"{rootdir}",
         "fname":"acqinfo_metadata.json"
         }
         
@@ -69,7 +70,7 @@ create_json_input = {
         'outputDir':outputdir
         }
 mod = create_json.CreateJson(input_data = create_json_input)
-mod.run(0,8)
+mod.run(0,n_pos)
 
 stitchjson=os.path.join(outputdir,"stitch.json")
 stitch_input={
@@ -78,6 +79,7 @@ stitch_input={
 mod = stitch.Stitch(input_data=stitch_input)
 mod.run()
 
+#create stitched nglink
 
 print('done testing')
 print(time.time()-start)
