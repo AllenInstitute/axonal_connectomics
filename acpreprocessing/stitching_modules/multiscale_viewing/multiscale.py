@@ -36,12 +36,9 @@ def add_downsampling_factors(outputRoot,position, max_mip):
 
 def add_multiscale_attributes(outputRoot,pixelResolution,position,max_mip):
     #TODO: check if files exist
-    if max_mip == 4: #default
-        attr = {"pixelResolution" : {"unit":"um","dimensions":[pixelResolution[0],pixelResolution[1],pixelResolution[2]]},"scales":[[1,1,1],[2,2,2],[4,4,4],[8,8,8],[16,16,16]]}
-    else:
-        attr = {"pixelResolution" : {"unit":"um","dimensions":[pixelResolution[0],pixelResolution[1],pixelResolution[2]]},"scales":[[1,1,1]]}
-        for m in range(1,max_mip+1):
-            attr["scales"].append([2**m,2**m,2**m])
+    attr = {"pixelResolution" : {"unit":"um","dimensions":[pixelResolution[0],pixelResolution[1],pixelResolution[2]]},"scales":[[1,1,1]]}
+    for m in range(1,max_mip+1):
+        attr["scales"].append([2**m,2**m,2**m])
 
     multires_att = os.path.join(outputRoot+f"/multirespos{position}/attributes.json")
     io.save_metadata(multires_att,attr)
@@ -63,8 +60,8 @@ class Multiscale(argschema.ArgSchemaParser):
     def run(self):
         #TODO: Should this be passed in from main runmodules file?
         md_input = {
-                "rootDir": self.rootDir,
-                "fname": self.fname
+                "rootDir": self.args['rootDir'],
+                "fname": self.args['fname']
                 }
         md = parse_metadata.ParseMetadata(input_data = md_input)
         pr = md.get_pixel_resolution()
