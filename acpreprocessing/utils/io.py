@@ -63,8 +63,8 @@ def save_metadata(filename,sample):
 
 def read_json(filename):
     with open(filename, 'r') as f:
-	data = json.loads(f.read())
-	return data
+        data = json.loads(f.read())
+        return data
 
 def save_file(filename,sample):
     with open(filename, 'w') as file:
@@ -72,5 +72,5 @@ def save_file(filename,sample):
 
 def get_json(filename):
     with open(filename) as f:
-	res = json.loads(f.read())
-	return res
+        res = json.loads(f.read())
+        return res
