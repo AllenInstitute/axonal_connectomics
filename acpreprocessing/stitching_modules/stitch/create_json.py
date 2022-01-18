@@ -27,19 +27,17 @@ class CreateJsonSchema(argschema.ArgSchema):
 class CreateJson(argschema.ArgSchemaParser):
     default_schema = CreateJsonSchema
 
-    def run(self, n_start, n_end):
+    def run(self):
         stitching_json = []
         md_input = {
-                'rootDir':'/ispim2_data/MN7_RH_3_b5_S16_1_high_res_region'
+                'rootDir':self.args['rootDir']
                 }
         md = parse_metadata.ParseMetadata(input_data =md_input)
-        # n_pos = md.get_number_of_positions()
-        ind=0
-        for pos in range(n_start,n_end):
+        n_pos = md.get_number_of_positions()
+        for pos in range(0,n_pos-1):
             downdir = self.args['outputDir']+f"/Pos{pos}.n5/multirespos{pos}/s2/"
-            pos_info = get_pos_info(downdir, md.get_overlap(), pos, md.get_pixel_resolution(),ind)
+            pos_info = get_pos_info(downdir, md.get_overlap(), pos, md.get_pixel_resolution(),pos)
             stitching_json.append(pos_info)
-            ind = ind+1
         fout = os.path.join(self.args['outputDir'],'stitch.json')
         io.save_metadata(fout,stitching_json)
         
