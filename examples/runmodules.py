@@ -10,9 +10,9 @@ from acpreprocessing.stitching_modules.stitch import create_json, stitch
 
 start = time.time()
 
-outputdir = "/ACdata/processed/MN6_2_s14_white_matter_high_res/"
-rootdir = "/ispim2_data/MN6_2_s14_white_matter_high_res/"
-ds_name = "ex1"
+outputdir = "/ACdata/processed/MN7_RH_3_b5_S16_1_high_res_region"
+rootdir = "/ispim2_data/MN7_RH_3_b5_S16_1_high_res_region/"
+ds_name = "high_res_region"
 
 md_input = {
         "rootDir":rootdir,
@@ -70,7 +70,7 @@ create_json_input = {
         'outputDir':outputdir
         }
 mod = create_json.CreateJson(input_data = create_json_input)
-mod.run(0,n_pos)
+mod.run()
 
 stitchjson=os.path.join(outputdir,"stitch.json")
 stitch_input={
@@ -79,7 +79,28 @@ stitch_input={
 mod = stitch.Stitch(input_data=stitch_input)
 mod.run()
 
+statejson = io.read_json(os.path.join(outputdir,"state.json"))
+#read stitch json in
+stitchoutjson = io.read_json(os.path.join(outputdir,"stitch-final.json"))
+    
+#update state json with stich coord
+for pos in range(0,n_pos-1):
+    try:
+        statejson['layers'][pos]['source']['transform']['matrix'][0][3]=stitchoutjson[pos]['position'][0]*4
+        statejson['layers'][pos]['source']['transform']['matrix'][1][3]=stitchoutjson[pos]['position'][1]*4
+        statejson['layers'][pos]['source']['transform']['matrix'][2][3]=stitchoutjson[pos]['position'][2]*4
+    except:
+        print("Something went wrong with the stitching output!")
+
 #create stitched nglink
+nglink_input={
+        "outputDir": outputdir,
+        "fname": "stitched-nglink.txt"
+        }
+create_nglink.Nglink(input_data=nglink_input).run(statejson)
+
+#save new state
+io.save_metadata(os.path.join(outputdir,"stitched-state.json"),statejson)
 
 print('done testing')
 print(time.time()-start)
