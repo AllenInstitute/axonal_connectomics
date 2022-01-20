@@ -1,9 +1,12 @@
 import pytest
 
-import acpreprocessing.stitching_modules.convert_to_n5
-import acpreprocessing.stitching_modules.metadata
-import acpreprocessing.stitching_modules.multiscale_viewing
-import acpreprocessing.stitching_modules.stitch
-import acpreprocessing.stitching_modules.nglink
+import acpreprocessing.stitching_modules.convert_to_n5.tiff_to_n5
+import acpreprocessing.stitching_modules.metadata.parse_metadata
+import acpreprocessing.stitching_modules.multiscale_viewing.multiscale
+import acpreprocessing.stitching_modules.stitch.create_json
+import acpreprocessing.stitching_modules.stitch.stitch
+import acpreprocessing.stitching_modules.nglink.create_layer
+import acpreprocessing.stitching_modules.nglink.create_nglink
+import acpreprocessing.stitching_modules.nglink.write_nglink
 
 
