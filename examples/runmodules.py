@@ -47,7 +47,7 @@ for pos in range(n_pos):
     mod1.run()
 
 #Create overview nglink
-state = {"layers": []}
+state = {"showDefaultAnnotations": False,"layers": []}
 
 for pos in range (n_pos):
     layer_input = {

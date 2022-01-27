@@ -11,7 +11,7 @@ example_input = {
 
 def create_layer(outputDir, position, overlap, pixelResolution):
     layer_info = {"type": "image"}
-    layer_info["shaderControls"] = { "normalized": { "range": [ 0, 5000 ] }}
+    layer_info["shaderControls"] = { "normalized": { "range": [500, 1500 ] }}
     url = "n5://http://bigkahuna.corp.alleninstitute.org"
     url = url + outputDir + '/Pos%d.n5/multirespos%d'%(position, position)
     layer_info["source"] = {"url": url}
