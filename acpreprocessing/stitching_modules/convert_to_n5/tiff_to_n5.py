@@ -38,12 +38,13 @@ def iter_arrays(r):
         else:
             raise ValueError
 
+
 def iterate_2d_arrays_from_mimgfns(mimgfns):
     for mimgfn in mimgfns:
         print(mimgfn)
         with imageio.get_reader(mimgfn, mode="I") as r:
-            #numpy.array([i for i in iter_arrays(r)])
             yield from iter_arrays(r)
+
 
 def iterate_numpy_chunks_from_mimgfns(mimgfns, slice_length=None, pad=True):
     array_gen = iterate_2d_arrays_from_mimgfns(mimgfns)
@@ -216,10 +217,9 @@ class TiffDirToN5(argschema.ArgSchemaParser):
     default_schema = TiffDirToN5InputParameters
 
     def run(self):
-        
-        files = [*sorted(pathlib.Path(self.args["input_dir"]).iterdir())]
-        mimgfns = natsorted([str(p) for p in files if p.name.endswith('.tif')])
-        
+        mimgfns = [str(p) for p in natsorted(pathlib.Path(
+            self.args["input_dir"]).iterdir(), key=lambda x:str(p))
+            if p.is_file()]
         # FIXME argschema can and should do this
         chunk_size = ast.literal_eval(self.args["chunk_size"])
         mip_dsfactor = ast.literal_eval(self.args["mip_dsfactor"])
@@ -229,27 +229,29 @@ class TiffDirToN5(argschema.ArgSchemaParser):
             chunk_size, self.args["max_mip"], mip_dsfactor,
             self.args["concurrency"], self.args["compression"])
 
-        #Fix dir structure
-        multires = os.path.join(self.args["out_n5"],"multires"+self.args["ds_name"])
+        # Fix dir structure
+        multires = os.path.join(self.args["out_n5"],
+                                "multires"+self.args["ds_name"])
 
-        fullres = os.path.join(self.args["out_n5"],"s0/"+self.args["ds_name"])
+        fullres = os.path.join(self.args["out_n5"], "s0/"+self.args["ds_name"])
         shutil.move(fullres, self.args["out_n5"])
 
         try:
-            os.rmdir(os.path.join(self.args["out_n5"],"s0"))
+            os.rmdir(os.path.join(self.args["out_n5"], "s0"))
         except OSError as e:
             print("Error: %s : %s" % (dir_path, e.strerror))
 
         os.makedirs(multires)
-        for mip_level in range(1,self.args["max_mip"]+1):
-            source = os.path.join(self.args["out_n5"],os.path.join(f"s{mip_level}/",self.args["ds_name"]))
-            shutil.move(source, os.path.join(multires,f"s{mip_level}"))
+        for mip_level in range(1, self.args["max_mip"]+1):
+            source = os.path.join(self.args["out_n5"], os.path.join(
+                            f"s{mip_level}/", self.args["ds_name"]))
+            shutil.move(source, os.path.join(multires, f"s{mip_level}"))
             try:
-                os.rmdir(os.path.join(self.args["out_n5"],f"s{mip_level}"))
+                os.rmdir(os.path.join(self.args["out_n5"], f"s{mip_level}"))
             except OSError as e:
                 print("Error: %s : %s" % (dir_path, e.strerror))
+
 
 if __name__ == "__main__":
     mod = TiffDirToN5()
     mod.run()
-

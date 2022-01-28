@@ -51,26 +51,24 @@ def get_tiff_image(filename):
     return data
 
 
-def save_tiff_image(I, filename):
-    imageio_general_write(filename, I, format="actiff")
+def save_tiff_image(Img, filename):
+    imageio_general_write(filename, Img, format="actiff")
     # tf.imsave(filename,I)
 
 
-def save_metadata(filename,sample):
+def save_metadata(filename, sample):
     with open(filename, 'w') as file:
-        json_string = json.dumps(sample, default=lambda o: o.__dict__, sort_keys=True, indent=2)
+        json_string = json.dumps(sample, default=lambda o: o.__dict__,
+                                 sort_keys=True, indent=2)
         file.write(json_string)
+
 
 def read_json(filename):
     with open(filename, 'r') as f:
         data = json.loads(f.read())
         return data
 
-def save_file(filename,sample):
+
+def save_file(filename, sample):
     with open(filename, 'w') as file:
         file.write(sample)
-
-def get_json(filename):
-    with open(filename) as f:
-        res = json.loads(f.read())
-        return res
