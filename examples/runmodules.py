@@ -41,7 +41,7 @@ class RunModules(argschema.ArgSchemaParser):
                 "fname": run_input['md_filename']
                 }
         n_pos = parse_metadata.ParseMetadata(input_data=md_input).get_number_of_positions()
-        '''
+
         for pos in range(n_pos):
             convert_input = {
                 "ds_name": f"pos{pos}",
@@ -62,7 +62,7 @@ class RunModules(argschema.ArgSchemaParser):
             tiff_to_n5.TiffDirToN5(input_data=convert_input, args=[]).run()
             # Add multiscale attributes
             multiscale.Multiscale(input_data=multiscale_input).run()
-        '''
+
         # Create overview nglink, initialize state
         state = {"showDefaultAnnotations": False, "layers": []}
 
