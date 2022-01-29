@@ -1,12 +1,9 @@
 import argschema
-from argschema import ArgSchemaParser, ArgSchema
 from argschema.fields import Str
-import json
-import numpy as np
 from acpreprocessing.utils import io
 import os
 
-example_input = {
+example_parsemetadata_input = {
     "rootDir": "/ACdata/processed/demoModules/raw/",
     "fname": 'acqinfo_metadata.json'
 }
@@ -19,17 +16,11 @@ class ParseMetadataSchema(argschema.ArgSchema):
 
 
 class ParseMetadata(argschema.ArgSchemaParser):
-    # default_schema = ParseMetadataSchema
 
-    # def run(self):
-    # self.rootDir = self.args["rootDir"]
-    # self.md = io.get_json(self.rootDir+'/'+self.args["fname"])
-    # return self
-
-    def __init__(self, input_data=example_input):
+    def __init__(self, input_data=example_parsemetadata_input):
         self.input_data = input_data.copy()
-        mod = ArgSchemaParser(input_data=self.input_data,
-                              schema_type=ParseMetadataSchema)
+        mod = argschema.ArgSchemaParser(input_data=self.input_data,
+                                        schema_type=ParseMetadataSchema)
         self.rootDir = mod.args["rootDir"]
         self.md = io.read_json(os.path.join(self.rootDir, mod.args["fname"]))
 
@@ -37,31 +28,32 @@ class ParseMetadata(argschema.ArgSchemaParser):
     def get_md(self):
         return self.md
 
-    # Return pixel resolution in um
+    # Return x,y,z pixel resolution in um
     def get_pixel_resolution(self):
         xy = self.md['settings']['pixel_spacing_um']
         z = self.md['positions'][1]['x_step_um']
         return [xy, xy, z]
 
-    # Return overlap in pixels
+    # Return strip overlap in pixels
     def get_overlap(self):
         return self.md['settings']['strip_overlap_pixels']
 
+    # Return number of position strips
     def get_number_of_positions(self):
         return len(self.md['positions'])
-
-    # TODO doule check this usage:
+    
+    # Get tiff stack width, height, and number of frames
     def get_size(self):
         sz = [self.md['settings']['image_size_xy'][0],
               self.md['settings']['image_size_xy'][1],
               self.md['settings']['frames_per_file']]
         return sz
 
-    # get data type
+    # Get data type
     def get_dtype(self):
         return self.md['settings']['dtype']
 
 
 if __name__ == '__main__':
-    mod = ParseMetadata()
+    mod = ParseMetadata(input_data=example_parsemetadata_input)
     print(mod.get_md())
