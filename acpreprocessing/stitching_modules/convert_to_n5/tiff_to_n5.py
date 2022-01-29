@@ -217,9 +217,11 @@ class TiffDirToN5(argschema.ArgSchemaParser):
     default_schema = TiffDirToN5InputParameters
 
     def run(self):
-        mimgfns = [str(p) for p in natsorted(pathlib.Path(
-            self.args["input_dir"]).iterdir(), key=lambda x:str(p))
-            if p.is_file()]
+        # FIXME this line should work?
+        # mimgfns = [str(p) for p in natsorted(pathlib.Path(self.args["input_dir"]).iterdir(), key=lambda x:str(p)) if p.is_file()]
+        files = [*sorted(pathlib.Path(self.args["input_dir"]).iterdir())]
+        mimgfns = natsorted([str(p) for p in files if p.name.endswith('.tif')])
+        
         # FIXME argschema can and should do this
         chunk_size = ast.literal_eval(self.args["chunk_size"])
         mip_dsfactor = ast.literal_eval(self.args["mip_dsfactor"])
