@@ -1,6 +1,6 @@
 from acpreprocessing.stitching_modules.metadata import parse_metadata
-from argschema import ArgSchemaParser, ArgSchema
-from argschema.fields import NumpyArray, Boolean, Float, Int, Str
+from acpreprocessing.stitching_modules.nglink import create_nglink
+from argschema.fields import Int, Str
 import argschema
 from acpreprocessing.utils import io
 import os
@@ -8,16 +8,17 @@ import os
 example_input = {
     'rootDir': "/ACdata/processed/demoModules/raw/",
     "outputDir": "/ACdata/processed/demoModules/output/",
-    'mip_level': 3
+    'mip_level': 3,
+    "fname": "stitched-nglink.txt"
     }
 
 
 class UpdateStateSchema(argschema.ArgSchema):
     rootDir = Str(required=True, description='raw tiff root directory')
-    outputDir = argschema.fields.String(default='',
-                                        description='output directory')
+    outputDir = Str(default='', description='output directory')
     mip_level = Int(required=False, default=2,
                     description='downsample level to perform stitching with')
+    fname = Str(default="nglink.txt", description='output filename for nglink')
 
 
 class UpdateState(argschema.ArgSchemaParser):
@@ -33,12 +34,22 @@ class UpdateState(argschema.ArgSchemaParser):
         stitchoutjson = io.read_json(os.path.join(self.args['outputDir'], "stitch-final.json"))
         factor = 2**self.args['mip_level']
         for pos in range(0, n_pos):
+            # print(pos)
             try:
                 statejson['layers'][pos]['source']['transform']['matrix'][0][3] = stitchoutjson[pos]['position'][0]*factor
                 statejson['layers'][pos]['source']['transform']['matrix'][1][3] = stitchoutjson[pos]['position'][1]*factor
                 statejson['layers'][pos]['source']['transform']['matrix'][2][3] = stitchoutjson[pos]['position'][2]*factor
             except IndexError:
                 print("Something went wrong with the stitching output!")
+
+        # create stitched nglink
+        nglink_input = {
+            "outputDir": self.args['outputDir'],
+            "fname": "stitched-nglink.txt"
+        }
+        create_nglink.Nglink(input_data=nglink_input).run(statejson)
+
+        io.save_metadata(os.path.join(self.args['outputDir'], "stitched-state.json"), statejson)
 
 
 if __name__ == '__main__':
