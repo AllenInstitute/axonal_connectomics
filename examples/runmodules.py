@@ -41,6 +41,9 @@ class RunModules(argschema.ArgSchemaParser):
                 "fname": run_input['md_filename']
                 }
         n_pos = parse_metadata.ParseMetadata(input_data=md_input).get_number_of_positions()
+        if n_pos == 0:
+            print("No positions to process")
+            return -1
 
         for pos in range(n_pos):
             convert_input = {
@@ -55,13 +58,16 @@ class RunModules(argschema.ArgSchemaParser):
                 "outputDir": f"{run_input['outputDir']}/Pos{pos}.n5",
                 'max_mip': 4,
                 "rootDir": f"{run_input['rootDir']}",
-                "fname": "acqinfo_metadata.json"
+                "fname": run_input['md_filename']
                 }
 
-            # Convert to n5
-            tiff_to_n5.TiffDirToN5(input_data=convert_input, args=[]).run()
-            # Add multiscale attributes
-            multiscale.Multiscale(input_data=multiscale_input).run()
+            # Convert to n5 if not done already
+            if not os.path.isdir(convert_input['out_n5']):
+                tiff_to_n5.TiffDirToN5(input_data=convert_input).run()
+                # Add multiscale attributes
+                multiscale.Multiscale(input_data=multiscale_input).run()
+            else:
+                print(f"Skipping position {pos}, directory already exists")
 
         # Create overview nglink, initialize state
         state = {"showDefaultAnnotations": False, "layers": []}
