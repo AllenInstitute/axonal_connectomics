@@ -101,7 +101,11 @@ class RunModules(argschema.ArgSchemaParser):
         stitch_input = {
                 "stitchjson": stitchjsonpath
                 }
-        stitch.Stitch(input_data=stitch_input).run()
+        # Perform stitching if not done yet
+        if not os.path.exists(os.path.join(run_input['outputDir'],"stitch-final.json")):
+            stitch.Stitch(input_data=stitch_input).run()
+        else:
+            print("Skipped stitching - already computed")
 
         # update state json with stitched coord
         update_state_input = {
