@@ -1,7 +1,6 @@
 from acpreprocessing.stitching_modules.metadata import parse_metadata
 from argschema.fields import Str
 import argschema
-import os
 
 example_input = {
     "outputDir": "/ACdata/processed/demoModules/output/",
@@ -15,7 +14,8 @@ def create_layer(outputDir, position, ypos, pixelResolution):
     layer_info = {"type": "image"}
     layer_info["shaderControls"] = {"normalized": {"range": [500, 1500]}}
     url = "n5://http://bigkahuna.corp.alleninstitute.org"
-    url = os.path.join(url, outputDir + f"/Pos{position}.n5/multirespos{position}")
+    # os.path.join not working as I thought here?
+    url = url + outputDir + '/Pos%d.n5/multirespos%d' % (position, position)
     layer_info["source"] = {"url": url}
     layer_info["name"] = "Pos%d" % (position)
     layer_info["source"]["transform"] = {
