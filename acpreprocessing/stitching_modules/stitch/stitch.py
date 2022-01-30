@@ -1,9 +1,10 @@
-import os
 from argschema import ArgSchemaParser, ArgSchema
 from argschema.fields import Str
-from acpreprocessing.stitching_modules.stitch import create_json
 import subprocess
 
+example_stitch = {
+    "stitchjson": "/ACdata/processed/demoModules/output/stitch.json"
+}
 
 def stitch(stitchjson):
     subprocess.call(["python",
@@ -24,6 +25,4 @@ class Stitch(ArgSchemaParser):
 
 
 if __name__ == '__main__':
-    outputDir = "/ACdata/processed/demoModules/output/"
-    stitchjson = outputDir + "stitch.json"
-    Stitch.run()
+    Stitch.run(input_data=example_stitch)

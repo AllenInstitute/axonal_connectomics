@@ -1,7 +1,5 @@
 from acpreprocessing.stitching_modules.metadata import parse_metadata
-from argschema import ArgSchemaParser, ArgSchema
-from argschema.fields import NumpyArray, Boolean, Float, Int, Str
-import json
+from argschema.fields import Int, Str
 import argschema
 from acpreprocessing.utils import io
 import os
@@ -14,6 +12,15 @@ example_input = {
 }
 
 
+class CreateJsonSchema(argschema.ArgSchema):
+    rootDir = Str(required=True, description='raw tiff root directory')
+    outputDir = Str(required=True, description='output directory')
+    mip_level = Int(required=False, default=2,
+                    description='downsample level to perform stitching with')
+
+
+# Create specific position strip information needed for stitching
+# (including approximate coordinates using overlap)
 def get_pos_info(downdir, overlap, pr, ind, mip_level):
     factor = 2**mip_level
     att = io.read_json(downdir+"attributes.json")
@@ -24,13 +31,6 @@ def get_pos_info(downdir, overlap, pr, ind, mip_level):
     pos_info = {"file": downdir, "index": ind, "pixelResolution": pr,
                 "position": [0, ind*yshift, 0], "size": sz, "type": dtype}
     return pos_info
-
-
-class CreateJsonSchema(argschema.ArgSchema):
-    rootDir = Str(required=True, description='raw tiff root directory')
-    outputDir = Str(required=True, description='output directory')
-    mip_level = Int(required=False, default=2,
-                    description='downsample level to perform stitching with')
 
 
 class CreateJson(argschema.ArgSchemaParser):
@@ -49,15 +49,15 @@ class CreateJson(argschema.ArgSchemaParser):
             downdir = posixpath.join(
                     self.args["outputDir"],
                     f"Pos{pos}.n5/multirespos{pos}/s{self.args['mip_level']}/")
-            print(downdir)
+            # print(downdir)
             pos_info = get_pos_info(downdir, md.get_overlap(),
                                     md.get_pixel_resolution(), pos,
                                     self.args['mip_level'])
             stitching_json.append(pos_info)
+
         fout = os.path.join(self.args['outputDir'], 'stitch.json')
         io.save_metadata(fout, stitching_json)
 
 
 if __name__ == '__main__':
-    mod = CreateJson()
-    mod.run()
+    CreateJson(example_input).run()

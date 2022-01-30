@@ -1,7 +1,7 @@
 from acpreprocessing.stitching_modules.metadata import parse_metadata
-from argschema import ArgSchemaParser, ArgSchema
-from argschema.fields import NumpyArray, Boolean, Float, Int, Str
+from argschema.fields import Str
 import argschema
+import os
 
 example_input = {
     "outputDir": "/ACdata/processed/demoModules/output/",
@@ -10,17 +10,18 @@ example_input = {
     }
 
 
-def create_layer(outputDir, position, overlap, pixelResolution):
+# Creates an image layer in neuroglancer that points to the n5 data of a specific position
+def create_layer(outputDir, position, ypos, pixelResolution):
     layer_info = {"type": "image"}
     layer_info["shaderControls"] = {"normalized": {"range": [500, 1500]}}
     url = "n5://http://bigkahuna.corp.alleninstitute.org"
-    url = url + outputDir + '/Pos%d.n5/multirespos%d' % (position, position)
+    url = os.path.join(url, outputDir + f"/Pos{position}.n5/multirespos{position}")
     layer_info["source"] = {"url": url}
     layer_info["name"] = "Pos%d" % (position)
     layer_info["source"]["transform"] = {
         "matrix": [
             [1, 0, 0, 0],
-            [0, 1, 0, overlap*position],
+            [0, 1, 0, ypos*position],
             [0, 0, 1, 0]
         ],
         "outputDimensions": {"x": [pixelResolution[0], "um"],
@@ -30,6 +31,7 @@ def create_layer(outputDir, position, overlap, pixelResolution):
     return layer_info
 
 
+# Add layer to state
 def add_layer(state, layer_info):
     state["layers"].append(layer_info)
 
@@ -52,14 +54,14 @@ class NgLayer(argschema.ArgSchemaParser):
         md = parse_metadata.ParseMetadata(input_data=md_input)
         pr = md.get_pixel_resolution()
         sz = md.get_size()
-        overlap = sz[1]-md.get_overlap()
+        ypos = sz[1]-md.get_overlap() # subtract height of image by pixel overlap to get yposition
 
         layer0 = create_layer(self.args['outputDir'], self.args['position'],
-                              overlap, pr)
+                              ypos, pr)
         add_layer(state, layer0)
 
 
 if __name__ == '__main__':
-    mod = NgLayer()
+    mod = NgLayer(input_data=example_input)
     state = {"layers": []}
     mod.run(state)

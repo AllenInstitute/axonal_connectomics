@@ -21,6 +21,18 @@ class UpdateStateSchema(argschema.ArgSchema):
     fname = Str(default="nglink.txt", description='output filename for nglink')
 
 
+# update statejson with stitched coordinates
+def update_positions(statejson, stitchoutjson, n_pos, factor):
+    for pos in range(0, n_pos):
+        # print(pos)
+        try:
+            statejson['layers'][pos]['source']['transform']['matrix'][0][3] = stitchoutjson[pos]['position'][0]*factor
+            statejson['layers'][pos]['source']['transform']['matrix'][1][3] = stitchoutjson[pos]['position'][1]*factor
+            statejson['layers'][pos]['source']['transform']['matrix'][2][3] = stitchoutjson[pos]['position'][2]*factor
+        except IndexError:
+            print("Something went wrong with the stitching output!")
+
+
 class UpdateState(argschema.ArgSchemaParser):
     default_schema = UpdateStateSchema
 
@@ -28,19 +40,13 @@ class UpdateState(argschema.ArgSchemaParser):
         md_input = {
             "rootDir": self.args['rootDir']
         }
-        md = parse_metadata.ParseMetadata(input_data=md_input)
-        n_pos = md.get_number_of_positions()
-        statejson = io.read_json(os.path.join(self.args['outputDir'], "state.json"))
-        stitchoutjson = io.read_json(os.path.join(self.args['outputDir'], "stitch-final.json"))
-        factor = 2**self.args['mip_level']
-        for pos in range(0, n_pos):
-            # print(pos)
-            try:
-                statejson['layers'][pos]['source']['transform']['matrix'][0][3] = stitchoutjson[pos]['position'][0]*factor
-                statejson['layers'][pos]['source']['transform']['matrix'][1][3] = stitchoutjson[pos]['position'][1]*factor
-                statejson['layers'][pos]['source']['transform']['matrix'][2][3] = stitchoutjson[pos]['position'][2]*factor
-            except IndexError:
-                print("Something went wrong with the stitching output!")
+        n_pos = parse_metadata.ParseMetadata(input_data=md_input).get_number_of_positions()
+        statejson = io.read_json(os.path.join(self.args['outputDir'],
+                                              "state.json"))
+        stitchoutjson = io.read_json(os.path.join(self.args['outputDir'],
+                                                  "stitch-final.json"))
+        update_positions(statejson, stitchoutjson,
+                         n_pos, 2**self.args['mip_level'])
 
         # create stitched nglink
         nglink_input = {
@@ -49,7 +55,8 @@ class UpdateState(argschema.ArgSchemaParser):
         }
         create_nglink.Nglink(input_data=nglink_input).run(statejson)
 
-        io.save_metadata(os.path.join(self.args['outputDir'], "stitched-state.json"), statejson)
+        io.save_metadata(os.path.join(self.args['outputDir'],
+                                      "stitched-state.json"), statejson)
 
 
 if __name__ == '__main__':

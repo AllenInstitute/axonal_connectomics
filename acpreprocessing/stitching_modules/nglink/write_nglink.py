@@ -4,6 +4,7 @@ import urllib.parse
 from acpreprocessing.utils import io, make_tinyurl
 
 
+# Creates neuroglancer url from statejson
 def make_neuroglancer_url(state,
                           base_url="http://bigkahuna.corp.alleninstitute.org/"
                           "neuroglancer"):
@@ -13,18 +14,21 @@ def make_neuroglancer_url(state,
     return new_url
 
 
-def write_url(output_root, state, fname):
+# Writes url to a text file in output directory
+def write_url(outputDir, state, fname):
     encoded_url = make_neuroglancer_url(state)
-    ff = os.path.join(output_root, fname)
+    ff = os.path.join(outputDir, fname)
     io.save_file(ff, encoded_url)
     print("Done! Neuroglancer Link:")
     print(encoded_url)
 
 
-def write_tinyurl(output_root, state, fname):
+# Converts ng link to tinyurl and then writes
+# to a text file in output directory
+def write_tinyurl(outputDir, state, fname):
     encoded_url = make_neuroglancer_url(state)
     url = make_tinyurl.make_tiny(encoded_url)
-    ff = os.path.join(output_root, fname)
+    ff = os.path.join(outputDir, fname)
     io.save_file(ff, url)
     print("Done! Neuroglancer Link:")
     print(url)
