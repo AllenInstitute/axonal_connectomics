@@ -53,7 +53,11 @@ class UpdateState(argschema.ArgSchemaParser):
             "outputDir": self.args['outputDir'],
             "fname": "stitched-nglink.txt"
         }
-        create_nglink.Nglink(input_data=nglink_input).run(statejson)
+        if not os.path.exists(os.path.join(self.args['outputDir'],"stitched-nglink.txt")):
+            create_nglink.Nglink(input_data=nglink_input).run(statejson)
+        else:
+            print("stitched-nglink.txt already exists!")
+        
 
         io.save_metadata(os.path.join(self.args['outputDir'],
                                       "stitched-state.json"), statejson)

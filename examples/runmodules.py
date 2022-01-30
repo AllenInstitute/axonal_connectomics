@@ -86,7 +86,10 @@ class RunModules(argschema.ArgSchemaParser):
                 "outputDir": run_input['outputDir'],
                 "fname": "nglink.txt"
                 }
-        create_nglink.Nglink(input_data=nglink_input).run(state)
+        if not os.path.exists(os.path.join(run_input['outputDir'],"nglink.txt")):
+            create_nglink.Nglink(input_data=nglink_input).run(state)
+        else:
+            print("nglink.txt already exists!")
 
         # Create Stitch.json which is input for stitching code
         create_json_input = {
