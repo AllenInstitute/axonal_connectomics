@@ -18,6 +18,6 @@ sudo docker run \
 ```
 - once in the container:
 ```
-cd aaxonal_connectomics
+cd axonal_connectomics
 python examples/runmodules.py
 ```
