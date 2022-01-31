@@ -40,20 +40,28 @@ def test_create_layer(outputDir, position, overlap, pixelResolution):
     assert layer["source"]["transform"]["matrix"][1][3] == overlap*position
     assert layer["source"]["transform"]["outputDimensions"]["x"][0] == pixelResolution[0]
     assert layer["source"]["transform"]["outputDimensions"]["y"][0] == pixelResolution[1]
-    assert layer["source"]["transform"]["outputDimensions"]["z"][0] == pixelResolution[z]
+    assert layer["source"]["transform"]["outputDimensions"]["z"][0] == pixelResolution[2]
 
 # Test update state
 @pytest.mark.parametrize("x, y, z, overlap, factor", [(30, 500, 2, 1000, 2)])
 def test_update_state(x, y, z, overlap, factor):
-    state = {"layers": []}
+    state = {'layers': []}
+    state['layers'].append({'source': {'transform': {'matrix': [
+            [1, 0, 0, 0],
+            [0, 1, 0, 0],
+            [0, 0, 1, 0]
+            ]}}})
     state['layers'][0]['source']['transform']['matrix'][0][3] = 0
     state['layers'][0]['source']['transform']['matrix'][1][3] = overlap
     state['layers'][0]['source']['transform']['matrix'][2][3] = 0
-    stitchoutjson = {}
-    stitchoutjson[0]['position'][0] = x
-    stitchoutjson[0]['position'][1] = y
-    stitchoutjson[0]['position'][2] = z
-    update_state(state, stitchoutjson, 1, factor)
+    stitchoutjson = [{"type": "GRAY16", "index": 0, "file": "test",
+                      "position": [],
+                      "size": [288, 288, 1960],
+                      "pixelResolution":[0.406, 0.406, 2]}]
+    stitchoutjson[0]['position'].append(x)
+    stitchoutjson[0]['position'].append(y)
+    stitchoutjson[0]['position'].append(z)
+    update_state.update_positions(state, stitchoutjson, 1, factor)
     assert state['layers'][0]['source']['transform']['matrix'][0][3] == x*factor
     assert state['layers'][0]['source']['transform']['matrix'][1][3] == y*factor
     assert state['layers'][0]['source']['transform']['matrix'][2][3] == z*factor
