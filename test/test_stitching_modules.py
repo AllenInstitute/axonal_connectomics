@@ -17,16 +17,6 @@ from acpreprocessing.utils import io
 import os
 
 
-# Test ParseMetadata
-def test_parse_metadata():
-    mod = parse_metadata.ParseMetadata()
-    md = io.read_json(os.path.join("/ACdata/processed/demoModules/raw/",
-                                   "acqinfo_metadata.json"))
-    assert md == mod.get_md()
-    assert isinstance(md, dict)
-
-
-# Test multiscale - Not sure what tests can be done here without creating/deleting files
 # Test nglink.create_layer.create_layer
 @pytest.mark.parametrize("outputDir, position, overlap, pixelResolution",
                          [("/testout", 2, 200, [0.1, 0.1, 0.1]),
