@@ -5,7 +5,8 @@ import argschema
 example_input = {
     "outputDir": "/ACdata/processed/demoModules/output/",
     "position": 2,
-    "rootDir": "/ACdata/processed/demoModules/raw/"
+    "rootDir": "/ACdata/processed/demoModules/raw/",
+    "md_filename": "acqinfo_metadata.json"
     }
 
 
@@ -42,6 +43,8 @@ class CreateLayerSchema(argschema.ArgSchema):
     outputDir = argschema.fields.String(default='',
                                         description='output directory')
     rootDir = Str(required=True, description='raw tiff root directory')
+    md_filename = Str(required=False, default="acqinfo_metadata.json",
+                      description='metadata file name')
 
 
 class NgLayer(argschema.ArgSchemaParser):
@@ -49,7 +52,8 @@ class NgLayer(argschema.ArgSchemaParser):
 
     def run(self, state):
         md_input = {
-            "rootDir": self.args['rootDir']
+            "rootDir": self.args['rootDir'],
+            "fname": self.args['md_filename']
         }
         md = parse_metadata.ParseMetadata(input_data=md_input)
         pr = md.get_pixel_resolution()
