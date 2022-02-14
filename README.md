@@ -15,7 +15,6 @@ docker build -t ac-stitch .
 docker run \
 -v /ACdata:/ACdata \
 -v /ispim2_data:/ispim2_data \
--v <local path to axonal connectomics repo>:/axonal_connectomics \
 -dit ac-stitch
 
 docker exec <container_id> python examples/runmodules.py
