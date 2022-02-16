@@ -9,6 +9,8 @@ import scipy.ndimage as ndimage
 from argschema.fields import Str
 
 
+#Adapted from Jun Wang's code
+
 example_input = {
     "input_filename": "/Users/sharmishtaas/Documents/data/axonal/M6data/Section_13/ex1_2_13.tif",
     "flatten_method": "top",
