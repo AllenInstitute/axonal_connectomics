@@ -30,43 +30,28 @@ class ParseMetadata(argschema.ArgSchemaParser):
 
     # Return x,y,z pixel resolution in um
     def get_pixel_resolution(self):
-        try:
-            xy = self.md['settings']['pixel_spacing_um']
-            z = self.md['positions'][1]['x_step_um']
-            return [xy, xy, z]
-        except KeyError:
-            print("Metadata pixel resolution field error")
+        xy = self.md['settings']['pixel_spacing_um']
+        z = self.md['positions'][1]['x_step_um']
+        return [xy, xy, z]
 
     # Return strip overlap in pixels
     def get_overlap(self):
-        try:
-            return self.md['settings']['strip_overlap_pixels']
-        except KeyError:
-            print("Metadata strip overlap pixel field error")
+        return self.md['settings']['strip_overlap_pixels']
 
     # Return number of position strips
     def get_number_of_positions(self):
-        try:
-            return len(self.md['positions'])
-        except KeyError:
-            print("Metadata positions field error")
+        return len(self.md['positions'])
 
     # Get tiff stack width, height, and number of frames
     def get_size(self):
-        try:
-            sz = [self.md['settings']['image_size_xy'][0],
-                  self.md['settings']['image_size_xy'][1],
-                  self.md['settings']['frames_per_file']]
-            return sz
-        except KeyError:
-            print("Metadata image size field error")
+        sz = [self.md['settings']['image_size_xy'][0],
+              self.md['settings']['image_size_xy'][1],
+              self.md['settings']['frames_per_file']]
+        return sz
 
     # Get data type
     def get_dtype(self):
-        try:
-            return self.md['settings']['dtype']
-        except KeyError:
-            print("Metadata data field error")
+        return self.md['settings']['dtype']
 
 
 if __name__ == '__main__':

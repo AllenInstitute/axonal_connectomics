@@ -50,7 +50,9 @@ class CreateLayerSchema(argschema.ArgSchema):
 class NgLayer(argschema.ArgSchemaParser):
     default_schema = CreateLayerSchema
 
-    def run(self, state):
+    def run(self, state=None):
+        if state is None:
+            state = {"layers": []}
         md_input = {
             "rootDir": self.args['rootDir'],
             "fname": self.args['md_filename']
@@ -66,6 +68,4 @@ class NgLayer(argschema.ArgSchemaParser):
 
 
 if __name__ == '__main__':
-    mod = NgLayer(input_data=example_input)
-    state = {"layers": []}
-    mod.run(state)
+    mod = NgLayer(input_data=example_input).run()
