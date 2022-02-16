@@ -6,3 +6,4 @@ imageio
 matplotlib
 argschema
 natsort
+requests
