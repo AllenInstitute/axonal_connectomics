@@ -3,3 +3,7 @@ tifffile==2020.7.4
 scikit-image
 numpy
 imageio
+matplotlib
+argschema
+natsort
+requests

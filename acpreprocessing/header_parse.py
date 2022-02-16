@@ -12,13 +12,13 @@ import json
 from PIL import Image
 import sys
 import os
-from utils import io
+from acpreprocessing.utils import io
 
 
 def parse_cropped(inf, head):
     head['pixelResolution'] = [float(inf[2]),float(inf[2]),float(inf[2])]
     head['type'] = inf[3]
-    
+
 def parse_uncropped(res, head):
     head['pixelResolution'] = [float(res['PixelSizeUm']),float(res['PixelSizeUm']),float(res['PixelSizeUm'])]
     head['type'] = res['PixelType']
@@ -40,14 +40,14 @@ def get_pixel_overlap(direct, input_dir):
             md1 = {str(key) : img.tag[key] for key in img.tag.keys()}
             header1 = json.loads(md1['51123'][0])
         it = it+1
-        
+
     #Calculate the pixel overlap
     diff = abs(float(header1['XYStage:XY:31-ScanSlowAxisStopPosition(mm)'])-float(header0['XYStage:XY:31-ScanSlowAxisStopPosition(mm)']))
     FOV = header1['PixelSizeUm']*header1["Height"]
     pixeloverlap = (FOV-(diff*1000))/header1['PixelSizeUm']
     print("PixelOverlap: "+ pixeloverlap)
     return pixeloverlap
-    
+
 def main():
      args = sys.argv[1:]
      if len(args) == 6 and args[0] == '-crop' and args[2] == '-i' and args[4] == '-o':
@@ -59,7 +59,7 @@ def main():
          direct = os.listdir(input_dir)
          direct.sort()
          pixeloverlap = get_pixel_overlap(direct, input_dir)
-         
+
          for file in direct:
              if file.endswith(".tif"):
                  print("parsing "+ file)
@@ -82,7 +82,7 @@ def main():
                  data.append(head)
                  k=k+1
          io.save_metadata(input_dir+fo+".json", data)
-         
+
      else:
          sys.exit("Input Argument Error")
 
