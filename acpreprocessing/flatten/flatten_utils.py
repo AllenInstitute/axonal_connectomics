@@ -14,7 +14,8 @@ from argschema.fields import Str
 example_input = {
     "input_filename": "/Users/sharmishtaas/Documents/data/axonal/M6data/Section_13/ex1_2_13.tif",
     "flatten_method": "top",
-    "output_filename": "test.tif"
+    "output_filename": "test.tif",
+    "flip_back": False
 }
 
 def cleanImg(I):
@@ -241,13 +242,16 @@ class Flatten(argschema.ArgSchemaParser):
 
         if self.args['flatten_method'] == 'top':
             I_flat = flatten_top(I_flip,top)
-            io.save_tiff_image(I_flat, self.args['output_filename'])
         elif self.args['flatten_method'] == 'bottom':
             I_flat = flatten_bottom(I_flip,bottom)
-            io.save_tiff_image(I_flat, self.args['output_filename'])
         else:
             print("Please choose correct flattening method: top or bottom")
+            sys.exit()
 
+        if self.args['flip_back']:
+                I_flat = np.rot90(I_flat,3,(0,2))
+        io.save_tiff_image(I_flat, self.args['output_filename'])
+        
         
 
     
