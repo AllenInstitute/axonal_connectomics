@@ -1,13 +1,13 @@
+import copy
+from multiprocessing.sharedctypes import Value
 import os
 import subprocess
-import time
 
 imagej_path = '/home/samk/Fiji.app/ImageJ-linux64'
 
 hello_input = {
     'script_type': 'macro',
-    'script_dir': 'home/samk/axonal_connectomics/imagej/ijm',
-    'script': 'hello.ijm',
+    'script_path': '/home/samk/axonal_connectomics/imagej/ijm/hello.ijm',
     'args': {
         'string': 'Hello World',
         'num_prints': 5,
@@ -16,8 +16,7 @@ hello_input = {
 
 example_input = {
     'script_type': 'macro',
-    'script_path': '/home/samk/axonal_connectomics/imagej/ijm',
-    'script': 'example.ijm',
+    'script_path': '/home/samk/axonal_connectomics/imagej/ijm/example.ijm',
     'args': {
         'tiff_path': '/ispim1_data/PoojaB/487748_48_NeuN_NFH_488_25X_0.5XPBS/global_l40_Pos001',
         'gif_path': '/ispim1_data/PoojaB/487748_48_NeuN_NFH_488_25X_0.5XPBS/processed/ds_gifs/global_l40_Pos001'
@@ -25,47 +24,77 @@ example_input = {
 }
 
 class ImageJRunner:
-    def __init__(self, imagej_path=imagej_path):
-        if os.path.isfile(imagej_path):
-            print("ERROR: ImageJ not found")
+    def __init__(self,
+                 imagej_path=None,
+                 config={},
+                 script_type='macro',
+                 script_path=None,
+                 args={}):
+        if imagej_path is None:
+            self.imagej_path = os.getenv(
+                'IMAGEJ_PATH',
+                default='Fiji.app/ImageJ-linux64'
+            )
+        else:
+            self.imagej_path = imagej_path
         
-        self.imagej_path = imagej_path
+        if 'script_type' in config:
+            self.script_type = config['script_type']
+        else:
+            self.script_type = script_type
+        
+        if 'script_path' in config:
+            self.script_path = config['script_path']
+        else:
+            self.script_path = script_path
+        
+        if 'args' in config:
+            self.args = copy.deepcopy(config['args'])
+        else:
+            self.args = copy.deepcopy(args)
+        
+        self.argstring = self._generate_argstring()
+        self.imagej_cmd = self._generate_cmd()
+        
+        if os.path.isfile(self.imagej_path):
+            raise ValueError("ERROR: ImageJ not found")
 
-    def load_script(self, script_config):
-        self.script_config = script_config
-        self.script_type = script_config['script_type']
-        self.script_path = script_config['script_path']
-        self.script = script_config['script']
-        self.args = script_config['args'].copy()
+    def print_script(self):
+        with open(self.imagej_path) as fp:
+            lines = fp.readlines()
+        
+        for line in lines:
+            print(line)
 
+    def run(self):
+        if len(self.imagej_cmd) > 0:
+            subprocess.run(self.imagej_cmd)
+        else:
+            raise ValueError('')
+    
+    def _generate_argstring(self):
         arglist = []
         for arg in self.args:
             arglist.append(self.args[arg])
 
-            if self.args[arg].endswith('_dir') and \
-                not os.path.exists(self.args[arg]):
-                os.makedirs(self.args[arg])
+            if self.args[arg].endswith('_dir'):
+                os.makedirs(self.args[arg], exist_ok=True)
         
         argdelim = "#"
         argstring = argdelim.join(arglist)
 
-        self.imagej_cmd = []
+        return argstring
+
+    def _generate_cmd(self):
+        imagej_cmd = []
 
         if self.script_type == 'macro':
             imagej_cmd = [self.imagej_path,
                           '--headless',
                           '-macro', os.path.join(self.script_path, self.script),
-                          argstring]
-
-    def get_script(self):
-        pass
-
-    def print_script(self):
-        pass
-
-    def run_script(self):
-        if len(self.imagej_cmd) > 0:
-            subprocess.run(self.imagej_cmd)
+                          self.argstring]
         else:
-            print("Must load script first")
+            raise ValueError('ERROR: script_type not supported')
+        
+        return imagej_cmd
     
