@@ -3,26 +3,6 @@ from multiprocessing.sharedctypes import Value
 import os
 import subprocess
 
-imagej_path = '/home/samk/Fiji.app/ImageJ-linux64'
-
-hello_input = {
-    'script_type': 'macro',
-    'script_path': '/home/samk/axonal_connectomics/imagej/ijm/hello.ijm',
-    'args': {
-        'string': 'Hello World',
-        'num_prints': 5,
-    }
-}
-
-example_input = {
-    'script_type': 'macro',
-    'script_path': '/home/samk/axonal_connectomics/imagej/ijm/example.ijm',
-    'args': {
-        'tiff_path': '/ispim1_data/PoojaB/487748_48_NeuN_NFH_488_25X_0.5XPBS/global_l40_Pos001',
-        'gif_path': '/ispim1_data/PoojaB/487748_48_NeuN_NFH_488_25X_0.5XPBS/processed/ds_gifs/global_l40_Pos001'
-    }
-}
-
 class ImageJRunner:
     def __init__(self,
                  imagej_path=None,
@@ -86,15 +66,9 @@ class ImageJRunner:
         return argstring
 
     def _generate_cmd(self):
-        imagej_cmd = []
-
-        if self.script_type == 'macro':
-            imagej_cmd = [self.imagej_path,
-                          '--headless',
-                          '-macro', os.path.join(self.script_path, self.script),
-                          self.argstring]
-        else:
-            raise ValueError('ERROR: script_type not supported')
+        imagej_cmd = [self.imagej_path,
+                        '--headless',
+                        '-macro', os.path.join(self.script_path, self.script),
+                        self.argstring]
         
         return imagej_cmd
-    
