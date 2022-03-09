@@ -1,5 +1,4 @@
 import copy
-from multiprocessing.sharedctypes import Value
 import os
 import subprocess
 
@@ -36,7 +35,7 @@ class ImageJRunner:
         self.argstring = self._generate_argstring()
         self.imagej_cmd = self._generate_cmd()
         
-        if os.path.isfile(self.imagej_path):
+        if not os.path.isfile(self.imagej_path):
             raise ValueError("ERROR: ImageJ not found")
 
     def print_script(self):
