@@ -15,9 +15,17 @@ def make_neuroglancer_url(state,
     return new_url
 
 
+def make_neuroglancer_url_vneurodata(state,
+                                     base_url="http://bigkahuna.corp.alleninstitute.org/neuroglancer",
+                                     state_url="https://json.neurodata.io/v1"):
+    r = requests.post(state_url, json=state)
+    json_url = r.json()["uri"]
+    link = f"{base_url}/#!{json_url}"
+    return link
+
+
 # Writes url to a text file in output directory
-def write_url(outputDir, state, fname):
-    encoded_url = make_neuroglancer_url(state)
+def write_url(outputDir, fname, encoded_url):
     ff = os.path.join(outputDir, fname)
     io.save_file(ff, encoded_url)
     print("Done! Neuroglancer Link:")
@@ -33,19 +41,3 @@ def write_tinyurl(outputDir, state, fname):
     io.save_file(ff, url)
     print("Done! Neuroglancer Link:")
     print(url)
-
-
-def create_viz_link_from_json(
-    ngl_json,
-    outputDir,
-    fname,
-    url="https://json.neurodata.io/v1",
-    neuroglancer_link="http://bigkahuna.corp.alleninstitute.org/neuroglancer/#!"
-):
-    r = requests.post(url, json=ngl_json)
-    json_url = r.json()["uri"]
-    viz_link = f"{neuroglancer_link}{json_url}"
-    ff = os.path.join(outputDir, fname)
-    io.save_file(ff, viz_link)
-    print("Done! New Neuroglancer Link:")
-    print(viz_link)
