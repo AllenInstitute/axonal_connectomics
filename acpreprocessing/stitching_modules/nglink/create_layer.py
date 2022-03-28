@@ -17,9 +17,9 @@ def create_layer(outputDir, position, ypos, pixelResolution):
     url = "n5://http://bigkahuna.corp.alleninstitute.org"
     # os.path.join not working as I thought here?
     url = url + outputDir + '/Pos%d.n5/multirespos%d' % (position, position)
-    layer_info["source"] = {"url": url}
+    layer_info["source"] = [{"url": url}]
     layer_info["name"] = "Pos%d" % (position)
-    layer_info["source"]["transform"] = {
+    layer_info["source"][position]["transform"] = {
         "matrix": [
             [1, 0, 0, 0],
             [0, 1, 0, ypos*position],
@@ -30,6 +30,22 @@ def create_layer(outputDir, position, ypos, pixelResolution):
                              "z": [pixelResolution[2], "um"]}
     }
     return layer_info
+
+
+def add_source(outputDir, position, ypos, pixelResolution, state):
+    url = "n5://http://bigkahuna.corp.alleninstitute.org"
+    url = url + outputDir + '/Pos%d.n5/multirespos%d' % (position, position)
+    state["layers"][0]["source"].append({"url": url})
+    state["layers"][0]["source"][position]["transform"] = {
+        "matrix": [
+            [1, 0, 0, 0],
+            [0, 1, 0, ypos*position],
+            [0, 0, 1, 0]
+        ],
+        "outputDimensions": {"x": [pixelResolution[0], "um"],
+                             "y": [pixelResolution[1], "um"],
+                             "z": [pixelResolution[2], "um"]}
+    }
 
 
 # Add layer to state
@@ -60,11 +76,32 @@ class NgLayer(argschema.ArgSchemaParser):
         md = parse_metadata.ParseMetadata(input_data=md_input)
         pr = md.get_pixel_resolution()
         sz = md.get_size()
-        ypos = sz[1]-md.get_overlap() # subtract height of image by pixel overlap to get yposition
+        ypos = sz[1]-md.get_overlap()  # subtract height of image by pixel overlap to get yposition
 
         layer0 = create_layer(self.args['outputDir'], self.args['position'],
                               ypos, pr)
         add_layer(state, layer0)
+    
+    def run_consolidate(self, state=None):
+        if state is None:
+            state = {"layers": []}
+        md_input = {
+            "rootDir": self.args['rootDir'],
+            "fname": self.args['md_filename']
+        }
+        md = parse_metadata.ParseMetadata(input_data=md_input)
+        pr = md.get_pixel_resolution()
+        sz = md.get_size()
+        n_pos = md.get_number_of_positions()
+        ypos = sz[1]-md.get_overlap()  # subtract height of image by pixel overlap to get yposition
+        # Create the layer
+        layer = create_layer(self.args['outputDir'], self.args['position'],
+                             ypos, pr)
+        add_layer(state, layer)
+        
+        for pos in range(1, n_pos):
+            add_source(self.args['outputDir'], pos, ypos, pr, state)
+
 
 
 if __name__ == '__main__':

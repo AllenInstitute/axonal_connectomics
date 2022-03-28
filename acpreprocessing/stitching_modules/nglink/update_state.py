@@ -1,6 +1,6 @@
 from acpreprocessing.stitching_modules.metadata import parse_metadata
 from acpreprocessing.stitching_modules.nglink import create_nglink
-from argschema.fields import Int, Str
+from argschema.fields import Int, Str, Boolean
 import argschema
 from acpreprocessing.utils import io
 import os
@@ -9,7 +9,8 @@ example_input = {
     'rootDir': "/ACdata/processed/demoModules/raw/",
     "outputDir": "/ACdata/processed/demoModules/output/",
     'mip_level': 3,
-    "fname": "stitched-nglink.txt"
+    "fname": "stitched-nglink.txt",
+    "consolidate_pos": True
     }
 
 
@@ -19,6 +20,10 @@ class UpdateStateSchema(argschema.ArgSchema):
     mip_level = Int(required=False, default=2,
                     description='downsample level to perform stitching with')
     fname = Str(default="nglink.txt", description='output filename for nglink')
+    consolidate_pos = Boolean(required=False, default=True,
+                              description="Whether to consolidate all position"
+                                          "strips in one neuroglancer layer or"
+                                          "separate them into independent layers")
 
 
 # update statejson with stitched coordinates
@@ -29,6 +34,17 @@ def update_positions(statejson, stitchoutjson, n_pos, factor):
             statejson['layers'][pos]['source']['transform']['matrix'][0][3] = stitchoutjson[pos]['position'][0]*factor
             statejson['layers'][pos]['source']['transform']['matrix'][1][3] = stitchoutjson[pos]['position'][1]*factor
             statejson['layers'][pos]['source']['transform']['matrix'][2][3] = stitchoutjson[pos]['position'][2]*factor
+        except IndexError:
+            print("Something went wrong with the stitching output!")
+
+
+def update_positions_consolidated(statejson, stitchoutjson, n_pos, factor):
+    for pos in range(0, n_pos):
+        # print(pos)
+        try:
+            statejson['layers'][0]['source'][pos]['transform']['matrix'][0][3] = stitchoutjson[pos]['position'][0]*factor
+            statejson['layers'][0]['source'][pos]['transform']['matrix'][1][3] = stitchoutjson[pos]['position'][1]*factor
+            statejson['layers'][0]['source'][pos]['transform']['matrix'][2][3] = stitchoutjson[pos]['position'][2]*factor
         except IndexError:
             print("Something went wrong with the stitching output!")
 
@@ -45,8 +61,12 @@ class UpdateState(argschema.ArgSchemaParser):
                                               "state.json"))
         stitchoutjson = io.read_json(os.path.join(self.args['outputDir'],
                                                   "stitch-final.json"))
-        update_positions(statejson, stitchoutjson,
-                         n_pos, 2**self.args['mip_level'])
+        if self.args["consolidate_pos"]:
+            update_positions_consolidated(statejson, stitchoutjson,
+                                          n_pos, 2**self.args['mip_level'])
+        else:
+            update_positions(statejson, stitchoutjson,
+                             n_pos, 2**self.args['mip_level'])
 
         # create stitched nglink
         nglink_input = {

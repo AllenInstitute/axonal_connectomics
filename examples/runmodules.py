@@ -13,11 +13,12 @@ from argschema.fields import NumpyArray, Boolean, Float, Int, Str
 start = time.time()
 
 run_input = {
-    "outputDir": "/ACdata/processed/MN7_RH_3_2_s27_high_res/",
-    "rootDir": "/ispim2_data/MN7_RH_3_2_s27_high_res/",
-    "ds_name": "ex1_1",
+    "outputDir": "/ACdata/processed/MN7_RH_3_2_S13_220307_high_res/",
+    "rootDir": "/ispim2_data/TBA_TO_WORKFLOW/MN7_RH_3_2_S13_220307_high_res/",
+    "ds_name": "high_res",
     "mip_level": 3,
-    "md_filename": "acqinfo_metadata.json"
+    "md_filename": "acqinfo_metadata.json",
+    "consolidate_pos": True
 }
 
 
@@ -29,6 +30,10 @@ class RunModulesSchema(argschema.ArgSchema):
                     description='downsample level to perform stitching with')
     md_filename = Str(required=False, default="acqinfo_metadata.json",
                       description='metadata file name')
+    consolidate_pos = Boolean(required=False, default=True,
+                              description="Whether to consolidate all position"
+                                          "strips in one neuroglancer layer or"
+                                          "separate them into independent layers")
 
 
 class RunModules(argschema.ArgSchemaParser):
@@ -60,7 +65,6 @@ class RunModules(argschema.ArgSchemaParser):
                 "rootDir": f"{run_input['rootDir']}",
                 "fname": run_input['md_filename']
                 }
-
             # Convert to n5 if not done already
             if not os.path.isdir(convert_input['out_n5']):
                 tiff_to_n5.TiffDirToN5(input_data=convert_input).run()
@@ -72,14 +76,22 @@ class RunModules(argschema.ArgSchemaParser):
         # Create overview nglink, initialize state
         state = {"showDefaultAnnotations": False, "layers": []}
 
-        # Loop throuh each position to add a layer to state
-        for pos in range(n_pos):
+        if run_input["consolidate_pos"]:
             layer_input = {
-                "position": pos,
-                "outputDir": run_input['outputDir'],
-                "rootDir": run_input['rootDir']
-                }
-            create_layer.NgLayer(input_data=layer_input).run(state)
+                    "position": 0,
+                    "outputDir": run_input['outputDir'],
+                    "rootDir": run_input['rootDir']
+                    }
+            create_layer.NgLayer(input_data=layer_input).run_consolidate(state)
+        else:
+            # Loop throuh each position to add a layer to state
+            for pos in range(n_pos):
+                layer_input = {
+                    "position": pos,
+                    "outputDir": run_input['outputDir'],
+                    "rootDir": run_input['rootDir']
+                    }
+                create_layer.NgLayer(input_data=layer_input).run(state)
 
         # Create nglink from created state and estimated positions (overview link)
         nglink_input = {
@@ -115,7 +127,8 @@ class RunModules(argschema.ArgSchemaParser):
             'rootDir': run_input['rootDir'],
             "outputDir": run_input['outputDir'],
             'mip_level': run_input['mip_level'],
-            "fname": "stitched-nglink.txt"
+            "fname": "stitched-nglink.txt",
+            "consolidate_pos": run_input['consolidate_pos']
         }
         update_state.UpdateState(input_data=update_state_input).run()
 
