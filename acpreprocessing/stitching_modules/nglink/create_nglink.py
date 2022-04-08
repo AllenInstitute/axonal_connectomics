@@ -19,8 +19,8 @@ class Nglink(argschema.ArgSchemaParser):
     default_schema = CreateNglinkSchema
 
     def run(self, state):
-        write_nglink.write_tinyurl(self.args['outputDir'],
-                                   state, self.args['fname'])
+        encoded_url = write_nglink.make_neuroglancer_url_vneurodata(state)
+        write_nglink.write_url(self.args['outputDir'], self.args['fname'],encoded_url)
         # save state (overrite)
         f_out = os.path.join(self.args['outputDir'], 'state.json')
         io.save_metadata(f_out, state)
