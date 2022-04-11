@@ -220,7 +220,7 @@ def flatten_both_sides(img, top, bottom):
 
 class FlattenSchema(argschema.ArgSchema):
     input_filename = Str(required=True, description='Input File')
-    flatten_method = Str(required=True, description='Type of flattening (top, bottom, both)')
+    flatten_method = Str(required=True, validator=marshmallow.validate.OneOf(["top", "bottom"]), description='Type of flattening (top, bottom, both)')
     output_filename = Str(required=True, description='Output File')
     threshold = Float(default=0.3, description = 'Threshold for finding surface')
     
