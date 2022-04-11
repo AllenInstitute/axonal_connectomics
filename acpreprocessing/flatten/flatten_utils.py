@@ -25,7 +25,6 @@ def cleanImg(I):
         return I
 
 def ndfilter(img,sig=3):
-    print(img.shape)
     img = ndimage.gaussian_filter(img, sigma=(sig, sig, 5), order=0)
     return img
 
