@@ -6,7 +6,7 @@ from acpreprocessing.utils import io
 import numpy as np
 from scipy.ndimage import gaussian_filter
 import scipy.ndimage as ndimage
-from argschema.fields import Str
+from argschema.fields import Str, Float
 
 
 #Adapted from Jun Wang's code
