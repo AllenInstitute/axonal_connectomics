@@ -2,12 +2,12 @@
 
 import argschema
 import os
-from acpreprocessing.utils import io
+from acpreprocessing.utils import io, convert
 import numpy as np
 from scipy.ndimage import gaussian_filter
 import scipy.ndimage as ndimage
 from argschema.fields import Str, Float
-
+import matplotlib.pyplot as plt
 
 #Adapted from Jun Wang's code
 
@@ -18,37 +18,10 @@ example_input = {
     "flip_back": False
 }
 
-def cleanImg(I):
-        mn = np.mean(I)
-        std = np.std(I)
-        I = np.where( (I1>(mn+ (3*std))), 0, I1)
-        return I
 
 def ndfilter(img,sig=3):
     img = ndimage.gaussian_filter(img, sigma=(sig, sig, 5), order=0)
     return img
-
-def applyIJFilters(max_radius,smooth_radius,dumpdir,image,i):
-
-        frame_smooth = gaussian_filter(image[i], sigma=10)
-        return frame_smooth
-
-def applyIJFiltersStack(imstack,max_radius=64,smooth_radius=128):
-    dims = imstack.shape # (Nz,Nx,Ny)#
-
-    IJFstack = np.zeros(dims)
-    for l in range(dims[0]):
-        print(l)
-        frame = imstack[l,:,:]
-        filtered = gaussian(imstack[l,:,:],sigma=128,preserve_range=True)
-        IJFstack[l,:,:] = filtered
-    return IJFstack
-
-def applyIJFiltersStack_parallel(imstack,max_radius=64, smooth_radius = 128, dumpdir = "dump"):
-    dims = imstack.shape
-    with Pool(40) as pool:
-        pool.map(partial(applyIJFilters, max_radius, smooth_radius, dumpdir,imstack), range(dims[0]))
-
 
 def flatten_bottom(img, bottom):
     """
@@ -118,7 +91,7 @@ def up_crossings(data, threshold=0):
     pos = data > threshold
     return (~pos[:-1] & pos[1:]).nonzero()[0] + 1
 
-def find_surface(img, surface_thr, is_plot=False):
+def find_surface(img, surface_thr, top_buffer = 0, bot_buffer = 30, is_plot=False):
     """
     :param img: 3d array, ZYX, assume small z = top; large z = bottom
     :param surface_thr: [0, 1], threshold for detecting surface
@@ -141,9 +114,10 @@ def find_surface(img, surface_thr, is_plot=False):
     for yi in range(y):
         for xi in range(x):
             curr_t = img[:, yi, xi]
-
-            if curr_t.max() != curr_t.min():
-                curr_t = (curr_t - curr_t.min()) / (curr_t.max() - curr_t.min())
+            mx = curr_t.max()
+            mn = curr_t.min()
+            if mx != mn:
+                curr_t = (curr_t - mn) / (mx - mn)
 
                 if is_plot:
                     if yi % 10 == 0 and xi % 10 == 0:
@@ -151,12 +125,13 @@ def find_surface(img, surface_thr, is_plot=False):
 
                 if curr_t[0] < surface_thr:
                     curr_top = up_crossings(curr_t, surface_thr)
+                    cur_top = cur_top + top_buffer
                     if len(curr_top) != 0:
                         top[yi, xi] = curr_top[0]
 
                 if curr_t[-1] < surface_thr:
                     curr_bot = down_crossings(curr_t, surface_thr)
-                    curr_bot = curr_bot+30
+                    curr_bot = curr_bot+bot_buffer
                     if len(curr_bot) != 0:
                         bot[yi, xi] = curr_bot[-1]
 
@@ -198,11 +173,8 @@ def flatten_both_sides(img, top, bottom):
     z, y, x = img.shape
 
     depths = bottom - top
-    import matplotlib.pyplot as plt
-    # plt.imshow(depths)
-    # plt.show()
     depth = int(np.median(depths.flat))
-    # print(depth, z)
+    
 
     imgtb = np.zeros((depth, y, x), dtype=img.dtype)
 
@@ -231,10 +203,8 @@ class Flatten(argschema.ArgSchemaParser):
     def run(self):
         thresh = self.args['threshold']
         I = io.get_tiff_image(self.args['input_filename'])
-        IM = I[::2,::4,::4]
-        print(IM.shape)
+        IM = convert.downsample_stack_volume(I, dsfactors = (2,4,4))
         I_flip =  np.rot90(IM,1,(0,2))
-        print(I_flip.shape)
         I_flip_smoothed = ndfilter(I_flip)
 
         top,bottom = find_surface(I_flip_smoothed, thresh, is_plot=False)
