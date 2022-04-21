@@ -191,9 +191,9 @@ def mip_level_shape(lvl, lvl_0_shape):
     return tuple([*map(lambda x: math.ceil(x / (2**lvl)), lvl_0_shape)])
 
 
-def dswrite_chunk(ds, start, end, arr):
-    """write an axis=0 subvolume array into a larger array
-    """
+def dswrite_chunk(ds, start, end, arr, silent_overflow=True):
+    if end >= ds.shape[0] and silent_overflow:
+        end = ds.shape[0]
     ds[start:end, :, :] = arr[:(end - start), :, :]
 
 
