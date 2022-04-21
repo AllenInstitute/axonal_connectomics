@@ -28,7 +28,7 @@ def yield_position_paths_from_rootdir(
 
 
 def get_pixel_resolution_from_rootdir(
-        root_dir, md_bn="acquisition_metadata.json"):
+        root_dir, md_bn="acqinfo_metadata.json"):
     root_path = pathlib.Path(root_dir)
     md_path = root_path / md_bn
     with md_path.open() as f:
