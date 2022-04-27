@@ -16,7 +16,7 @@ def create_layer(outputDir, position, ypos, pixelResolution):
     layer_info["shaderControls"] = {"normalized": {"range": [500, 1500]}}
     url = "n5://http://bigkahuna.corp.alleninstitute.org"
     # os.path.join not working as I thought here?
-    url = url + outputDir + '/Pos%d.n5/multirespos%d' % (position, position)
+    url = url + outputDir + '/setup%d/timepoint0/' % (position)
     layer_info["source"] = [{"url": url}]
     layer_info["name"] = "Pos%d" % (position)
     layer_info["source"][position]["transform"] = {
@@ -34,7 +34,7 @@ def create_layer(outputDir, position, ypos, pixelResolution):
 
 def add_source(outputDir, position, ypos, pixelResolution, state):
     url = "n5://http://bigkahuna.corp.alleninstitute.org"
-    url = url + outputDir + '/Pos%d.n5/multirespos%d' % (position, position)
+    url = url + outputDir + '/setup%d/timepoint0/' % (position)
     state["layers"][0]["source"].append({"url": url})
     state["layers"][0]["source"][position]["transform"] = {
         "matrix": [

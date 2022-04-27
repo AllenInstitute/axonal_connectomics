@@ -48,7 +48,7 @@ class CreateJson(argschema.ArgSchemaParser):
             # downdir = self.args['outputDir'] + f"/Pos{pos}.n5/multirespos{pos}/s2/"
             downdir = posixpath.join(
                     self.args["outputDir"],
-                    f"Pos{pos}.n5/multirespos{pos}/s{self.args['mip_level']}/")
+                    f"setup{pos}/timepoint0//s{self.args['mip_level']}/")
             # print(downdir)
             pos_info = get_pos_info(downdir, md.get_overlap(),
                                     md.get_pixel_resolution(), pos,
