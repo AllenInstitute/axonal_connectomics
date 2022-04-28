@@ -9,7 +9,9 @@
 #   Filenames should be zero padded and named NNNN.swc.
 #   The integer value of NNNN should match the segmentation label in the segmentation TIFFs.
 # 
-# TODO: Use argschema
+# Example usage:
+#   python segmentation.py --input_dir /Users/eric/nobackup/allen/olga/MN7_RH_3_2_S35_220127_high_res/Pos10_10 --output_dir /Users/eric/nobackup/allen/out/Pos10_10 
+#
 # TODO: Fix default nm settings & make it configurable
 # TODO: Tweak compression & encoding forants; e.g., do we need uint64?
 # TODO: Use the sharded format (fewer files)
@@ -19,6 +21,8 @@ import tifffile
 import glob
 import os
 import json
+
+import argschema
 
 from cloudvolume import CloudVolume, Skeleton
 
@@ -136,17 +140,19 @@ def generate_ngl_skeletons(source_path, out_path):
         json.dump(infofile, f)
 
 
-def main(pos_src, pos_out):
-    generate_ngl_segmentation(pos_src, pos_out)
-    generate_ngl_skeletons(pos_src, pos_out)
+class SegmentationToNeuroglancerParameters(argschema.ArgSchema):
+    input_dir = argschema.fields.InputDir(required=True)
+    output_dir = argschema.fields.InputDir(required=True)
+
+
+class SegmentationToNeuroglancer(argschema.ArgSchemaParser):
+    default_schema = SegmentationToNeuroglancerParameters
+
+    def run(self):
+        generate_ngl_segmentation(self.args["input_dir"], self.args["output_dir"])
+        generate_ngl_skeletons(self.args["input_dir"], self.args["output_dir"])
 
 if __name__ == "__main__":
-    # Hacky driver script for running these first 3 positions:
-    src_dir = "/Users/eric/nobackup/allen/olga/MN7_RH_3_2_S35_220127_high_res"
-    out_path = "/Users/eric/nobackup/allen/out"
-    out_url = f"file://{out_path}"
-    positions = ["Pos10_3", "Pos10_10", "Pos10_14"]
-    for pos in positions:
-        pos_src = os.path.join(src_dir, pos)
-        pos_out = os.path.join(out_path, pos)
-        main(pos_src, pos_out)
+    mod = SegmentationToNeuroglancer()
+    print(mod.args)
+    mod.run()
