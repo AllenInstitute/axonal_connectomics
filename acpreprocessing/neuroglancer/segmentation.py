@@ -12,7 +12,6 @@
 # Example usage:
 #   python segmentation.py --input_dir /Users/eric/nobackup/allen/olga/MN7_RH_3_2_S35_220127_high_res/Pos10_10 --output_dir /Users/eric/nobackup/allen/out/Pos10_10 
 #
-# TODO: Fix default nm settings & make it configurable
 # TODO: Tweak compression & encoding forants; e.g., do we need uint64?
 # TODO: Use the sharded format (fewer files)
 
@@ -23,16 +22,21 @@ import os
 import json
 
 import argschema
+import argschema.validate
 
 from cloudvolume import CloudVolume, Skeleton
 
-def generate_ngl_segmentation(source_path, out_path):
+def generate_ngl_segmentation(source_path, out_path, chunk_size, resolution):
     """Create a neuroglancer precomputed segmentation volume from a tiff stack.
     
        source_path: directory underwhich `swc_files_nm` will be found
                     (Example path: /data/olga/MN7_RH_3_2_S35_220127_high_res/Pos10_10)
        out_path: directory where new the new cloud volume segmentation layer should be generated
                     (Example path: /data/out/MN7_RH_3_2_S35_220127_high_res/Pos10_10)
+       chunk_size: list or array with chunk size for segmentation layer
+                    (Example: (128,128,128))
+       resolution: voxel resolution, in nm (passed on to neuroglancer via 'info' file)
+                    (Example: (4,4,40))
     """
 
     # Read tiffstack into memory
@@ -52,12 +56,11 @@ def generate_ngl_segmentation(source_path, out_path):
         data_type       = 'uint64', # Channel images might be 'uint8'
         # raw, png, jpeg, compressed_segmentation, fpzip, kempressed, compresso
         encoding        = 'compressed_segmentation', 
-        #resolution      = [406, 406, 1997.72], # Voxel scaling, units are in nanometers
-        resolution      = [406, 406, 769], # Voxel scaling, units are in nanometers
+        resolution      = resolution, # Voxel scaling, units are in nanometers
         voxel_offset    = [0, 0, 0], # x,y,z offset in voxels from the origin
         # Pick a convenient size for your underlying chunk representation
         # Powers of two are recommended, doesn't need to cover image exactly
-        chunk_size      = [ 512, 512, 64, ], # units are voxels
+        chunk_size      = chunk_size, # units are voxels
         volume_size     = data.shape, # e.g. a cubic millimeter dataset
         skeletons       = 'skeletons'
         )
@@ -142,17 +145,25 @@ def generate_ngl_skeletons(source_path, out_path):
 
 class SegmentationToNeuroglancerParameters(argschema.ArgSchema):
     input_dir = argschema.fields.InputDir(required=True)
-    output_dir = argschema.fields.InputDir(required=True)
+    output_dir = argschema.fields.OutputDir(required=True)
+
+    chunk_size = argschema.fields.NumpyArray(dtype='int', required=False,
+            default=[512, 512, 64], validate=argschema.validate.Shape((3,)))
+
+    resolution = argschema.fields.NumpyArray(dtype='float', required=False,
+        default=[406, 406, 1997.72], validate=argschema.validate.Shape((3,)))
+   
 
 
 class SegmentationToNeuroglancer(argschema.ArgSchemaParser):
     default_schema = SegmentationToNeuroglancerParameters
 
     def run(self):
-        generate_ngl_segmentation(self.args["input_dir"], self.args["output_dir"])
+        generate_ngl_segmentation(self.args["input_dir"], self.args["output_dir"],
+            chunk_size=self.args["chunk_size"], resolution=self.args["resolution"])
         generate_ngl_skeletons(self.args["input_dir"], self.args["output_dir"])
 
 if __name__ == "__main__":
     mod = SegmentationToNeuroglancer()
-    print(mod.args)
+    #print(mod.args)
     mod.run()
