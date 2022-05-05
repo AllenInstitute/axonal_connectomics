@@ -7,3 +7,4 @@ matplotlib
 argschema
 natsort
 requests
+cloud-volume
