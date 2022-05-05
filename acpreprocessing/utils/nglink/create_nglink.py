@@ -1,4 +1,4 @@
-from acpreprocessing.stitching_modules.nglink import write_nglink
+from acpreprocessing.utils.nglink import write_nglink
 from argschema.fields import Str
 import argschema
 import os

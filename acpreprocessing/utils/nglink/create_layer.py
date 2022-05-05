@@ -1,5 +1,5 @@
-from acpreprocessing.stitching_modules.metadata import parse_metadata
-from argschema.fields import Str
+from acpreprocessing.utils.metadata import parse_metadata
+from argschema.fields import Str, Boolean, Int
 import argschema
 
 example_input = {
@@ -11,8 +11,9 @@ example_input = {
 
 
 # Creates an image layer in neuroglancer that points to the n5 data of a specific position
-def create_layer(outputDir, position, ypos, pixelResolution):
+def create_layer(outputDir, position, ypos, pixelResolution, deskew):
     layer_info = {"type": "image"}
+    layer_info["shader"]="#uicontrol invlerp normalized\n#uicontrol float power slider(default=0.5, min=0, max=2)\n\nfloat somepower(float v, float power){\n   return pow(v, power);\n  }\nvoid main() {\n  emitGrayscale(somepower(normalized(), power));\n}\n"
     layer_info["shaderControls"] = {"normalized": {"range": [500, 1500]}}
     url = "n5://http://bigkahuna.corp.alleninstitute.org"
     # os.path.join not working as I thought here?
@@ -23,7 +24,7 @@ def create_layer(outputDir, position, ypos, pixelResolution):
         "matrix": [
             [1, 0, 0, 0],
             [0, 1, 0, ypos*position],
-            [0, 0, 1, 0]
+            [deskew, 0, 1, 0]
         ],
         "outputDimensions": {"x": [pixelResolution[0], "um"],
                              "y": [pixelResolution[1], "um"],
@@ -32,7 +33,7 @@ def create_layer(outputDir, position, ypos, pixelResolution):
     return layer_info
 
 
-def add_source(outputDir, position, ypos, pixelResolution, state):
+def add_source(outputDir, position, ypos, pixelResolution, state, deskew):
     url = "n5://http://bigkahuna.corp.alleninstitute.org"
     url = url + outputDir + '/setup%d/timepoint0/' % (position)
     state["layers"][0]["source"].append({"url": url})
@@ -40,7 +41,7 @@ def add_source(outputDir, position, ypos, pixelResolution, state):
         "matrix": [
             [1, 0, 0, 0],
             [0, 1, 0, ypos*position],
-            [0, 0, 1, 0]
+            [deskew, 0, 1, 0]
         ],
         "outputDimensions": {"x": [pixelResolution[0], "um"],
                              "y": [pixelResolution[1], "um"],
@@ -61,6 +62,8 @@ class CreateLayerSchema(argschema.ArgSchema):
     rootDir = Str(required=True, description='raw tiff root directory')
     md_filename = Str(required=False, default="acqinfo_metadata.json",
                       description='metadata file name')
+    reverse = Boolean(required=False,default=False, description="Whether to reverse direction of stitching or not")
+    deskew = Int(required=False,default=0, description="deskew factor (0 if want to leave undeskewed)")
 
 
 class NgLayer(argschema.ArgSchemaParser):
@@ -78,8 +81,12 @@ class NgLayer(argschema.ArgSchemaParser):
         sz = md.get_size()
         ypos = sz[1]-md.get_overlap()  # subtract height of image by pixel overlap to get yposition
 
-        layer0 = create_layer(self.args['outputDir'], self.args['position'],
-                              ypos, pr)
+        if self.args["reverse"]:
+            layer0 = create_layer(self.args['outputDir'], self.args['position'],
+                                  -1*ypos, pr, self.args['deskew'])
+        else:
+            layer0 = create_layer(self.args['outputDir'], self.args['position'],
+                                  ypos, pr, self.args['deskew'])
         add_layer(state, layer0)
     
     def run_consolidate(self, state=None):
@@ -95,12 +102,20 @@ class NgLayer(argschema.ArgSchemaParser):
         n_pos = md.get_number_of_positions()
         ypos = sz[1]-md.get_overlap()  # subtract height of image by pixel overlap to get yposition
         # Create the layer
-        layer = create_layer(self.args['outputDir'], self.args['position'],
-                             ypos, pr)
+        if self.args["reverse"]:
+            layer = create_layer(self.args['outputDir'], self.args['position'],
+                                 -1*ypos, pr, self.args['deskew'])
+        else:
+            layer = create_layer(self.args['outputDir'], self.args['position'],
+                                 ypos, pr, self.args['deskew'])
         add_layer(state, layer)
-        
+
         for pos in range(1, n_pos):
-            add_source(self.args['outputDir'], pos, ypos, pr, state)
+            if self.args["reverse"]:
+                add_source(self.args['outputDir'], pos, -1*ypos, pr, state, self.args['deskew'])
+            else:
+                add_source(self.args['outputDir'], pos, ypos, pr, state, self.args['deskew'])
+       
 
 
 

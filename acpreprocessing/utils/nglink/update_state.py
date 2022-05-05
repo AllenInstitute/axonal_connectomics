@@ -1,5 +1,5 @@
-from acpreprocessing.stitching_modules.metadata import parse_metadata
-from acpreprocessing.stitching_modules.nglink import create_nglink
+from acpreprocessing.utils.metadata import parse_metadata
+from acpreprocessing.utils.nglink import create_nglink
 from argschema.fields import Int, Str, Boolean
 import argschema
 from acpreprocessing.utils import io
@@ -36,6 +36,7 @@ def update_positions(statejson, stitchoutjson, n_pos, factor):
             statejson['layers'][pos]['source']['transform']['matrix'][2][3] = stitchoutjson[pos]['position'][2]*factor
         except IndexError:
             print("Something went wrong with the stitching output!")
+            print(pos)
 
 
 def update_positions_consolidated(statejson, stitchoutjson, n_pos, factor):
@@ -47,6 +48,7 @@ def update_positions_consolidated(statejson, stitchoutjson, n_pos, factor):
             statejson['layers'][0]['source'][pos]['transform']['matrix'][2][3] = stitchoutjson[pos]['position'][2]*factor
         except IndexError:
             print("Something went wrong with the stitching output!")
+            print(pos)
 
 
 class UpdateState(argschema.ArgSchemaParser):

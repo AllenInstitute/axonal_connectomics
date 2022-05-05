@@ -1,7 +1,7 @@
 import os
 import argschema
 from argschema.fields import NumpyArray, Int, Str
-from acpreprocessing.stitching_modules.metadata import parse_metadata
+from acpreprocessing.utils.metadata import parse_metadata
 from acpreprocessing.utils import io
 
 example_input = {
