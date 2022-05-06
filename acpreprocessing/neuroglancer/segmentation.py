@@ -84,16 +84,13 @@ def generate_ngl_skeletons(source_path, out_path):
     #   * The info file is not generated
 
     vol = CloudVolume(f'file://{out_path}', compress='')
+    vol.skeleton.meta.commit_info()
+
     files = glob.glob(f"{source_path}/swc_files_nm/*.swc")
     files = sorted(files)
     skel_dir = os.path.join(out_path, "skeletons")
     if not os.path.exists(skel_dir):
         os.makedirs(skel_dir)
-        
-    skel_info = {"@type": "neuroglancer_skeletons",}
-    with open(os.path.join(skel_dir, "info"), "w") as f:
-        json.dump(skel_info, f)
-        #f.write('{"@type": "neuroglancer_skeletons"}')
     
     segprops = {"@type": "neuroglancer_segment_properties",
             "inline" : {
@@ -119,11 +116,9 @@ def generate_ngl_skeletons(source_path, out_path):
             swc = f.read()
         skel = Skeleton.from_swc(swc)
         skel.id = skel_id
-        
-        skel_out = os.path.join(skel_dir, str(skel_id))
-        with open(skel_out, mode="wb") as f:
-            f.write(skel.to_precomputed())
  
+        vol.skeleton.upload(skel)
+
         segprops["inline"]["ids"].append(str(skel_id))
         segprops["inline"]["properties"][0]["values"].append([0])  # tags
         segprops["inline"]["properties"][1]["values"].append(str(skel.cable_length()))
