@@ -12,3 +12,4 @@ Please include a summary of changes and any related issues.  List any added depe
 - [ ] Modified code is covered in tests (currently not required)
 - [ ] PR is based on correct branch (this is likely `develop`)
 - [ ] Code is pep8 compliant
+- [ ] New methods have NumpyDoc compliant docstrings
