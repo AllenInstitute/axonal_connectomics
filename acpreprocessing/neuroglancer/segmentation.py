@@ -20,6 +20,7 @@ import tifffile
 import glob
 import os
 import json
+import logging
 
 import argschema
 import argschema.validate
@@ -45,10 +46,10 @@ def generate_ngl_segmentation(source_path, out_path, chunk_size, resolution):
     data = None
     for layer in range(len(files)):
         image = tifffile.imread(files[layer])
-        # Allocate array if it has not been yet, using the number of files and dimensions of first file
+        # Allocate array if needed; use the number of files and dimensions of first file
         if data is None:
             data = np.zeros(shape=(image.shape[1], image.shape[0], len(files)), dtype=image.dtype)
-        data[:, :, layer] = image.T   # Swap X & Y to match the SWC files? (not sure why this is needed)
+        data[:, :, layer] = image.T   # Tiff files have X & Y swapped
  
     info = CloudVolume.create_new_info(
         num_channels    = 1,
@@ -66,7 +67,7 @@ def generate_ngl_segmentation(source_path, out_path, chunk_size, resolution):
         )
 
     vol = CloudVolume(f'file://{out_path}', info=info, compress='', cache=False)
-    print("Creating cloud volume: ", vol.info)
+    logging.info(f"Creating cloud volume: {vol.info}")
     vol.commit_info()
     vol.commit_provenance()
     vol[:,:,:] = data.astype(np.uint64)
@@ -78,22 +79,16 @@ def generate_ngl_skeletons(source_path, out_path):
 
        source_path: directory underwhich `swc_files_nm` will be found.
        out_path: directory with the previously generated segmentation layer.
-       
     """
-    # There a few cloud-volume bugs we are working around:
-    #   * The info file is not generated
 
     vol = CloudVolume(f'file://{out_path}', compress='')
+    vol.skeleton.meta.commit_info()
+
     files = glob.glob(f"{source_path}/swc_files_nm/*.swc")
     files = sorted(files)
     skel_dir = os.path.join(out_path, "skeletons")
     if not os.path.exists(skel_dir):
         os.makedirs(skel_dir)
-        
-    skel_info = {"@type": "neuroglancer_skeletons",}
-    with open(os.path.join(skel_dir, "info"), "w") as f:
-        json.dump(skel_info, f)
-        #f.write('{"@type": "neuroglancer_skeletons"}')
     
     segprops = {"@type": "neuroglancer_segment_properties",
             "inline" : {
@@ -119,11 +114,9 @@ def generate_ngl_skeletons(source_path, out_path):
             swc = f.read()
         skel = Skeleton.from_swc(swc)
         skel.id = skel_id
-        
-        skel_out = os.path.join(skel_dir, str(skel_id))
-        with open(skel_out, mode="wb") as f:
-            f.write(skel.to_precomputed())
  
+        vol.skeleton.upload(skel)
+
         segprops["inline"]["ids"].append(str(skel_id))
         segprops["inline"]["properties"][0]["values"].append([0])  # tags
         segprops["inline"]["properties"][1]["values"].append(str(skel.cable_length()))
@@ -165,5 +158,4 @@ class SegmentationToNeuroglancer(argschema.ArgSchemaParser):
 
 if __name__ == "__main__":
     mod = SegmentationToNeuroglancer()
-    #print(mod.args)
     mod.run()
