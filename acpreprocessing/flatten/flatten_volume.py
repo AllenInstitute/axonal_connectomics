@@ -1,21 +1,33 @@
+import copy
+import json
 import numpy as np
 from scipy import interpolate, signal
+from scipy.ndimage import gaussian_filter, median_filter
+import scipy.ndimage as ndimage
 import os
 import time
 
 import imageio as iio
 import z5py
 
+import acpreprocessing
+from acpreprocessing.stitching_modules.nglink import create_layer, create_nglink, update_state
+import argschema
+
 example_input = {
-    'input_dir': '/ACdata/processed/MN8_RH_S11_220214_high_res/stitch-s2/export.n5',
-    'output_n5': '',
-    'output_tif': '/ACdata/samk/flatten_tif_data/MN8_RH_S11_220214_high_res.tif',
-    'flat_side': 'top',
-    'global_thr': 32,
-    'navg': 32,
-    'nzout': 100,
-    'ztol': 0.6,
-    'npre': 0,
+    "acq_id": "MN7_RH_3_2_S35_220127_high_res",
+    "raw_tif_dir": "/ACdata/iSPIM2_ACDATA_temp",
+    "input_dir": "/ACdata/processed/cutout_test/ELAST_0",
+    "input_format": "n5",
+    "output_dir": "/ACdata/samk/flatten/MN7/MN7_RH_3_2/cutout",
+    "write_tif": True,
+    "write_n5": False,
+    "flat_side": "top",
+    "global_thr": 28,
+    "navg": 28,
+    "nzout": 1000,
+    "ztol": 0.6,
+    "npre": 0
 }
 
 class FlattenVolumeModule:
@@ -23,9 +35,14 @@ class FlattenVolumeModule:
         if input_dict is None:
             raise ValueError("ERROR: input_dict must be populated for now")
         
+        self.input_dict = copy.deepcopy(input_dict)
+        self.acq_id = input_dict['acq_id']
+        self.raw_tif_dir = input_dict['raw_tif_dir']
         self.input_dir = input_dict['input_dir']
-        self.output_n5 = input_dict['output_n5']
-        self.output_tif = input_dict['output_tif']
+        self.input_format = input_dict['input_format']
+        self.output_dir = input_dict['output_dir']
+        self.write_tif = input_dict['write_tif']
+        self.write_n5 = input_dict['write_n5']
         self.flat_side = input_dict['flat_side']
         self.global_thr = input_dict['global_thr']
         self.navg = input_dict['navg']
@@ -35,10 +52,8 @@ class FlattenVolumeModule:
     
     def read_volume(self):
         print('Reading volume...')
-        vol_type = self.input_dir.split('.')[-1]
-        if vol_type == 'n5':
+        if self.input_format == 'n5':
             imvol = self._read_n5()
-
         else:
             imvol = self._read_tiff()
         
@@ -46,7 +61,9 @@ class FlattenVolumeModule:
         num_ints = np.iinfo(np.uint16).max + 1
         lut = np.uint8(np.sqrt(np.arange(num_ints)))
         imvol = lut[imvol]
-        imvol = np.transpose(imvol)
+
+        if self.input_format == 'n5':
+            imvol = np.transpose(imvol)
 
         return imvol
 
@@ -66,14 +83,21 @@ class FlattenVolumeModule:
     
     def _read_n5(self):
         print('Reading N5 volume...')
-        with z5py.File(self.input_dir, mode='r') as f:
-            imvol = np.asarray(f['c0']['s0'])
+        if os.path.exists(os.path.join(self.input_dir, self.acq_id, 'stitch-s2/export.n5')):
+            print('stitch-s2 exists')
+            with z5py.File(os.path.join(self.input_dir, self.acq_id, 'stitch-s2/export.n5'), mode='r') as f:
+                imvol = np.asarray(f['c0']['s0'])
+        else:
+            print('stitch-s2 does not exist')
+            with z5py.File(os.path.join(self.input_dir, self.acq_id, 'export.n5'), mode='r') as f:
+                imvol = np.asarray(f['c0']['s0'])
         
         return imvol
 
-    def _read_tiff(self, isimagesequence=True):
+    def _read_tiff(self, isimagesequence=False):
+        print('Reading TIFF stack...')
         if isimagesequence:
-            imvol = self.import_image_sequence(self.input_dir, '.tif')
+            imvol = self._import_image_sequence(self.input_dir, '.tif')
         else:
             imvol = np.array(iio.mimread(self.input_dir, memtest="20000MB"))
         
@@ -98,10 +122,10 @@ class FlattenVolumeModule:
         else:
             raise ValueError("in fastdownsample ndims not equal 2 or 3")
         
-        nx = (dims[nstartind] // binsize)*binsize
-        ny = (dims[nstartind+1] // binsize)*binsize
-        nxsml = nx//binsize
-        nysml = ny//binsize
+        nx = (dims[nstartind] // binsize) * binsize
+        ny = (dims[nstartind+1] // binsize) * binsize
+        nxsml = nx // binsize
+        nysml = ny // binsize
 
         if len(dims) == 3:
             stacksml=np.zeros([nframes,nxsml,nysml] ,dtype=dtypein)
@@ -115,13 +139,24 @@ class FlattenVolumeModule:
     
         return stacksml
 
-    def median_filter_2d(self, imvol, numfilt=3):
+    def median_filter_2d(self, imvol, zero_padding=100, numfilt=3):
         dims = np.shape(imvol)
         dt = imvol.dtype
-        stackout = np.zeros(dims, dtype=dt)
+
+        pad_dims = tuple(np.array(dims) + zero_padding*2)
+        pad_vol = np.zeros(pad_dims)
+        pad_vol[zero_padding:-zero_padding, zero_padding:-zero_padding, zero_padding:-zero_padding] = imvol[:,:,:]
+
+        vol_out = np.zeros(pad_dims, dtype=dt)
         for i in range(dims[0]):
-            stackout[i,:,:] = signal.medfilt2d(imvol[i,:,:])
-        return(stackout)
+            vol_out[i,:,:] = signal.medfilt2d(pad_vol[i,:,:])
+        
+        return vol_out[zero_padding:-zero_padding, zero_padding:-zero_padding, zero_padding:-zero_padding]
+    
+    def ndfilter(self, img, sig=3):
+        #img = ndimage.gaussian_filter(img, sigma=(sig, sig, 5), order=0)
+        img = ndimage.median_filter(img, size=(sig, sig, 5))
+        return img
     
     def flatten(self, imvol):
         if self.flat_side == 'top' or self.flat_side =='bottom':
@@ -134,22 +169,21 @@ class FlattenVolumeModule:
         return imvol, z0s, imvolsml
             
     def _flatten_one(self, imvol, side='top', nmedfilt=5, method='mean'):
+        print('Flattening one side...')
         dims = imvol.shape
 
         if side == 'bottom':
             imvol = np.flip(imvol,0)
         
         imvolsml = self._fast_downsample(imvol, self.navg, method=method)
-        
-        if nmedfilt > 1:
-            imvolsml = self.median_filter_2d(imvolsml,
-                numfilt=nmedfilt)
+        #imvolsml = self.ndfilter(imvolsml)
 
-        z0s = np.argmax(imvolsml>self.global_thr,axis = 0)
+        z0s = np.argmax(imvolsml > self.global_thr, axis=0)
         z0s[np.where(z0s > dims[0] - self.nzout)] = dims[0] - self.nzout
 
         xs = np.arange(np.int16(self.navg/2),2+dims[1]-self.navg/2,self.navg)
         ys = np.arange(np.int16(self.navg/2),2+dims[2]-self.navg/2,self.navg)
+        print(xs.shape, ys.shape, z0s.shape)
         interpfun = interpolate.interp2d(ys, xs, z0s)
 
         Xs = np.arange(dims[1])
@@ -180,26 +214,54 @@ class FlattenVolumeModule:
     def _flatten_both(self, imvol):
         raise NotImplementedError
 
-    def write_output(self, imvol, z0s=None, imvolsml=None):
-        #if len(self.output_n5) > 0:
-        #    self._write_n5(imvol)
+    def write_output(self, imvol, z0s=None, imvolsml=None, write_json=True):
+        print('Writing output')
+        if self.write_n5:
+            self._write_n5(imvol)
         
-        if len(self.output_tif) > 0:
+        if self.write_tif:
             self._write_tif(imvol, z0s=z0s, imvolsml=imvolsml)
+        
+        if write_json:
+            with open(os.path.join(self.output_dir, self.acq_id) + '.json', 'w') as fp:
+                json.dump(self.input_dict, fp, indent=4)
 
     def _write_n5(self, imvol):
-        raise NotImplementedError
+        imvol = np.transpose(imvol)
+        with z5py.File(os.path.join(self.output_dir, self.acq_id, 'flatten.n5'), mode='w') as f:
+            imvol_n5 = f.create_dataset('data', shape=imvol.shape, dtype='uint16')
+            imvol_n5[:] = imvol
+        
+        state = {"showDefaultAnnotations": False, "layers": []}
+        
+        layer_input = {
+            "position": 0,
+            "outputDir": self.output_n5,
+            "rootDir": self.raw_tif_dir,
+            }
+        create_layer.NgLayer(input_data=layer_input).run(state)
+        
+        nglink_input = {
+            "outputDir": self.output_n5,
+            "fname": "nglink.txt"
+        }
+
+        if not os.path.exists(os.path.join(nglink_input['outputDir'], "nglink.txt")):
+            create_nglink.Nglink(input_data=nglink_input).run(state)
+        else:
+            print("nglink.txt already exists!")
 
     def _write_tif(self, imvol, z0s=None, imvolsml=None):
         frames = []
         for i in range(imvol.shape[0]):
             frames.append(imvol[i,:,:])
 
-        fn_split = self.output_tif.split('.')
-        iio.mimwrite(self.output_tif, imvol)
+        output_fn = os.path.join(self.output_dir, self.acq_id)
+        print(output_fn + '.tif')
+        iio.mimwrite(output_fn + '.tif', imvol)
 
         if z0s is not None:  
-            z0s_fn = fn_split[0] + '_z0s.' + fn_split[1]
+            z0s_fn = output_fn + '_z0s.tif'
             print(z0s_fn)
             iio.imwrite(z0s_fn, z0s)
         
@@ -208,16 +270,21 @@ class FlattenVolumeModule:
             for i in range(imvolsml.shape[0]):
                 sml_frames.append(imvolsml[i,:,:])
             
-            sml_fn = fn_split[0] + '_sml.' + fn_split[1]
+            sml_fn = output_fn + '_sml.tif'
             print(sml_fn)
             iio.mimwrite(sml_fn, imvolsml)
 
     def run(self):
         imvol = self.read_volume()
+        print(imvol.shape)
 
         imvol_flat, z0s, imvolsml = self.flatten(imvol)
 
-        self.write_output(imvol_flat, z0s=z0s, imvolsml=imvolsml)
+        if 'imvol_flat' in locals():
+            print(imvol_flat.shape)
+            self.write_output(imvol_flat, z0s=z0s, imvolsml=imvolsml)
+        else:
+            self.write_output(imvol)
 
 if __name__ == '__main__':
     mod = FlattenVolumeModule(input_dict=example_input)
