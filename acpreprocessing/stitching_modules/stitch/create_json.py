@@ -1,4 +1,8 @@
+<<<<<<< HEAD
 from acpreprocessing.utils.metadata import parse_metadata
+=======
+from acpreprocessing.stitching_modules.metadata import parse_metadata
+>>>>>>> 6c25393d3a7e58eba96dcea893b8cf9e789e5107
 from argschema.fields import Int, Str, Boolean
 import argschema
 from acpreprocessing.utils import io

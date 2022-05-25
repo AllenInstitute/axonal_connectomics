@@ -63,7 +63,11 @@ class CreateLayerSchema(argschema.ArgSchema):
     md_filename = Str(required=False, default="acqinfo_metadata.json",
                       description='metadata file name')
     reverse = Boolean(required=False,default=False, description="Whether to reverse direction of stitching or not")
+<<<<<<< HEAD:acpreprocessing/utils/nglink/create_layer.py
     deskew = Int(required=False,default=0, description="deskew factor (0 if want to leave undeskewed)")
+=======
+    deskew = Boolean(required=False,default=False, description="Whether to deskew or not")
+>>>>>>> 6c25393d3a7e58eba96dcea893b8cf9e789e5107:acpreprocessing/stitching_modules/nglink/create_layer.py
 
 
 class NgLayer(argschema.ArgSchemaParser):
