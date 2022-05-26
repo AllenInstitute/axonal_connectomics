@@ -28,11 +28,14 @@ def iterate_chunks(it, slice_length):
         chunk = tuple(itertools.islice(it, slice_length))
 
 
-def iter_arrays(r):
+def iter_arrays(r, interleaved_channels=1, channel=0):
     """iterate arrays from an imageio tiff reader.  Allows the last image
     of the array to be None, as is the case for data with 'dropped frames'.
     """
     for i, p in enumerate(r._tf.pages):
+        page_channel = i % interleaved_channels
+        if page_channel != channel:
+            continue
         arr = p.asarray()
         if arr is not None:
             yield arr
@@ -42,21 +45,21 @@ def iter_arrays(r):
             raise ValueError
 
 
-def iterate_2d_arrays_from_mimgfns(mimgfns):
+def iterate_2d_arrays_from_mimgfns(mimgfns, *args, **kwargs):
     """iterate constituent arrays from an iterator of image filenames
     that can be opened as an imageio multi-image.
     """
     for mimgfn in mimgfns:
-        print(mimgfn)
         with imageio.get_reader(mimgfn, mode="I") as r:
-            yield from iter_arrays(r)
+            yield from iter_arrays(r, *args, **kwargs)
 
 
-def iterate_numpy_chunks_from_mimgfns(mimgfns, slice_length=None, pad=True):
+def iterate_numpy_chunks_from_mimgfns(
+        mimgfns, slice_length=None, pad=True, *args, **kwargs):
     """iterate over a contiguous iterator of imageio multi-image files as
     chunks of numpy arrays
     """
-    array_gen = iterate_2d_arrays_from_mimgfns(mimgfns)
+    array_gen = iterate_2d_arrays_from_mimgfns(mimgfns, *args, **kwargs)
     for chunk in iterate_chunks(array_gen, slice_length):
         arr = numpy.array(chunk)
         if pad:
@@ -71,29 +74,43 @@ def iterate_numpy_chunks_from_mimgfns(mimgfns, slice_length=None, pad=True):
             yield arr
 
 
+def length_to_interleaved_length(length, interleaved_channels):
+    interleaved_length, r = divmod(length, interleaved_channels)
+    return [
+        interleaved_length + (1 if ic < r else 0)
+        for ic in range(interleaved_channels)
+    ]
+
+
 def mimg_shape_from_fn(mimg_fn, only_length_tup=False):
     """get the shape of an imageio multi-image file without
     reading it as a volume
     """
     with imageio.get_reader(mimg_fn, mode="I") as r:
+        l = r.get_length()
+
         if only_length_tup:
-            s = (r.get_length(),)
+            s = (l,)
         else:
-            s = (r.get_length(), *r.get_data(0).shape)
+            s = (l, *r.get_data(0).shape)
     return s
 
 
-def joined_mimg_shape_from_fns(mimg_fns, concurrency=1):
+def joined_mimg_shape_from_fns(mimg_fns, concurrency=1,
+                               interleaved_channels=1, channel=0,
+                               *args, **kwargs):
     """concurrently read image shapes from tiff files representing a
     contiguous stack to get the shape of the combined stack.
     """
     # join shapes while reading concurrently
     with concurrent.futures.ThreadPoolExecutor(max_workers=concurrency) as e:
-        futs = [e.submit(mimg_shape_from_fn, fn) for fn in mimg_fns]
+        futs = [e.submit(mimg_shape_from_fn, fn, *args, **kwargs)
+                for fn in mimg_fns]
         shapes = [fut.result() for fut
                   in concurrent.futures.as_completed(futs)]
     return (
-        sum([s[0] for s in shapes]),
+        length_to_interleaved_length(
+            sum([s[0] for s in shapes]), interleaved_channels)[channel],
         shapes[0][1],
         shapes[0][2]
     )
@@ -207,7 +224,8 @@ class MIPArray:
 
 def iterate_mip_levels_from_mimgfns(
         mimgfns, lvl, block_size, downsample_factor,
-        downsample_method=None, lvl_to_mip_kwargs=None):
+        downsample_method=None, lvl_to_mip_kwargs=None,
+        interleaved_channels=1, channel=0):
     """recursively generate MIPmap levels from an iterator of multi-image files
     """
     lvl_to_mip_kwargs = ({} if lvl_to_mip_kwargs is None
@@ -221,7 +239,8 @@ def iterate_mip_levels_from_mimgfns(
         for ma in iterate_mip_levels_from_mimgfns(
                 mimgfns, lvl-1, block_size,
                 downsample_factor, downsample_method,
-                lvl_to_mip_kwargs):
+                lvl_to_mip_kwargs, interleaved_channels=interleaved_channels,
+                channel=channel):
             chunk = ma.array
             # throw array up for further processing
             yield ma
@@ -269,7 +288,9 @@ def iterate_mip_levels_from_mimgfns(
     else:
         # get level 0 chunks
         for chunk in iterate_numpy_chunks_from_mimgfns(
-                mimgfns, block_size, pad=False):
+                mimgfns, block_size, pad=False,
+                interleaved_channels=interleaved_channels,
+                channel=channel):
             end_index = start_index + chunk.shape[0]
             yield MIPArray(lvl, chunk, start_index, end_index)
             start_index += chunk.shape[0]
@@ -279,14 +300,16 @@ def write_mimgfns_to_n5(
         mimgfns, output_n5, group_names, group_attributes=None, max_mip=0,
         mip_dsfactor=(2, 2, 2), chunk_size=(64, 64, 64),
         concurrency=10, slice_concurrency=1,
-        compression="raw", dtype="uint16", lvl_to_mip_kwargs=None):
+        compression="raw", dtype="uint16", lvl_to_mip_kwargs=None,
+        interleaved_channels=1, channel=0):
     """write a stack represented by an iterator of multi-image files as an n5
     volume
     """
     group_attributes = ([] if group_attributes is None else group_attributes)
 
     joined_shapes = joined_mimg_shape_from_fns(
-        mimgfns, concurrency=concurrency)
+        mimgfns, concurrency=concurrency,
+        interleaved_channels=interleaved_channels, channel=channel)
     # TODO also get dtype from mimg
 
     slice_length = chunk_size[0]
@@ -301,7 +324,10 @@ def write_mimgfns_to_n5(
             try:
                 g = group_objs[-1].create_group(f"{group_name}")
             except IndexError:
-                g = f.create_group(f"{group_name}")
+                try:
+                    g = f.create_group(f"{group_name}")
+                except KeyError:
+                    g = f[f"{group_name}"]
             group_objs.append(g)
             try:
                 attributes = group_attributes[i]
@@ -330,7 +356,9 @@ def write_mimgfns_to_n5(
             futs = []
             for miparr in iterate_mip_levels_from_mimgfns(
                     mimgfns, max_mip, slice_length, mip_dsfactor,
-                    lvl_to_mip_kwargs=lvl_to_mip_kwargs):
+                    lvl_to_mip_kwargs=lvl_to_mip_kwargs,
+                    interleaved_channels=interleaved_channels,
+                    channel=channel):
                 futs.append(e.submit(
                     dswrite_chunk, mip_ds[miparr.lvl],
                     miparr.start, miparr.end, miparr.array))
@@ -383,6 +411,8 @@ class TiffDirToN5InputParameters(argschema.ArgSchema,
                                  N5GroupGenerationParameters):
     input_dir = argschema.fields.InputDir(required=True)
     out_n5 = argschema.fields.Str(required=True)
+    interleaved_channels = argschema.fields.Int(required=False, deafult=1)
+    channel = argschema.fields.Int(required=False, default=0)
 
 
 class TiffDirToN5(argschema.ArgSchemaParser):
