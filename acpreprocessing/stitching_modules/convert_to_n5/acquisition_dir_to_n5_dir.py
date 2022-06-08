@@ -38,6 +38,17 @@ def get_pixel_resolution_from_rootdir(
     return [xy, xy, z]
 
 
+def get_number_interleaved_channels_from_rootdir(
+        root_dir, md_bn="acqinfo_metadata.json"):
+    root_path = pathlib.Path(root_dir)
+    md_path = root_path / md_bn
+    with md_path.open() as f:
+        md = json.load(f)
+
+    interleaved_channels = md.get("channels", 1)
+    return interleaved_channels
+
+
 def acquisition_to_n5(acquisition_dir, out_dir, concurrency=5,
                       n5_generation_kwargs=None, copy_top_level_files=True):
     """
@@ -50,8 +61,11 @@ def acquisition_to_n5(acquisition_dir, out_dir, concurrency=5,
     out_path = pathlib.Path(out_dir)
     out_n5_dir = str(out_path / f"{out_path.name}.n5")
 
+    interleaved_channels = get_number_interleaved_channels_from_rootdir(
+        acquisition_path)
+
     try:
-        group_attributes = {
+        setup_group_attributes = {
             "pixelResolution": {
                 "dimensions": get_pixel_resolution_from_rootdir(
                     acquisition_path),
@@ -59,24 +73,32 @@ def acquisition_to_n5(acquisition_dir, out_dir, concurrency=5,
             }
         }
     except (KeyError, FileNotFoundError):
-        group_attributes = {}
+        setup_group_attributes = {}
 
-    with concurrent.futures.ProcessPoolExecutor(max_workers=concurrency) as e:
-        futs = []
-        for i, pospath in enumerate(
-                yield_position_paths_from_rootdir(
-                    acquisition_path)):
-            # pos_group = pospath.name
-            # below is more like legacy structure
-            # out_n5_dir = str(out_path / f"{pos_group}.n5")
-            futs.append(e.submit(
-                tiffdir_to_n5_group,
-                str(pospath), out_n5_dir, [f"setup{i}", "timepoint0"],
-                group_attributes=[group_attributes], **n5_generation_kwargs
-            ))
+    for channel_idx in range(interleaved_channels):
+        channel_group_attributes = {}
+        with concurrent.futures.ProcessPoolExecutor(max_workers=concurrency) as e:
+            futs = []
+            for i, pospath in enumerate(
+                    yield_position_paths_from_rootdir(
+                        acquisition_path)):
+                # pos_group = pospath.name
+                # below is more like legacy structure
+                # out_n5_dir = str(out_path / f"{pos_group}.n5")
+                futs.append(e.submit(
+                    tiffdir_to_n5_group,
+                    str(pospath), out_n5_dir, [
+                        f"channel{channel_idx}", f"setup{i}", "timepoint0"],
+                    group_attributes=[
+                        channel_group_attributes,
+                        setup_group_attributes],
+                    interleaved_channels=interleaved_channels,
+                    channel=channel_idx,
+                    **n5_generation_kwargs
+                ))
 
-        for fut in concurrent.futures.as_completed(futs):
-            _ = fut.result()
+            for fut in concurrent.futures.as_completed(futs):
+                _ = fut.result()
 
     if copy_top_level_files:
         top_level_files_paths = [
