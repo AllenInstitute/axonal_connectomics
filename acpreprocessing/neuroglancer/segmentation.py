@@ -82,6 +82,8 @@ def generate_ngl_skeletons(source_path, out_path):
     """
 
     vol = CloudVolume(f'file://{out_path}', compress='')
+    # Remove vertex_attributes: vertex_types(uint8) breaks neuroglancer
+    vol.skeleton.meta.info.pop("vertex_attributes", None)
     vol.skeleton.meta.commit_info()
 
     files = glob.glob(f"{source_path}/swc_files_nm/*.swc")
