@@ -3,11 +3,7 @@ import time
 import os
 import numpy as np
 from acpreprocessing.utils import io
-<<<<<<< HEAD
 from acpreprocessing.utils.metadata import parse_metadata
-=======
-from acpreprocessing.stitching_modules.metadata import parse_metadata
->>>>>>> 6c25393d3a7e58eba96dcea893b8cf9e789e5107
 from acpreprocessing.stitching_modules.convert_to_n5 import acquisition_dir_to_n5_dir
 from acpreprocessing.stitching_modules.multiscale_viewing  import multiscale
 from acpreprocessing.utils.nglink import create_layer, create_nglink, update_state
