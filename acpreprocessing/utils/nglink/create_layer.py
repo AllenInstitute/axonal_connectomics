@@ -13,7 +13,7 @@ example_input = {
 # Creates an image layer in neuroglancer that points to the n5 data of a specific position
 def create_layer(outputDir, position, ypos, pixelResolution, deskew):
     layer_info = {"type": "image"}
-    layer_info["shader"]="#uicontrol invlerp normalized\n#uicontrol float power slider(default=0.5, min=0, max=2)\n\nfloat somepower(float v, float power){\n   return pow(v, power);\n  }\nvoid main() {\n  emitGrayscale(somepower(normalized(), power));\n}\n"
+    layer_info["shader"] = "#uicontrol invlerp normalized\n#uicontrol float power slider(default=0.5, min=0, max=2)\n\nfloat somepower(float v, float power){\n   return pow(v, power);\n  }\nvoid main() {\n  emitGrayscale(somepower(normalized(), power));\n}\n"
     layer_info["shaderControls"] = {"normalized": {"range": [500, 1500]}}
     url = "n5://http://bigkahuna.corp.alleninstitute.org"
     # os.path.join not working as I thought here?
@@ -88,7 +88,7 @@ class NgLayer(argschema.ArgSchemaParser):
             layer0 = create_layer(self.args['outputDir'], self.args['position'],
                                   ypos, pr, self.args['deskew'])
         add_layer(state, layer0)
-    
+
     def run_consolidate(self, state=None):
         if state is None:
             state = {"layers": []}
@@ -115,7 +115,7 @@ class NgLayer(argschema.ArgSchemaParser):
                 add_source(self.args['outputDir'], pos, -1*ypos, pr, state, self.args['deskew'])
             else:
                 add_source(self.args['outputDir'], pos, ypos, pr, state, self.args['deskew'])
-       
+
 
 
 

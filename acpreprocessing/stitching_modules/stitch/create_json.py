@@ -21,7 +21,8 @@ class CreateJsonSchema(argschema.ArgSchema):
     mip_level = Int(required=False, default=2,
                     description='downsample level to perform stitching with')
     reverse = Boolean(required=False, description='Whether position strips should be placed in reverse order')
-    dirname = Str(required = True, description="name of dataset folder")
+    dirname = Str(required=True, description="name of dataset folder")
+
 
 # Create specific position strip information needed for stitching
 # (including approximate coordinates using overlap)
@@ -60,7 +61,7 @@ class CreateJson(argschema.ArgSchemaParser):
             # print(downdir)
             pos_info = get_pos_info(downdir, md.get_overlap(),
                                     md.get_pixel_resolution(), pos,
-                                    self.args['mip_level'],self.args["reverse"])
+                                    self.args['mip_level'], self.args["reverse"])
             stitching_json.append(pos_info)
 
         fout = os.path.join(self.args['outputDir'], 'stitch.json')

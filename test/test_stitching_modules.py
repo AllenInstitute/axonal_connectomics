@@ -32,6 +32,7 @@ def test_create_layer(outputDir, position, ypos, pixelResolution, deskew):
     assert layer["source"][0]["transform"]["outputDimensions"]["y"][0] == pixelResolution[1]
     assert layer["source"][0]["transform"]["outputDimensions"]["z"][0] == pixelResolution[2]
 
+
 # Test update state
 @pytest.mark.parametrize("x, y, z, overlap, factor", [(30, 500, 2, 1000, 2)])
 def test_update_state(x, y, z, overlap, factor):

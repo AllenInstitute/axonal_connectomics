@@ -52,7 +52,7 @@ class ParseMetadata(argschema.ArgSchemaParser):
     # Get data type
     def get_dtype(self):
         return self.md['settings']['dtype']
-    
+
     def get_angle(self):
         return self.md['settings']['sheet_angle']
 

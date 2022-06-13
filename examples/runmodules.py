@@ -14,15 +14,15 @@ from ddbclient import acquisition
 
 start = time.time()
 
-#TODO: make this more robust
+# TODO: make this more robust
 acq_client = acquisition.AcquisitionClient("http://bigkahuna.corp.alleninstitute.org/transfer_temp/api/api", subpath="")
 response_json = acq_client.query(
     {
-        "filter": {"specimen_id": "MN6_2_a","session_id":"220427", 'section_num': '79'},
+        "filter": {"specimen_id": "MN6_2_a", "session_id": "220427", 'section_num': '79'},
         "projection": {"_id": False}
     })
-#TODO: how to get index of correct data? overview, high_res, etc
-dir_ACdata=response_json[3]["data_location"]["ACTiff_dir_ACdata"]["uri"]
+# TODO: how to get index of correct data? overview, high_res, etc
+dir_ACdata = response_json[3]["data_location"]["ACTiff_dir_ACdata"]["uri"]
 rootDir = "/ACdata"+dir_ACdata.split(':')[1]
 scope = response_json[0]['scope']
 dirname = rootDir.split("/")[5]
@@ -51,8 +51,8 @@ class RunModulesSchema(argschema.ArgSchema):
                               description="Whether to consolidate all position"
                                           "strips in one neuroglancer layer or"
                                           "separate them into independent layers")
-    reverse_stitch = Boolean(required=False,default=False, description="Whether to reverse direction of stitching or not")
-    deskew = Boolean(required=False,default=False, description="Whether to deskew or not")
+    reverse_stitch = Boolean(required=False, default=False, description="Whether to reverse direction of stitching or not")
+    deskew = Boolean(required=False, default=False, description="Whether to deskew or not")
 
 
 class RunModules(argschema.ArgSchemaParser):
@@ -66,8 +66,8 @@ class RunModules(argschema.ArgSchemaParser):
                 }
         md = parse_metadata.ParseMetadata(input_data=md_input).get_md()
         dsname = md["stripdirs"][0].split("_Pos")[0]
-        run_input["ds_name"]=dsname
-        if (md["positions"][0]["y_start_um"])>(md["positions"][1]["y_start_um"]):
+        run_input["ds_name"] = dsname
+        if (md["positions"][0]["y_start_um"]) > (md["positions"][1]["y_start_um"]):
             run_input["reverse_stitch"] = True
         print(run_input)
         
@@ -84,15 +84,15 @@ class RunModules(argschema.ArgSchemaParser):
             "input_dir": f"{run_input['rootDir']}",
             "output_dir": f"{run_input['outputDir']}",
             "max_mip": 5,
-            "position_concurrency": 5         
+            "position_concurrency": 5
             }
         if not os.path.isdir(convert_input['output_dir']):
             acquisition_dir_to_n5_dir.AcquisitionDirToN5Dir(input_data=convert_input).run()
         else:
             print(f"Skipping conversion, {dirname} directory already exists")
-    
+
         for pos in range(n_pos):
-        # Create overview nglink, initialize state
+            # Create overview nglink, initialize state
             state = {"showDefaultAnnotations": False, "layers": []}
 
             if run_input["consolidate_pos"]:
@@ -121,7 +121,7 @@ class RunModules(argschema.ArgSchemaParser):
                 "outputDir": run_input['outputDir'],
                 "fname": "nglink.txt"
                 }
-        if not os.path.exists(os.path.join(run_input['outputDir'],"nglink.txt")):
+        if not os.path.exists(os.path.join(run_input['outputDir'], "nglink.txt")):
             create_nglink.Nglink(input_data=nglink_input).run(state)
         else:
             print("nglink.txt already exists!")
@@ -142,7 +142,7 @@ class RunModules(argschema.ArgSchemaParser):
                 "stitchjson": stitchjsonpath
                 }
         # Perform stitching if not done yet
-        if not os.path.exists(os.path.join(run_input['outputDir'],"stitch-final.json")):
+        if not os.path.exists(os.path.join(run_input['outputDir'], "stitch-final.json")):
             stitch.Stitch(input_data=stitch_input).run()
         else:
             print("Skipped stitching - already computed")
