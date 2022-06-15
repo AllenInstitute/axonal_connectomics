@@ -61,7 +61,7 @@ def iter_arrays(r, interleaved_channels=1, channel=0, interleaving_offset=0):
         constituent page array of reader r
     """
     for i, p in enumerate(r._tf.pages):
-        page_channel = (i - interleaving_offset) % interleaved_channels
+        page_channel = (i + interleaving_offset) % interleaved_channels
         if page_channel != channel:
             continue
         arr = p.asarray()
