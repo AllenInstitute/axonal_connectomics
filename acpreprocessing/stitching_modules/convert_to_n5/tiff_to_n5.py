@@ -20,12 +20,14 @@ import acpreprocessing.utils.convert
 def iterate_chunks(it, slice_length):
     """given an iterator, iterate over tuples of a
     given length from that iterator
+
     Parameters
     ----------
     it : iterable
         iterable object to iterate over in slices of slice_length
     slice_length : int
         number of items in iterator per chunk
+
     Yields
     ------
     chunk : tuple
@@ -42,6 +44,7 @@ def iterate_chunks(it, slice_length):
 def iter_arrays(r, interleaved_channels=1, channel=0):
     """iterate arrays from an imageio tiff reader.  Allows the last image
     of the array to be None, as is the case for data with 'dropped frames'.
+
     Parameters
     ----------
     r : imageio.reader
@@ -51,6 +54,7 @@ def iter_arrays(r, interleaved_channels=1, channel=0):
         arrays to read
     channel : int
         channel to iterate over in case of interleaved tiffs
+
     Yields
     -------
     arr : numpy.ndarray
@@ -72,10 +76,12 @@ def iter_arrays(r, interleaved_channels=1, channel=0):
 def iterate_2d_arrays_from_mimgfns(mimgfns, *args, **kwargs):
     """iterate constituent arrays from an iterator of image filenames
     that can be opened as an imageio multi-image.
+
     Parameters
     ----------
     mimgfns : list of str
         imageio-compatible name inputs to be opened as multi-images
+
     Yields
     ------
     array : numpy.ndarray
@@ -90,6 +96,7 @@ def iterate_numpy_chunks_from_mimgfns(
         mimgfns, slice_length=None, pad=True, *args, **kwargs):
     """iterate over a contiguous iterator of imageio multi-image files as
     chunks of numpy arrays
+
     Parameters
     ----------
     mimgfns : list of str
@@ -98,6 +105,7 @@ def iterate_numpy_chunks_from_mimgfns(
         number of 2d arrays from mimgfns included per chunk
     pad : bool, optional
         whether to extend final returned chunks with zeros
+
     Yields
     ------
     arr : numpy.ndarray
@@ -121,12 +129,14 @@ def iterate_numpy_chunks_from_mimgfns(
 def length_to_interleaved_length(length, interleaved_channels):
     """get length of each interleaved channel that contributes to a
     total array length
+
     Parameters
     ----------
     length : int
         length of interleaved array
     interleaved_channels : int
         number of constituent channels in interleaved array
+
     Returns
     -------
     channel_lengths : list of int
@@ -142,6 +152,7 @@ def length_to_interleaved_length(length, interleaved_channels):
 def mimg_shape_from_fn(mimg_fn, only_length_tup=False):
     """get the shape of an imageio multi-image file without
     reading it as a volume
+
     Parameters
     ----------
     mimg_fn : str
@@ -149,6 +160,7 @@ def mimg_shape_from_fn(mimg_fn, only_length_tup=False):
     only_length_tup : bool, optional
         whether to return only the number of frames or
         include the dimensions of a representative frame
+
     Returns
     -------
     shape : tuple of int
@@ -169,6 +181,7 @@ def joined_mimg_shape_from_fns(mimg_fns, concurrency=1,
                                *args, **kwargs):
     """concurrently read image shapes from tiff files representing a
     contiguous stack to get the shape of the combined stack.
+
     Parameters
     ----------
     mimg_fns : list of str
@@ -179,6 +192,7 @@ def joined_mimg_shape_from_fns(mimg_fns, concurrency=1,
         number of channels interleaved in the tiff files (default 1)
     channel : int, optional
         channel from which interleaved data should be read (default 0)
+
     Returns
     -------
     shape : tuple of int
@@ -201,6 +215,7 @@ def joined_mimg_shape_from_fns(mimg_fns, concurrency=1,
 def array_downsample_chunks(arr, ds_factors, block_shape, **kwargs):
     """downsample a numpy array by inputting subvolumes
     to acpreprocessing.utils.convert.downsample_stack_volume
+
     Parameters
     ----------
     arr : numpy.ndarray
@@ -210,6 +225,7 @@ def array_downsample_chunks(arr, ds_factors, block_shape, **kwargs):
         Length must match arr.ndim
     block_shape : tuple of int
         shape of individual blocks to process
+
     Returns
     -------
     output_arr : numpy.ndarray
@@ -239,6 +255,7 @@ def array_downsample_threaded(arr, ds_factors, block_shape,
                               n_threads=3, **kwargs):
     """downsample a numpy array by concurrently inputting subvolumes
     to acpreprocessing.utils.convert.downsample_stack_volume
+
     Parameters
     ----------
     arr : numpy.ndarray
@@ -250,6 +267,7 @@ def array_downsample_threaded(arr, ds_factors, block_shape,
         shape of individual blocks to process
     n_threads :  int
         number of threads used to concurrently downsample chunks
+
     Returns
     -------
     output_arr : numpy.ndarray
@@ -287,6 +305,7 @@ class ArrayChunkingError(ValueError):
 def downsample_array(arr, *args, n_threads=None, block_shape=None,
                      block_divs=None, allow_failover=True, **kwargs):
     """downsample array with optional subvolume chunking and threading
+
     Parameters
     ----------
     arr : numpy.ndarray
@@ -305,6 +324,7 @@ def downsample_array(arr, *args, n_threads=None, block_shape=None,
         whether to default to using
         acpreprocessing.utils.convert.downsample_stack_volume when
         block_shape or block_divs is not actionable.  (default: True)
+
     Returns
     -------
     output_arr : numpy.ndarray
@@ -336,12 +356,14 @@ def downsample_array(arr, *args, n_threads=None, block_shape=None,
 def mip_level_shape(lvl, lvl_0_shape):
     """get the expected shape of a MIP level downsample for a given
     full resolution shape.  Expects 2x downsampling on each dimension.
+
     Parameters
     ----------
     lvl : int
         mip level for which shape is calculated
     lvl_0_shape : tuple of int
         shape tuple of level 0
+
     Returns
     -------
     lvl_shape : tuple of int
@@ -353,6 +375,7 @@ def mip_level_shape(lvl, lvl_0_shape):
 def dswrite_chunk(ds, start, end, arr, silent_overflow=True):
     """write array arr into array-like n5 dataset defined by
     start and end points on 0 axis.
+
     Parameters
     ----------
     ds : z5py.dataset.Dataset
@@ -385,6 +408,7 @@ def iterate_mip_levels_from_mimgfns(
         downsample_method=None, lvl_to_mip_kwargs=None,
         interleaved_channels=1, channel=0):
     """recursively generate MIPmap levels from an iterator of multi-image files
+
     Parameters
     ----------
     mimgfns : list of str
@@ -404,6 +428,7 @@ def iterate_mip_levels_from_mimgfns(
         number of channels interleaved in the tiff files (default 1)
     channel : int, optional
         channel from which interleaved data should be read (default 0)
+
     Yields
     ------
     ma : acpreprocessing.stitching_modules.convert_to_n5.tiff_to_n5.MipArray
@@ -485,6 +510,7 @@ def write_mimgfns_to_n5(
         interleaved_channels=1, channel=0):
     """write a stack represented by an iterator of multi-image files as an n5
     volume
+
     Parameters
     ----------
     mimgfns : list of str
@@ -580,6 +606,7 @@ def write_mimgfns_to_n5(
 
 def tiffdir_to_n5_group(tiffdir, *args, **kwargs):
     """convert directory of natsort-consecutive multitiffs to an n5 pyramid
+
     Parameters
     ----------
     tiffdir : str
