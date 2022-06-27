@@ -53,6 +53,9 @@ class ParseMetadata(argschema.ArgSchemaParser):
     def get_dtype(self):
         return self.md['settings']['dtype']
 
+    def get_angle(self):
+        return self.md['settings']['sheet_angle']
+
 
 if __name__ == '__main__':
     mod = ParseMetadata(input_data=example_parsemetadata_input)

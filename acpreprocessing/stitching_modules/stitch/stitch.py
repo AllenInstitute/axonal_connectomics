@@ -6,6 +6,7 @@ example_stitch = {
     "stitchjson": "/ACdata/processed/demoModules/output/stitch.json"
 }
 
+
 def stitch(stitchjson):
     subprocess.call(["python",
                      "/ACdata/stitching-spark/startup-scripts/spark-local/"

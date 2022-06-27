@@ -1,5 +1,5 @@
-from acpreprocessing.stitching_modules.metadata import parse_metadata
-from acpreprocessing.stitching_modules.nglink import create_nglink
+from acpreprocessing.utils.metadata import parse_metadata
+from acpreprocessing.utils.nglink import create_nglink
 from argschema.fields import Int, Str, Boolean
 import argschema
 from acpreprocessing.utils import io
@@ -36,6 +36,7 @@ def update_positions(statejson, stitchoutjson, n_pos, factor):
             statejson['layers'][pos]['source']['transform']['matrix'][2][3] = stitchoutjson[pos]['position'][2]*factor
         except IndexError:
             print("Something went wrong with the stitching output!")
+            print(pos)
 
 
 def update_positions_consolidated(statejson, stitchoutjson, n_pos, factor):
@@ -47,6 +48,7 @@ def update_positions_consolidated(statejson, stitchoutjson, n_pos, factor):
             statejson['layers'][0]['source'][pos]['transform']['matrix'][2][3] = stitchoutjson[pos]['position'][2]*factor
         except IndexError:
             print("Something went wrong with the stitching output!")
+            print(pos)
 
 
 class UpdateState(argschema.ArgSchemaParser):
@@ -73,11 +75,10 @@ class UpdateState(argschema.ArgSchemaParser):
             "outputDir": self.args['outputDir'],
             "fname": "stitched-nglink.txt"
         }
-        if not os.path.exists(os.path.join(self.args['outputDir'],"stitched-nglink.txt")):
+        if not os.path.exists(os.path.join(self.args['outputDir'], "stitched-nglink.txt")):
             create_nglink.Nglink(input_data=nglink_input).run(statejson)
         else:
             print("stitched-nglink.txt already exists!")
-        
 
         io.save_metadata(os.path.join(self.args['outputDir'],
                                       "stitched-state.json"), statejson)
