@@ -11,16 +11,16 @@ example_input = {
 
 
 # Creates an image layer in neuroglancer that points to the n5 data of a specific position
-def create_layer(outputDir, position, ypos, pixelResolution, deskew):
-    layer_info = {"type": "image"}
+def create_layer(outputDir, position, ypos, pixelResolution, deskew, channel):
+    layer_info = {"type": "image", "name": "ch"+str(channel)}
     layer_info["shader"] = "#uicontrol invlerp normalized\n#uicontrol float power slider(default=0.5, min=0, max=2)\n\nfloat somepower(float v, float power){\n   return pow(v, power);\n  }\nvoid main() {\n  emitGrayscale(somepower(normalized(), power));\n}\n"
-    layer_info["shaderControls"] = {"normalized": {"range": [500, 1500]}}
+    layer_info["shaderControls"] = {"normalized": {"range": [0, 2000]}}
     url = "n5://http://bigkahuna.corp.alleninstitute.org"
     # os.path.join not working as I thought here?
     url = url + outputDir + '/setup%d/timepoint0/' % (position)
     layer_info["source"] = [{"url": url}]
-    layer_info["name"] = "Pos%d" % (position)
-    layer_info["source"][position]["transform"] = {
+    layer_info["name"] = "channel%d pos%d" % (channel, position)
+    layer_info["source"][0]["transform"] = {
         "matrix": [
             [1, 0, 0, 0],
             [0, 1, 0, ypos*position],
@@ -33,11 +33,11 @@ def create_layer(outputDir, position, ypos, pixelResolution, deskew):
     return layer_info
 
 
-def add_source(outputDir, position, ypos, pixelResolution, state, deskew):
+def add_source(outputDir, position, ypos, pixelResolution, state, deskew, channel):
     url = "n5://http://bigkahuna.corp.alleninstitute.org"
     url = url + outputDir + '/setup%d/timepoint0/' % (position)
-    state["layers"][0]["source"].append({"url": url})
-    state["layers"][0]["source"][position]["transform"] = {
+    state["layers"][channel]["source"].append({"url": url})
+    state["layers"][channel]["source"][position]["transform"] = {
         "matrix": [
             [1, 0, 0, 0],
             [0, 1, 0, ypos*position],
@@ -64,7 +64,7 @@ class CreateLayerSchema(argschema.ArgSchema):
                       description='metadata file name')
     reverse = Boolean(required=False,default=False, description="Whether to reverse direction of stitching or not")
     deskew = Int(required=False,default=0, description="deskew factor (0 if want to leave undeskewed)")
-
+    channel = Int(required=True, default=1, description="channel number")
 
 class NgLayer(argschema.ArgSchemaParser):
     default_schema = CreateLayerSchema
@@ -83,10 +83,10 @@ class NgLayer(argschema.ArgSchemaParser):
 
         if self.args["reverse"]:
             layer0 = create_layer(self.args['outputDir'], self.args['position'],
-                                  -1*ypos, pr, self.args['deskew'])
+                                  -1*ypos, pr, self.args['deskew'], self.args['channel'])
         else:
             layer0 = create_layer(self.args['outputDir'], self.args['position'],
-                                  ypos, pr, self.args['deskew'])
+                                  ypos, pr, self.args['deskew'], self.args['channel'])
         add_layer(state, layer0)
 
     def run_consolidate(self, state=None):
@@ -104,17 +104,17 @@ class NgLayer(argschema.ArgSchemaParser):
         # Create the layer
         if self.args["reverse"]:
             layer = create_layer(self.args['outputDir'], self.args['position'],
-                                 -1*ypos, pr, self.args['deskew'])
+                                 -1*ypos, pr, self.args['deskew'], self.args['channel'])
         else:
             layer = create_layer(self.args['outputDir'], self.args['position'],
-                                 ypos, pr, self.args['deskew'])
+                                 ypos, pr, self.args['deskew'], self.args['channel'])
         add_layer(state, layer)
 
         for pos in range(1, n_pos):
             if self.args["reverse"]:
-                add_source(self.args['outputDir'], pos, -1*ypos, pr, state, self.args['deskew'])
+                add_source(self.args['outputDir'], pos, -1*ypos, pr, state, self.args['deskew'], self.args['channel'])
             else:
-                add_source(self.args['outputDir'], pos, ypos, pr, state, self.args['deskew'])
+                add_source(self.args['outputDir'], pos, ypos, pr, state, self.args['deskew'], self.args['channel'])
 
 
 
