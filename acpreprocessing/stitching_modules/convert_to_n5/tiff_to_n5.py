@@ -41,7 +41,7 @@ def iterate_chunks(it, slice_length):
         chunk = tuple(itertools.islice(it, slice_length))
 
 
-def iter_arrays(r, interleaved_channels=1, channel=0):
+def iter_arrays(r, interleaved_channels=1, channel=0, interleaving_offset=0):
     """iterate arrays from an imageio tiff reader.  Allows the last image
     of the array to be None, as is the case for data with 'dropped frames'.
 
@@ -61,7 +61,7 @@ def iter_arrays(r, interleaved_channels=1, channel=0):
         constituent page array of reader r
     """
     for i, p in enumerate(r._tf.pages):
-        page_channel = i % interleaved_channels
+        page_channel = (i + interleaving_offset) % interleaved_channels
         if page_channel != channel:
             continue
         arr = p.asarray()
@@ -73,7 +73,7 @@ def iter_arrays(r, interleaved_channels=1, channel=0):
             raise ValueError
 
 
-def iterate_2d_arrays_from_mimgfns(mimgfns, *args, **kwargs):
+def iterate_2d_arrays_from_mimgfns(mimgfns, interleaved_channels=1, channel=0):
     """iterate constituent arrays from an iterator of image filenames
     that can be opened as an imageio multi-image.
 
@@ -87,9 +87,11 @@ def iterate_2d_arrays_from_mimgfns(mimgfns, *args, **kwargs):
     array : numpy.ndarray
         constituent array from ordered iterator of multi-image files
     """
+    offset = 0
     for mimgfn in mimgfns:
         with imageio.get_reader(mimgfn, mode="I") as r:
-            yield from iter_arrays(r, *args, **kwargs)
+            yield from iter_arrays(r, interleaved_channels, channel, offset)
+            offset = (offset + r.get_length()) % interleaved_channels
 
 
 def iterate_numpy_chunks_from_mimgfns(
