@@ -26,9 +26,10 @@ class CreateJsonSchema(argschema.ArgSchema):
     stitch_json = Str(required=False,default="stitch.json", description="Name of stitching parameters json file")
 
 
-# Create specific position strip information needed for stitching
-# (including approximate coordinates using overlap)
 def get_pos_info(downdir, overlap, pr, ind, mip_level, reverse):
+    """Create specific position strip information needed for stitching
+    (including approximate tile coordinates using overlap)
+    """
     factor = 2**mip_level
     att = io.read_json(downdir+"attributes.json")
     sz = att["dimensions"]
