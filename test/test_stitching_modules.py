@@ -39,15 +39,16 @@ def test_create_layer(outputDir, position, ypos, pixelResolution, deskew):
 # Test update state
 @pytest.mark.parametrize("x, y, z, overlap, factor", [(30, 500, 2, 1000, 2)])
 def test_update_state(x, y, z, overlap, factor):
-    state = {'layers': []}
-    state['layers'].append({'source': {'transform': {'matrix': [
+    """test for npos=1 and nchannel=1 only as of now"""
+    state = {"showDefaultAnnotations": False, "layers": [{"source": [{"url": ""}]}]}
+    state['layers'][0]["source"][0].update({'transform': {'matrix': [
             [1, 0, 0, 0],
             [0, 1, 0, 0],
             [0, 0, 1, 0]
-            ]}}})
-    state['layers'][0]['source']['transform']['matrix'][0][3] = 0
-    state['layers'][0]['source']['transform']['matrix'][1][3] = overlap
-    state['layers'][0]['source']['transform']['matrix'][2][3] = 0
+            ]}})
+    state['layers'][0]['source'][0]['transform']['matrix'][0][3] = 0
+    state['layers'][0]['source'][0]['transform']['matrix'][1][3] = overlap
+    state['layers'][0]['source'][0]['transform']['matrix'][2][3] = 0
     stitchoutjson = [{"type": "GRAY16", "index": 0, "file": "test",
                       "position": [],
                       "size": [288, 288, 1960],
@@ -55,7 +56,7 @@ def test_update_state(x, y, z, overlap, factor):
     stitchoutjson[0]['position'].append(x)
     stitchoutjson[0]['position'].append(y)
     stitchoutjson[0]['position'].append(z)
-    update_state.update_positions(state, stitchoutjson, 1, factor)
-    assert state['layers'][0]['source']['transform']['matrix'][0][3] == x*factor
-    assert state['layers'][0]['source']['transform']['matrix'][1][3] == y*factor
-    assert state['layers'][0]['source']['transform']['matrix'][2][3] == z*factor
+    update_state.update_positions(state, stitchoutjson, 1, factor, 1)
+    assert state['layers'][0]['source'][0]['transform']['matrix'][0][3] == x*factor
+    assert state['layers'][0]['source'][0]['transform']['matrix'][1][3] == y*factor
+    assert state['layers'][0]['source'][0]['transform']['matrix'][2][3] == z*factor
