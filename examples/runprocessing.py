@@ -12,7 +12,8 @@ from acpreprocessing.utils.nglink import create_layer, create_nglink, update_sta
 from acpreprocessing.stitching_modules.stitch import create_json, stitch
 import argschema
 from argschema.fields import NumpyArray, Boolean, Float, Int, Str
-from ddbclient import acquisition
+from ddbclient import acquisition, client, utils
+import posixpath
 
 
 def find_entry(response_json):
@@ -26,61 +27,64 @@ def find_entry(response_json):
 start = time.time()
 
 # ping db to find new samples to process
-# acq_client = acquisition.AcquisitionClient("http://bigkahuna.corp.alleninstitute.org/transfer_temp/api/api", subpath="")
-# response_json = acq_client.query(
-#     {
-#         "filter": {"qc_state": "pass"},
-#         "projection": {"_id": False}
-#     })
-# print(response_json)
+acq_client = acquisition.AcquisitionClient("http://bigkahuna.corp.alleninstitute.org/transfer_temp/api/api", subpath="")
 
-# data_loc = "/ACdata/workflow_data/workflow_tiff_dirs_by_scope/iSPIM2/MN7_RH_3_9_S33_220421_high_res/"
+#for testing..
+# url_base = acq_client.base_url
+# # "http://api/acquisition/{acquisition_id}/update_fields"
+# stitching_status_dict = {"stitching_status": "STITCHING_COMPLETE"}
+# acq = response_json[0]
+# print(acq_client.base_url)
+# acq_id = acq["acquisition_id"]
+# url = posixpath.join(
+#                 url_base,
+#                 'acquisition',
+#                 acq_id,
+#                 'stitching_status'
+# utils.put_json(url, "STITCHING_COMPLETE")
 
-# # for each sample:
-# with open(data_loc+'dbpost.json', 'r') as f:
-#     db_md = json.load(f)
-#     spec_id = db_md["specimen_id"]
-#     sess_id = db_md["session_id"]
-#     sec_id = db_md["section_id"]
+# test_acq = {"section_num": "0", "session_id": "220722", "specimen_id": "test", "scope": "iSPIM2", "data_location": {"ACTiff_dir_m2": {"status": "DELETED", "uri": "", "metadata": {}},"ACTiff_dir_ispim": {"status": "COMPLETE", "uri": "qnap-ispim2:/workflow_data/iSPIM2/test_S0_220722_high_res", "metadata": {"contains": ["high_res_Pos0/high_res_0_0.tif", "high_res_Pos0/high_res_0_1.tif", "high_res_Pos0/high_res_0_2.tif"]}}}, "acquisition_metadata": {}, "acquisition_time_utc": "2022-07-22T19:50:03.717883+00:00", "acquisition_id": ""}
+# acq_client.post(test_acq)
 
-# acq_client = acquisition.AcquisitionClient("http://bigkahuna.corp.alleninstitute.org/transfer_temp/api/api", subpath="")
-# response_json = acq_client.query(
-#     {
-#         "filter": {"specimen_id": spec_id,"session_id": sess_id, 'section_num': sec_id},
-#         "projection": {"_id": False}
-#     })
-# if not response_json:
-#     print("Error: Could not find acquisition")
-# else:
-#     info = find_entry(response_json)
-#     # print(info)
-#     if not info:
-#         "Error: Unable to find high_res data location"
-#     else:
-#         dir_ACdata = info[0]
-#         rootDir = "/ACdata"+dir_ACdata.split(':')[1]
-#         # print(rootDir)
-#         scope = info[1]
-#         dirname = rootDir.split("/")[-1]
-#         print(dirname)
+response_json = acq_client.query(
+{
+    "filter": {
+        "stitching_status": {"status": {"$eq": "pending"}}
+        # "specimen_id": "test"
+    },
+    "projection": {
+        "specimen_id": True,
+        "session_id": True,
+        "section_num": True,
+        "scope": True,
+        "acquisition_id": True,
+        "data_location": True,
+        "stitching_status": True
+    }
+})
+print(response_json)
 
-# run_input = {
-#     "outputDir": "/ACdata/processed/"+scope+"/"+dirname+"/",
-#     "rootDir": rootDir + "/",
-#     "ds_name": dirname,
-#     "mip_level": 3,
-#     "md_filename": rootDir+"/acqinfo_metadata.json",
-#     "consolidate_pos": True,
-#     "reverse_stitch": False,
-#     "deskew": False
-# }
+if not response_json:
+    print("Error: Could not find acquisition")
+else:
+    info = find_entry(response_json)
+    # print(info)
+    if not info:
+        "Error: Unable to find high_res data location"
+    else:
+        dir_ACdata = info[0]
+        rootDir = "/ACdata"+dir_ACdata.split(':')[1]
+        # print(rootDir)
+        scope = info[1]
+        dirname = rootDir.split("/")[-1]
+        print(dirname)
 
 run_input = {
-    "outputDir": "/ACdata/processed/iSPIM2/MN7_RH_3_9_S19_220606_high_res/",
-    "rootDir": "/ispim2_data/workflow_data/iSPIM2/MN7_RH_3_9_S19_220606_high_res/",
-    "ds_name": "MN7_RH_3_9_S19_220606_high_res",
+    "outputDir": "/ACdata/processed/"+scope+"/"+dirname+"/",
+    "rootDir": rootDir + "/",
+    "ds_name": dirname,
     "mip_level": 3,
-    "md_filename": "/ispim2_data/workflow_data/iSPIM2/MN7_RH_3_9_S19_220606_high_res/acqinfo_metadata.json",
+    "md_filename": rootDir+"/acqinfo_metadata.json",
     "consolidate_pos": True,
     "reverse_stitch": False,
     "deskew": False,
@@ -92,8 +96,8 @@ run_input = {
     "stitched_nglink": "stitched-nglink-test.txt",
     "stitched_state": "stitched-state.json"
 }
-dirname="MN7_RH_3_9_S19_220606_high_res"
 print(run_input)
+
 
 class RunModulesSchema(argschema.ArgSchema):
     outputDir = Str(required=True, description='output directory')
