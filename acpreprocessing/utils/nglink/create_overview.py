@@ -7,7 +7,7 @@ example_input = {
     "run_input": {
         "outputDir": "/ACdata/processed/demoModules/output/",
         "rootDir": "/ACdata/processed/demoModules/raw/",
-        "ds_name": MN6_2_S83_220531_high_res,
+        "ds_name": "MN6_2_S83_220531_high_res",
         "mip_level": 3,
         "md_filename": "/ACdata/processed/demoModules/raw/acqinfo_metadata.json",
         "consolidate_pos": True,
@@ -28,33 +28,35 @@ class Overview(argschema.ArgSchemaParser):
             state = {"showDefaultAnnotations": False, "layers": []}
         for channel in range(n_channels):
             for pos in range(n_pos):
-                if self.run["run_input"]["consolidate_pos"]:
+                if self.args["run_input"]["consolidate_pos"]:
                     layer_input = {
                             "position": 0,
-                            "outputDir": self.run["run_input"]['outputDir']+dirname+".n5/channel"+str(channel),
-                            "rootDir": self.run["run_input"]['rootDir'],
-                            "reverse": self.run["run_input"]["reverse_stitch"],
+                            "outputDir": self.args["run_input"]['outputDir']+dirname+".n5/channel"+str(channel),
+                            "rootDir": self.args["run_input"]['rootDir'],
+                            "reverse": self.args["run_input"]["reverse_stitch"],
                             "deskew": deskew,
-                            "channel": channel
+                            "channel": channel,
+                            "resolution": dirname.split("_")[-1]
                             }
                     create_layer.NgLayer(input_data=layer_input).run_consolidate(state)
                     break
                 else:
                     layer_input = {
                         "position": pos,
-                        "outputDir": self.run["run_input"]['outputDir']+dirname+".n5/channel"+str(channel),
-                        "rootDir": self.run["run_input"]['rootDir'],
-                        "reverse": self.run["run_input"]["reverse_stitch"],
+                        "outputDir": self.args["run_input"]['outputDir']+dirname+".n5/channel"+str(channel),
+                        "rootDir": self.args["run_input"]['rootDir'],
+                        "reverse": self.args["run_input"]["reverse_stitch"],
                         "deskew": deskew,
-                        "channel": channel
+                        "channel": channel,
+                        "resolution": dirname.split("_")[-1]
                         }
                     create_layer.NgLayer(input_data=layer_input).run(state)
 
         # Create nglink from created state and estimated positions (overview link)
         nglink_input = {
-                "outputDir": self.run["run_input"]['outputDir'],
-                "fname": self.run["run_input"]["nglink_name"],
-                "state_json": self.run["run_input"]["state_json"]
+                "outputDir": self.args["run_input"]['outputDir'],
+                "fname": self.args["run_input"]["nglink_name"],
+                "state_json": self.args["run_input"]["state_json"]
                 }
         if not os.path.exists(os.path.join(nglink_input['outputDir'], nglink_input['fname'])):
             create_nglink.Nglink(input_data=nglink_input).run(state)
