@@ -1,24 +1,25 @@
-from distutils.util import run_2to3
-from pathlib import Path
-from statistics import StatisticsError
+"""
+Script to run stitching modules. 
+Creates overview and stitched links for unprocessed acquisitions using the ddbclient
+
+last updated: 2022/08/17
+@author: shbhas
+"""
 import time
 import os
-from urllib import response
 import numpy as np
-import json
-from acpreprocessing.utils import io
 from acpreprocessing.utils.metadata import parse_metadata
 from acpreprocessing.stitching_modules.convert_to_n5 import acquisition_dir_to_n5_dir
-from acpreprocessing.stitching_modules.multiscale_viewing  import multiscale
-from acpreprocessing.utils.nglink import create_layer, create_nglink, update_state, create_overview
+from acpreprocessing.utils.nglink import update_state, create_overview
 from acpreprocessing.stitching_modules.stitch import create_json, stitch
 import argschema
-from argschema.fields import NumpyArray, Boolean, Float, Int, Str
+from argschema.fields import Boolean, Int, Str
 from ddbclient import acquisition, client, utils
 import posixpath
 
 
 def find_entry(response_json):
+    """returns subset of responses that are high res (filters out overviews)"""
     for entry in response_json:
         uri = entry["data_location"]["ACTiff_dir_ispim"]["uri"]
         if uri.find("high_res") != -1:
@@ -128,7 +129,6 @@ class RunModules(argschema.ArgSchemaParser):
     default_schema = RunModulesSchema
 
     def run(self):
-        
         # set variables needed for processing
         md_input = {
                 "rootDir": run_input['rootDir'],
@@ -147,6 +147,7 @@ class RunModules(argschema.ArgSchemaParser):
             print("No positions to process")
             return -1
 
+
         # if not converted to n5, do so
         convert_input = {
             "input_dir": f"{run_input['rootDir']}",
@@ -159,12 +160,14 @@ class RunModules(argschema.ArgSchemaParser):
         else:
             print(f"Skipping conversion, {dirname} directory already exists") 
 
+
         # Create overview nglink, initialize state for each channel
         state = {"showDefaultAnnotations": False, "layers": []}
         overview_input={
             "run_input": run_input
         }
         create_overview.Overview(input_data=overview_input).run(n_channels, n_pos, dirname, deskew, state=state)
+
 
         # Create Stitch.json which is input for stitching code (using channel 0)
         create_json_input = {
@@ -177,7 +180,6 @@ class RunModules(argschema.ArgSchemaParser):
                 "stitch_json": run_input['stitch_json']
                 }
         create_json.CreateJson(input_data=create_json_input).run()
-
         # Run Stitching with stitch.json
         stitchjsonpath = os.path.join(create_json_input['outputDir'], run_input['stitch_json'])
         stitch_input = {
@@ -188,6 +190,7 @@ class RunModules(argschema.ArgSchemaParser):
             stitch.Stitch(input_data=stitch_input).run()
         else:
             print("Skipped stitching - already computed")
+
 
         # update state json with stitched coord
         update_state_input = {

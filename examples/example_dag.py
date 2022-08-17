@@ -1,5 +1,9 @@
+"""
+Example dag for automation of stitching
+last updated: 2022/08/17
+@author: shbhas
+"""
 from datetime import datetime, timedelta
-import logging
 from textwrap import dedent
 
 from airflow import DAG
