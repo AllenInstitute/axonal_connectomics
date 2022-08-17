@@ -2,7 +2,7 @@ pillow
 tifffile==2020.7.4
 scikit-image
 numpy
-imageio
+imageio<2.21
 matplotlib
 argschema
 natsort
