@@ -1,4 +1,6 @@
+from distutils.util import run_2to3
 from pathlib import Path
+from statistics import StatisticsError
 import time
 import os
 from urllib import response
@@ -8,7 +10,7 @@ from acpreprocessing.utils import io
 from acpreprocessing.utils.metadata import parse_metadata
 from acpreprocessing.stitching_modules.convert_to_n5 import acquisition_dir_to_n5_dir
 from acpreprocessing.stitching_modules.multiscale_viewing  import multiscale
-from acpreprocessing.utils.nglink import create_layer, create_nglink, update_state
+from acpreprocessing.utils.nglink import create_layer, create_nglink, update_state, create_overview
 from acpreprocessing.stitching_modules.stitch import create_json, stitch
 import argschema
 from argschema.fields import NumpyArray, Boolean, Float, Int, Str
@@ -126,24 +128,26 @@ class RunModules(argschema.ArgSchemaParser):
     default_schema = RunModulesSchema
 
     def run(self):
-
+        
+        # set variables needed for processing
         md_input = {
                 "rootDir": run_input['rootDir'],
                 "fname": run_input['md_filename']
                 }
-        md = parse_metadata.ParseMetadata(input_data=md_input).get_md()
+        # md = parse_metadata.ParseMetadata(input_data=md_input).get_md()
         # dsname = md["stripdirs"][0].split("_Pos")[0]
         # run_input["ds_name"]=dsname
-        if (md["positions"][0]["y_start_um"])>(md["positions"][1]["y_start_um"]):
-            run_input["reverse_stitch"] = True
+        run_input["reverse_stitch"]=parse_metadata.ParseMetadata(input_data=md_input).get_direction()
         deskew = 0
         if run_input['deskew']:
             deskew = np.cos(parse_metadata.ParseMetadata(input_data=md_input).get_angle())
-        n_channels = md["channels"]
+        n_channels = parse_metadata.ParseMetadata(input_data=md_input).get_number_of_channels()
         n_pos = parse_metadata.ParseMetadata(input_data=md_input).get_number_of_positions()
         if n_pos == 0:
             print("No positions to process")
             return -1
+
+        # if not converted to n5, do so
         convert_input = {
             "input_dir": f"{run_input['rootDir']}",
             "output_dir": f"{run_input['outputDir']}",
@@ -157,40 +161,10 @@ class RunModules(argschema.ArgSchemaParser):
 
         # Create overview nglink, initialize state for each channel
         state = {"showDefaultAnnotations": False, "layers": []}
-        for channel in range(n_channels):
-            for pos in range(n_pos):
-                if run_input["consolidate_pos"]:
-                    layer_input = {
-                            "position": 0,
-                            "outputDir": run_input['outputDir']+dirname+".n5/channel"+str(channel),
-                            "rootDir": run_input['rootDir'],
-                            "reverse": run_input["reverse_stitch"],
-                            "deskew": deskew,
-                            "channel": channel
-                            }
-                    create_layer.NgLayer(input_data=layer_input).run_consolidate(state)
-                    break
-                else:
-                    layer_input = {
-                        "position": pos,
-                        "outputDir": run_input['outputDir']+dirname+".n5/channel"+str(channel),
-                        "rootDir": run_input['rootDir'],
-                        "reverse": run_input["reverse_stitch"],
-                        "deskew": deskew,
-                        "channel": channel
-                        }
-                    create_layer.NgLayer(input_data=layer_input).run(state)
-
-        # Create nglink from created state and estimated positions (overview link)
-        nglink_input = {
-                "outputDir": run_input['outputDir'],
-                "fname": run_input["nglink_name"],
-                "state_json": run_input["state_json"]
-                }
-        if not os.path.exists(os.path.join(nglink_input['outputDir'], nglink_input['fname'])):
-            create_nglink.Nglink(input_data=nglink_input).run(state)
-        else:
-            print("nglink txt file already exists!")
+        overview_input={
+            "run_input": run_input
+        }
+        create_overview.Overview(input_data=overview_input).run(n_channels, n_pos, dirname, deskew, state=state)
 
         # Create Stitch.json which is input for stitching code (using channel 0)
         create_json_input = {
