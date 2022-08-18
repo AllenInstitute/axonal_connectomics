@@ -22,11 +22,14 @@ class CreateJsonSchema(argschema.ArgSchema):
                     description='downsample level to perform stitching with')
     reverse = Boolean(required=False, description='Whether position strips should be placed in reverse order')
     dirname = Str(required=True, description="name of dataset folder")
+    stitch_channel = Int(required=False,default=0, description="Which channel to compute stitching with")
+    stitch_json = Str(required=False,default="stitch.json", description="Name of stitching parameters json file")
 
 
-# Create specific position strip information needed for stitching
-# (including approximate coordinates using overlap)
 def get_pos_info(downdir, overlap, pr, ind, mip_level, reverse):
+    """Create specific position strip information needed for stitching
+    (including approximate tile coordinates using overlap)
+    """
     factor = 2**mip_level
     att = io.read_json(downdir+"attributes.json")
     sz = att["dimensions"]
@@ -57,14 +60,14 @@ class CreateJson(argschema.ArgSchemaParser):
             # downdir = self.args['outputDir'] + f"/Pos{pos}.n5/multirespos{pos}/s2/"
             downdir = posixpath.join(
                     self.args["outputDir"]+self.args["dirname"]+".n5/",
-                    f"setup{pos}/timepoint0/s{self.args['mip_level']}/")
+                    f"channel{self.args['stitch_channel']}/setup{pos}/timepoint0/s{self.args['mip_level']}/")
             # print(downdir)
             pos_info = get_pos_info(downdir, md.get_overlap(),
                                     md.get_pixel_resolution(), pos,
                                     self.args['mip_level'], self.args["reverse"])
             stitching_json.append(pos_info)
 
-        fout = os.path.join(self.args['outputDir'], 'stitch.json')
+        fout = os.path.join(self.args['outputDir'], self.args['stitch_json'])
         io.save_metadata(fout, stitching_json)
 
 

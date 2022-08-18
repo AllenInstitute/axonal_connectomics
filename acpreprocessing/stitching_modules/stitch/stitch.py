@@ -8,6 +8,7 @@ example_stitch = {
 
 
 def stitch(stitchjson):
+    """Call to stitching-spark stitch script"""
     subprocess.call(["python",
                      "/ACdata/stitching-spark/startup-scripts/spark-local/"
                      "stitch.py", "-i", stitchjson])
