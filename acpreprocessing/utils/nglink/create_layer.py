@@ -6,7 +6,8 @@ example_input = {
     "outputDir": "/ACdata/processed/demoModules/output/",
     "position": 2,
     "rootDir": "/ACdata/processed/demoModules/raw/",
-    "md_filename": "acqinfo_metadata.json"
+    "md_filename": "acqinfo_metadata.json",
+    "resolution": "high_res"
     }
 
 
@@ -65,6 +66,7 @@ class CreateLayerSchema(argschema.ArgSchema):
     reverse = Boolean(required=False,default=False, description="Whether to reverse direction of stitching or not")
     deskew = Int(required=False,default=0, description="deskew factor (0 if want to leave undeskewed)")
     channel = Int(required=True, default=1, description="channel number")
+    resolution = Str(default="high_res", description="whether data is high_res or overview")
 
 class NgLayer(argschema.ArgSchemaParser):
     default_schema = CreateLayerSchema
@@ -79,8 +81,10 @@ class NgLayer(argschema.ArgSchemaParser):
         md = parse_metadata.ParseMetadata(input_data=md_input)
         pr = md.get_pixel_resolution()
         sz = md.get_size()
-        ypos = sz[1]-md.get_overlap()  # subtract height of image by pixel overlap to get yposition
-
+        if self.args["resolution"] == "high_res":
+            ypos = sz[1]-md.get_overlap()  # subtract height of image by pixel overlap to get yposition
+        elif self.args["resolution"] == "overview":
+            ypos = sz[1]
         if self.args["reverse"]:
             layer0 = create_layer(self.args['outputDir'], self.args['position'],
                                   -1*ypos, pr, self.args['deskew'], self.args['channel'])
@@ -100,7 +104,10 @@ class NgLayer(argschema.ArgSchemaParser):
         pr = md.get_pixel_resolution()
         sz = md.get_size()
         n_pos = md.get_number_of_positions()
-        ypos = sz[1]-md.get_overlap()  # subtract height of image by pixel overlap to get yposition
+        if self.args["resolution"] == "high_res":
+            ypos = sz[1]-md.get_overlap()  # subtract height of image by pixel overlap to get yposition
+        elif self.args["resolution"] == "overview":
+            ypos = sz[1]
         # Create the layer
         if self.args["reverse"]:
             layer = create_layer(self.args['outputDir'], self.args['position'],

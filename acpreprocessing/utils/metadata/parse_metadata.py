@@ -42,6 +42,17 @@ class ParseMetadata(argschema.ArgSchemaParser):
         """Return number of position strips in section"""
         return len(self.md['positions'])
 
+    def get_number_of_channels(self):
+        """Return number of channels of data for section"""
+        return self.md['channels']
+
+    def get_direction(self):
+        """Get direction of y direction for position strips in section"""
+        if (self.md["positions"][0]["y_start_um"]) > (self.md["positions"][1]["y_start_um"]):
+            return True
+        else:
+            return False
+    
     def get_size(self):
         """Get tiff width, height, and number of frames in stack"""
         sz = [self.md['settings']['image_size_xy'][0],
