@@ -1,7 +1,7 @@
 import os
 import argschema
 from argschema.fields import NumpyArray, Int, Str
-from acpreprocessing.stitching_modules.metadata import parse_metadata
+from acpreprocessing.utils.metadata import parse_metadata
 from acpreprocessing.utils import io
 
 example_input = {
@@ -23,14 +23,14 @@ class MultiscaleSchema(argschema.ArgSchema):
                 description='name of metadata json file')
 
 
-# fix n5 version in attributes json (overwrites)
 def fix_version(outputRoot):
+    """fix n5 version in attributes json (overwrites)"""
     att = {"n5": "2.5.0"}
     io.save_metadata(outputRoot+f"/attributes.json", att)
 
 
-# add downsampling factor key/value to attributes json
 def add_downsampling_factors(outputRoot, pos, max_mip):
+    """add downsampling factor key/value to attributes json"""
     for mip_level in range(1, max_mip+1):
         factor = [2**mip_level, 2**mip_level, 2**mip_level]
         d = {"downsamplingFactors": factor}
@@ -42,8 +42,8 @@ def add_downsampling_factors(outputRoot, pos, max_mip):
                          att)
 
 
-# add attribute file to mutirespos folders and create symlinks
 def add_multiscale_attributes(outputRoot, pixelResolution, position, max_mip):
+    """add attribute file to mutirespos folders and create symlinks"""
     multires_att = os.path.join(outputRoot +
                                 f"/multirespos{position}/attributes.json")
     if not os.path.isfile(multires_att):

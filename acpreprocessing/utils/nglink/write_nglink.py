@@ -2,6 +2,7 @@ import os
 import json
 import urllib.parse
 from acpreprocessing.utils import io, make_tinyurl
+import requests
 
 
 # Creates neuroglancer url from statejson
@@ -14,9 +15,17 @@ def make_neuroglancer_url(state,
     return new_url
 
 
+def make_neuroglancer_url_vneurodata(state,
+                                     base_url="http://bigkahuna.corp.alleninstitute.org/neuroglancer",
+                                     state_url="https://json.neurodata.io/v1"):
+    r = requests.post(state_url, json=state)
+    json_url = r.json()["uri"]
+    link = f"{base_url}/#!{json_url}"
+    return link
+
+
 # Writes url to a text file in output directory
-def write_url(outputDir, state, fname):
-    encoded_url = make_neuroglancer_url(state)
+def write_url(outputDir, fname, encoded_url):
     ff = os.path.join(outputDir, fname)
     io.save_file(ff, encoded_url)
     print("Done! Neuroglancer Link:")
