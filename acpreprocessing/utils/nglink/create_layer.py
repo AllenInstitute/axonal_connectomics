@@ -81,10 +81,12 @@ class NgLayer(argschema.ArgSchemaParser):
         md = parse_metadata.ParseMetadata(input_data=md_input)
         pr = md.get_pixel_resolution()
         sz = md.get_size()
-        if self.args["resolution"] == "high_res":
-            ypos = sz[1]-md.get_overlap()  # subtract height of image by pixel overlap to get yposition
-        elif self.args["resolution"] == "overview":
-            ypos = sz[1]
+        #if self.args["resolution"] == "high_res":
+        #if "high_res" in self.args["outputDir"]:
+        #ypos = sz[1]-md.get_overlap()  # subtract height of image by pixel overlap to get yposition
+        #elif self.args["resolution"] == "overview":
+        #else:
+        ypos = sz[1]
         if self.args["reverse"]:
             layer0 = create_layer(self.args['outputDir'], self.args['position'],
                                   -1*ypos, pr, self.args['deskew'], self.args['channel'])
@@ -104,9 +106,11 @@ class NgLayer(argschema.ArgSchemaParser):
         pr = md.get_pixel_resolution()
         sz = md.get_size()
         n_pos = md.get_number_of_positions()
-        if self.args["resolution"] == "high_res":
+        #if self.args["resolution"] == "high_res":
+        if "high_res" in self.args["outputDir"]:
             ypos = sz[1]-md.get_overlap()  # subtract height of image by pixel overlap to get yposition
-        elif self.args["resolution"] == "overview":
+        #elif self.args["resolution"] == "overview":
+        else:
             ypos = sz[1]
         # Create the layer
         if self.args["reverse"]:
