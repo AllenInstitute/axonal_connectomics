@@ -67,3 +67,6 @@ class PixelShiftDeskew(object):
             block3d[:,y,:] = self.slice1d[n%subb,y,:].reshape((zdim,xdim))
             self.slice1d[n%subb,y,:]=0
         return block3d
+    
+    def reshape_joined_shapes(self,joined_shapes):
+        return

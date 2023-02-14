@@ -15,6 +15,7 @@ import z5py
 import argschema
 
 import acpreprocessing.utils.convert
+from acpreprocessing.utils.psdeskew import PixelShiftDeskew as psd
 
 
 def iterate_chunks(it, slice_length):
@@ -509,7 +510,7 @@ def write_mimgfns_to_n5(
         mip_dsfactor=(2, 2, 2), chunk_size=(64, 64, 64),
         concurrency=10, slice_concurrency=1,
         compression="raw", dtype="uint16", lvl_to_mip_kwargs=None,
-        interleaved_channels=1, channel=0, shift_deskew=False):
+        interleaved_channels=1, channel=0, deskew_kwargs={}):
     """write a stack represented by an iterator of multi-image files as an n5
     volume
 
@@ -544,8 +545,8 @@ def write_mimgfns_to_n5(
         number of channels interleaved in the tiff files (default 1)
     channel : int, optional
         channel from which interleaved data should be read (default 0)
-    shift_deskew : bool, optional
-        flag for running pixel shifting deskew on tiff data (default False)
+    deskew_kwargs : dict, optional
+        parameters for running pixel shifting deskew on tiff data (default {})
     """
     group_attributes = ([] if group_attributes is None else group_attributes)
 
@@ -554,8 +555,8 @@ def write_mimgfns_to_n5(
         interleaved_channels=interleaved_channels, channel=channel)
     # TODO also get dtype from mimg
     # TODO DESKEW: reshape joined_shapes to deskewed dimensions
-    if shift_deskew:
-        deskew_reshape_joined_shapes(joined_shapes)
+    if deskew_kwargs:
+        joined_shapes = psd.reshape_joined_shapes(joined_shapes,**deskew_kwargs)
 
     slice_length = chunk_size[0]
     # TODO DESKEW: does this generally work regardless of skew?
