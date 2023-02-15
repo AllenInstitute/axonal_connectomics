@@ -24,34 +24,49 @@ class ParseMetadata(argschema.ArgSchemaParser):
         self.rootDir = mod.args["rootDir"]
         self.md = io.read_json(os.path.join(self.rootDir, mod.args["fname"]))
 
-    # Return metadata json
     def get_md(self):
+        """Return entire metadata json"""
         return self.md
 
-    # Return x,y,z pixel resolution in um
     def get_pixel_resolution(self):
+        """Return x,y,z pixel resolution in um"""
         xy = self.md['settings']['pixel_spacing_um']
         z = self.md['positions'][1]['x_step_um']
         return [xy, xy, z]
 
-    # Return strip overlap in pixels
     def get_overlap(self):
+        """Return strip overlap in pixels - needed for stitching input"""
         return self.md['settings']['strip_overlap_pixels']
 
-    # Return number of position strips
     def get_number_of_positions(self):
+        """Return number of position strips in section"""
         return len(self.md['positions'])
 
-    # Get tiff stack width, height, and number of frames
+    def get_number_of_channels(self):
+        """Return number of channels of data for section"""
+        return self.md['channels']
+
+    def get_direction(self):
+        """Get direction of y direction for position strips in section"""
+        if (self.md["positions"][0]["y_start_um"]) > (self.md["positions"][1]["y_start_um"]):
+            return True
+        else:
+            return False
+    
     def get_size(self):
+        """Get tiff width, height, and number of frames in stack"""
         sz = [self.md['settings']['image_size_xy'][0],
               self.md['settings']['image_size_xy'][1],
               self.md['settings']['frames_per_file']]
         return sz
 
-    # Get data type
     def get_dtype(self):
+        """Get data type (uint8, uint16, ...)"""
         return self.md['settings']['dtype']
+
+    def get_angle(self):
+        """Get imaging sheet angle - needed for deskewing"""
+        return self.md['settings']['sheet_angle']
 
 
 if __name__ == '__main__':
