@@ -506,6 +506,7 @@ def iterate_mip_levels_from_mimgfns(
             # KT deskew level 0 chunk
             if deskew_kwargs:
                 chunk = numpy.transpose(psd.deskew_block(chunk,chunk_index,**deskew_kwargs),(2,1,0))
+                print(chunk.shape)
             end_index = start_index + chunk.shape[0]
             yield MIPArray(lvl, chunk, start_index, end_index)
             start_index += chunk.shape[0]
