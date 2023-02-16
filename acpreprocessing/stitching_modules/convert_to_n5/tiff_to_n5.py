@@ -698,8 +698,9 @@ class TiffDirToN5(argschema.ArgSchemaParser):
             #lvl_to_mip_kwargs=self.args["lvl_to_mip_kwargs"],
             # FIXME not sure why this dict errors
             lvl_to_mip_kwargs={},
-            deskew_options={'stride':1,
-                            'deskewFlip':False,
+            # TODO input for deskew parameters (default is ispim2)
+            deskew_options={'stride':2,
+                            'deskewFlip':True,
                             'dtype':'uint16'})
 
 
