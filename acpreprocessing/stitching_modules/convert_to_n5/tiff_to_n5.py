@@ -514,7 +514,7 @@ def iterate_mip_levels_from_mimgfns(
 
 def write_mimgfns_to_n5(
         mimgfns, output_n5, group_names, group_attributes=None, max_mip=0,
-        mip_dsfactor=(2, 2, 2), chunk_size=(64, 64, 64),
+        mip_dsfactor=(2, 2, 2), chunk_size=(32, 32, 32),
         concurrency=10, slice_concurrency=1,
         compression="raw", dtype="uint16", lvl_to_mip_kwargs=None,
         interleaved_channels=1, channel=0, deskew_options={'stride':2,
@@ -570,6 +570,7 @@ def write_mimgfns_to_n5(
                                             **deskew_options
                                             )
         joined_shapes = psd.reshape_joined_shapes(joined_shapes,**deskew_kwargs)
+        print('deskewed joined shapes is ' + str(joined_shapes))
     else:
         slice_length = chunk_size[0]
         deskew_kwargs = {} 
@@ -610,6 +611,7 @@ def write_mimgfns_to_n5(
             ds_lvl.attrs["downsamplingFactors"] = dsfactors
             mip_ds[mip_lvl] = ds_lvl
             scales.append(dsfactors)
+            print(ds_lvl.shape)
         g.attrs["scales"] = scales
         group_objs[0].attrs["downsamplingFactors"] = scales
         group_objs[0].attrs["dataType"] = dtype
