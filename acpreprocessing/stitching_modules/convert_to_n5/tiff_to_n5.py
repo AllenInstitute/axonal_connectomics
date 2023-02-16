@@ -564,7 +564,7 @@ def write_mimgfns_to_n5(
         interleaved_channels=interleaved_channels, channel=channel)
     # TODO also get dtype from mimg
     # TODO KT DESKEW: reshape joined_shapes to deskewed dimensions
-    if deskew_options:
+    if True:
         slice_length = int(chunk_size[0]/deskew_options['stride'])
         deskew_kwargs = psd.psdeskew_kwargs(skew_dims_zyx=(slice_length,joined_shapes[1],joined_shapes[2]),
                                             **deskew_options
