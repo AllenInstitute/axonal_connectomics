@@ -15,7 +15,7 @@ import z5py
 import argschema
 
 import acpreprocessing.utils.convert
-from acpreprocessing.utils.psdeskew import PixelShiftDeskew as psd
+import acpreprocessing.utils.psdeskew as psd
 
 
 def iterate_chunks(it, slice_length):
@@ -409,7 +409,7 @@ class MIPArray:
 def iterate_mip_levels_from_mimgfns(
         mimgfns, lvl, block_size, downsample_factor,
         downsample_method=None, lvl_to_mip_kwargs=None,
-        interleaved_channels=1, channel=0):
+        interleaved_channels=1, channel=0, deskew_kwargs={}):
     """recursively generate MIPmap levels from an iterator of multi-image files
 
     Parameters
@@ -431,7 +431,9 @@ def iterate_mip_levels_from_mimgfns(
         number of channels interleaved in the tiff files (default 1)
     channel : int, optional
         channel from which interleaved data should be read (default 0)
-
+    deskew_kwargs : dict, optional
+        parameters for pixel shifting deskew
+    
     Yields
     ------
     ma : acpreprocessing.stitching_modules.convert_to_n5.tiff_to_n5.MipArray
@@ -441,6 +443,7 @@ def iterate_mip_levels_from_mimgfns(
                          else lvl_to_mip_kwargs)
     mip_kwargs = lvl_to_mip_kwargs.get(lvl, {})
     start_index = 0
+    chunk_index = 0
     if lvl > 0:
         num_chunks = downsample_factor[0]
 
@@ -500,9 +503,13 @@ def iterate_mip_levels_from_mimgfns(
                 mimgfns, block_size, pad=False,
                 interleaved_channels=interleaved_channels,
                 channel=channel):
-            end_index = start_index + chunk.shape[0]
-            yield MIPArray(lvl, chunk, start_index, end_index)
-            start_index += chunk.shape[0]
+            # KT deskew level 0 chunk
+            if deskew_kwargs:
+                dskw_chunk = numpy.transpose(psd.deskew_block(chunk,chunk_index,**deskew_kwargs),(2,1,0))
+            end_index = start_index + dskw_chunk.shape[0]
+            yield MIPArray(lvl, dskw_chunk, start_index, end_index)
+            start_index += dskw_chunk.shape[0]
+            chunk_index += 1
 
 
 def write_mimgfns_to_n5(
@@ -510,7 +517,7 @@ def write_mimgfns_to_n5(
         mip_dsfactor=(2, 2, 2), chunk_size=(64, 64, 64),
         concurrency=10, slice_concurrency=1,
         compression="raw", dtype="uint16", lvl_to_mip_kwargs=None,
-        interleaved_channels=1, channel=0, deskew_kwargs={}):
+        interleaved_channels=1, channel=0, deskew_options={}):
     """write a stack represented by an iterator of multi-image files as an n5
     volume
 
@@ -545,8 +552,8 @@ def write_mimgfns_to_n5(
         number of channels interleaved in the tiff files (default 1)
     channel : int, optional
         channel from which interleaved data should be read (default 0)
-    deskew_kwargs : dict, optional
-        parameters for running pixel shifting deskew on tiff data (default {})
+    deskew_options : dict, optional
+        parameters to run pixel shifting deskew (default {})
     """
     group_attributes = ([] if group_attributes is None else group_attributes)
 
@@ -554,11 +561,17 @@ def write_mimgfns_to_n5(
         mimgfns, concurrency=concurrency,
         interleaved_channels=interleaved_channels, channel=channel)
     # TODO also get dtype from mimg
-    # TODO DESKEW: reshape joined_shapes to deskewed dimensions
-    if deskew_kwargs:
+    # TODO KT DESKEW: reshape joined_shapes to deskewed dimensions
+    if deskew_options:
+        slice_length = int(chunk_size[0]/deskew_options['stride'])
+        deskew_kwargs = psd.psdeskew_kwargs(skew_dims_zyx=(slice_length,joined_shapes[1],joined_shapes[2]),
+                                            **deskew_options
+                                            )
         joined_shapes = psd.reshape_joined_shapes(joined_shapes,**deskew_kwargs)
+    else:
+        slice_length = chunk_size[0]
+        deskew_kwargs = {} 
 
-    slice_length = chunk_size[0]
     # TODO DESKEW: does this generally work regardless of skew?
 
     workers = concurrency // slice_concurrency
@@ -605,7 +618,7 @@ def write_mimgfns_to_n5(
                     mimgfns, max_mip, slice_length, mip_dsfactor,
                     lvl_to_mip_kwargs=lvl_to_mip_kwargs,
                     interleaved_channels=interleaved_channels,
-                    channel=channel):
+                    channel=channel,deskew_kwargs=deskew_kwargs):
                 futs.append(e.submit(
                     dswrite_chunk, mip_ds[miparr.lvl],
                     miparr.start, miparr.end, miparr.array))
@@ -667,6 +680,7 @@ class TiffDirToN5InputParameters(argschema.ArgSchema,
     out_n5 = argschema.fields.Str(required=True)
     interleaved_channels = argschema.fields.Int(required=False, deafult=1)
     channel = argschema.fields.Int(required=False, default=0)
+    
 
 
 class TiffDirToN5(argschema.ArgSchemaParser):
@@ -681,7 +695,10 @@ class TiffDirToN5(argschema.ArgSchemaParser):
             self.args["chunk_size"],
             concurrency=self.args["concurrency"],
             compression=self.args["compression"],
-            lvl_to_mip_kwargs=self.args["lvl_to_mip_kwargs"])
+            lvl_to_mip_kwargs=self.args["lvl_to_mip_kwargs"],
+            deskew_options={'stride':1,
+                            'deskewFlip':False,
+                            'dtype':'uint16'})
 
 
 if __name__ == "__main__":
