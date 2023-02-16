@@ -517,7 +517,9 @@ def write_mimgfns_to_n5(
         mip_dsfactor=(2, 2, 2), chunk_size=(64, 64, 64),
         concurrency=10, slice_concurrency=1,
         compression="raw", dtype="uint16", lvl_to_mip_kwargs=None,
-        interleaved_channels=1, channel=0, deskew_options={}):
+        interleaved_channels=1, channel=0, deskew_options={'stride':2,
+                                                           'deskewFlip':True,
+                                                           'dtype':'uint16'}):
     """write a stack represented by an iterator of multi-image files as an n5
     volume
 

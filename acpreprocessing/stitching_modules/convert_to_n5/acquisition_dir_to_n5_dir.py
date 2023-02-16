@@ -94,10 +94,6 @@ def acquisition_to_n5(acquisition_dir, out_dir, concurrency=5,
                         setup_group_attributes],
                     interleaved_channels=interleaved_channels,
                     channel=channel_idx,
-                    # TODO input deskew options
-                    deskew_options={'stride':2,
-                                    'deskewFlip':True,
-                                    'dtype':'uint16'},
                     **n5_generation_kwargs
                 ))
 
