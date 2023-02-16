@@ -48,11 +48,12 @@ def psdeskew_kwargs(skew_dims_zyx,stride=1,deskewFlip=False,dtype='uint16',**kwa
               'blockdims' : blockdims,
               'subblocks' : subblocks,
               'flip' : deskewFlip,
-              'dtype' : dtype
+              'dtype' : dtype,
+              'chunklength': blockx
               }
     return kwargs
         
-def deskew_block(blockData,n,dsi,si,slice1d,blockdims,subblocks,flip,dtype,*args,**kwargs):
+def deskew_block(blockData,n,dsi,si,slice1d,blockdims,subblocks,flip,dtype,chunklength,*args,**kwargs):
     """deskew a data chunk in sequence with prior chunks
     
     Parameters
@@ -67,8 +68,10 @@ def deskew_block(blockData,n,dsi,si,slice1d,blockdims,subblocks,flip,dtype,*args
     zdim = block3d.shape[0]
     ydim = block3d.shape[1]
     xdim = block3d.shape[2]
-    print('deskewing block ' + str(n))
-    print(blockData.shape)
+    print('deskewing block ' + str(n) + ' with shape ' + str(blockData.shape))
+    if blockData.shape[0] < chunklength:
+        print('block is short, filling with zeros')
+        blockData = np.concatenate((blockData,np.zeros((int(chunklength-blockData.shape[0]),blockData.shape[1],blockData.shape[2]))))
     order = (np.arange(subb)+n)%subb
     for y in range(ydim):
         for i,o in enumerate(order):

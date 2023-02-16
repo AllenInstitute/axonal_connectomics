@@ -505,10 +505,10 @@ def iterate_mip_levels_from_mimgfns(
                 channel=channel):
             # KT deskew level 0 chunk
             if deskew_kwargs:
-                dskw_chunk = numpy.transpose(psd.deskew_block(chunk,chunk_index,**deskew_kwargs),(2,1,0))
-            end_index = start_index + dskw_chunk.shape[0]
-            yield MIPArray(lvl, dskw_chunk, start_index, end_index)
-            start_index += dskw_chunk.shape[0]
+                chunk = numpy.transpose(psd.deskew_block(chunk,chunk_index,**deskew_kwargs),(2,1,0))
+            end_index = start_index + chunk.shape[0]
+            yield MIPArray(lvl, chunk, start_index, end_index)
+            start_index += chunk.shape[0]
             chunk_index += 1
 
 
@@ -695,7 +695,9 @@ class TiffDirToN5(argschema.ArgSchemaParser):
             self.args["chunk_size"],
             concurrency=self.args["concurrency"],
             compression=self.args["compression"],
-            lvl_to_mip_kwargs=self.args["lvl_to_mip_kwargs"],
+            #lvl_to_mip_kwargs=self.args["lvl_to_mip_kwargs"],
+            # FIXME not sure why this dict errors
+            lvl_to_mip_kwargs={},
             deskew_options={'stride':1,
                             'deskewFlip':False,
                             'dtype':'uint16'})
