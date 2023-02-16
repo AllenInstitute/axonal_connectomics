@@ -504,7 +504,7 @@ def iterate_mip_levels_from_mimgfns(
                 interleaved_channels=interleaved_channels,
                 channel=channel):
             # KT deskew level 0 chunk
-            if deskew_kwargs:
+            if True:
                 chunk = numpy.transpose(psd.deskew_block(chunk,chunk_index,**deskew_kwargs),(2,1,0))
                 print(chunk.shape)
             end_index = start_index + chunk.shape[0]
