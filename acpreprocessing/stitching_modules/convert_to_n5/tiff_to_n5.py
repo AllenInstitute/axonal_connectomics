@@ -15,7 +15,7 @@ import z5py
 import argschema
 
 import acpreprocessing.utils.convert
-import acpreprocessing.utils.psdeskew as psd
+import psdeskew as psd
 
 
 def iterate_chunks(it, slice_length):
