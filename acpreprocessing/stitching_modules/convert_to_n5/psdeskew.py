@@ -87,4 +87,13 @@ def reshape_joined_shapes(joined_shapes,blockdims,*args,**kwargs):
                       blockdims[1],
                       blockdims[0])
     return deskewed_shape
+
+def options_from_str(idstr):
+    if idstr == 'ispim2':
+        options = {'stride':2,
+                   'deskewFlip':True,
+                   'dtype':'uint16'}
+    else:
+        options = {}
     
+    return options

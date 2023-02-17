@@ -475,9 +475,9 @@ def iterate_mip_levels_from_mimgfns(
                 block_offset:block_offset+chunk_size, :, :] = chunk[:, :, :]
 
             # copy op only for uneven final chunk
-            if chunk_size != block_size:
-                temp_lminus1_arr = temp_lminus1_arr[
-                    :block_offset+chunk_size, :, :]
+            # if chunk_size != block_size:
+            #     temp_lminus1_arr = temp_lminus1_arr[
+            #         :block_offset+chunk_size, :, :]
 
             if i == num_chunks - 1:
                 temp_arr = (
@@ -518,9 +518,7 @@ def write_mimgfns_to_n5(
         mip_dsfactor=(2, 2, 2), chunk_size=(32, 32, 32),
         concurrency=10, slice_concurrency=1,
         compression="raw", dtype="uint16", lvl_to_mip_kwargs=None,
-        interleaved_channels=1, channel=0, deskew_options={'stride':2,
-                                                           'deskewFlip':True,
-                                                           'dtype':'uint16'}):
+        interleaved_channels=1, channel=0, deskew_str=''):
     """write a stack represented by an iterator of multi-image files as an n5
     volume
 
@@ -555,8 +553,8 @@ def write_mimgfns_to_n5(
         number of channels interleaved in the tiff files (default 1)
     channel : int, optional
         channel from which interleaved data should be read (default 0)
-    deskew_options : dict, optional
-        parameters to run pixel shifting deskew (default {})
+    deskew_str : str, optional
+        str id for parameters to run pixel shifting deskew (default '')
     """
     group_attributes = ([] if group_attributes is None else group_attributes)
 
@@ -565,7 +563,8 @@ def write_mimgfns_to_n5(
         interleaved_channels=interleaved_channels, channel=channel)
     # TODO also get dtype from mimg
     # TODO KT DESKEW: reshape joined_shapes to deskewed dimensions
-    if True:
+    if deskew_str:
+        deskew_options = psd.options_from_str(deskew_str)
         slice_length = int(chunk_size[0]/deskew_options['stride'])
         deskew_kwargs = psd.psdeskew_kwargs(skew_dims_zyx=(slice_length,joined_shapes[1],joined_shapes[2]),
                                             **deskew_options
@@ -685,7 +684,7 @@ class TiffDirToN5InputParameters(argschema.ArgSchema,
     out_n5 = argschema.fields.Str(required=True)
     interleaved_channels = argschema.fields.Int(required=False, deafult=1)
     channel = argschema.fields.Int(required=False, default=0)
-    
+    deskew = argschema.fields.Str(required=False, default='')
 
 
 class TiffDirToN5(argschema.ArgSchemaParser):
@@ -704,9 +703,7 @@ class TiffDirToN5(argschema.ArgSchemaParser):
             # FIXME not sure why this dict errors
             lvl_to_mip_kwargs={},
             # TODO input for deskew parameters (default is ispim2)
-            deskew_options={'stride':2,
-                            'deskewFlip':True,
-                            'dtype':'uint16'})
+            deskew_str=self.args["deskew"])
 
 
 if __name__ == "__main__":
