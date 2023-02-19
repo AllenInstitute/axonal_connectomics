@@ -84,8 +84,8 @@ def deskew_block(blockData,n,dsi,si,slice1d,blockdims,subblocks,flip,dtype,chunk
     
 def reshape_joined_shapes(joined_shapes,blockdims,*args,**kwargs):
     deskewed_shape = (int(np.ceil(joined_shapes[0]/blockdims[2])*blockdims[2]),
-                      blockdims[1],
-                      blockdims[0])
+                                   blockdims[1],
+                                   blockdims[0])
     return deskewed_shape
 
 def options_from_str(idstr):
