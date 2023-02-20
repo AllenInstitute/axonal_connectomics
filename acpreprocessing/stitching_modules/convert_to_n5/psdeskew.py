@@ -15,9 +15,10 @@ from time import sleep
 
 #NOTE: must be run sequentially as each tiff chunk contains data for the next deskewed block #retained in self.slice1d except for the final chunk which should form the rhomboid edge
 
-def psdeskew_kwargs(skew_dims_zyx,stride=1,deskewFlip=False,dtype='uint16',**kwargs):
+def psdeskew_kwargs(skew_dims_zyx,stride=1,deskewFlip=False,dtype='uint16',crop_factor=1,**kwargs):
     sdims = skew_dims_zyx
-    blockdims = (int(sdims[2]/stride),sdims[1],stride*sdims[0])
+    ydim = int(sdims[1]*crop_factor)
+    blockdims = (int(sdims[2]/stride),ydim,stride*sdims[0])
     subblocks = int(np.ceil((sdims[2]+stride*sdims[0])/(stride*sdims[0])))
     print(subblocks)
     blockx = sdims[0]
@@ -68,6 +69,11 @@ def deskew_block(blockData,n,dsi,si,slice1d,blockdims,subblocks,flip,dtype,chunk
     zdim = block3d.shape[0]
     ydim = block3d.shape[1]
     xdim = block3d.shape[2]
+    # crop blockData if needed
+    if blockData.shape[1] > ydim:
+        y0 = int(np.floor((blockData.shape[1]-ydim)/2))
+        y1 = int(np.floor((blockData.shape[1]+ydim)/2))
+        blockData = blockData[:,y0:y1,:]
     print('deskewing block ' + str(n) + ' with shape ' + str(blockData.shape))
     if blockData.shape[0] < chunklength:
         print('block is short, filling with zeros')
@@ -92,7 +98,8 @@ def options_from_str(idstr):
     if idstr == 'ispim2':
         options = {'stride':2,
                    'deskewFlip':True,
-                   'dtype':'uint16'}
+                   'dtype':'uint16',
+                   'crop_factor':0.5}
     else:
         options = {}
     

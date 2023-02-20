@@ -7,9 +7,9 @@ Created on Fri Feb 17 19:42:51 2023
 
 from tiff_to_zarr import tiffdir_to_n5_group
 
-for i in range(0,16):
+for i in range(0,39):
     gstr = 'highres_Pos' + str(i)
     tiffdir = 'Y:/workflow_data/iSPIM2/MNx_S3bB_230215_highres/' + gstr
-    outzarr = 'J:/Users/kevin/ispim_ome_zarr/MNx/' + gstr
+    outzarr = 'E:/highres_crop/' + gstr
     grpname = gstr
     tiffdir_to_n5_group(tiffdir,output_n5=outzarr,group_names=[grpname],concurrency=20,max_mip=5,deskew_str='ispim2')
