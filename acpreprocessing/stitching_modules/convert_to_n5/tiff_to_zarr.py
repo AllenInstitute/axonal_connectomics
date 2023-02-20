@@ -13,6 +13,7 @@ import skimage
 
 import z5py
 import zarr
+from numcodecs import Blosc
 import argschema
 
 import acpreprocessing.utils.convert
@@ -603,13 +604,15 @@ def write_mimgfns_to_n5(
             for k, v in attributes.items():
                 g.attrs[k] = v
         scales = []
+        
+        compression = Blosc(cname='zstd', clevel=1) #shuffle=Blosc.BITSHUFFLE)
         for mip_lvl in range(max_mip + 1):
             mip_3dshape = mip_level_shape(mip_lvl, joined_shapes)
             ds_lvl = g.create_dataset(
                 f"{mip_lvl}",
                 chunks=chunk_size,
                 shape=(1,1,mip_3dshape[0],mip_3dshape[1],mip_3dshape[2]),
-                #compression=compression,
+                compression=compression,
                 dtype=dtype
                 #n_threads=slice_concurrency
                 )
