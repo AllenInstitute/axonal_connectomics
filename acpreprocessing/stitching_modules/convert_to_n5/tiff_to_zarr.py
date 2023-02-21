@@ -410,7 +410,7 @@ class MIPArray:
 
 
 def iterate_mip_levels_from_mimgfns(
-        mimgfns, lvl, block_size, downsample_factor,
+        mimgfns, lvl, block_size, slice_length, downsample_factor,
         downsample_method=None, lvl_to_mip_kwargs=None,
         interleaved_channels=1, channel=0, deskew_kwargs={}):
     """recursively generate MIPmap levels from an iterator of multi-image files
@@ -423,6 +423,8 @@ def iterate_mip_levels_from_mimgfns(
         integer mip level to generate
     block_size : int
         number of 2D arrays in chunk to process for a chunk at lvl
+    slice_length : int
+        number of 2D arrays to gather from tiff stacks
     downsample_factor : tuple of int
         integer downsampling factor for MIP levels
     downsample_method : str, optional
@@ -452,7 +454,7 @@ def iterate_mip_levels_from_mimgfns(
 
         i = 0
         for ma in iterate_mip_levels_from_mimgfns(
-                mimgfns, lvl-1, block_size,
+                mimgfns, lvl-1, block_size, slice_length,
                 downsample_factor, downsample_method,
                 lvl_to_mip_kwargs, interleaved_channels=interleaved_channels,
                 channel=channel,deskew_kwargs=deskew_kwargs):
@@ -502,8 +504,9 @@ def iterate_mip_levels_from_mimgfns(
             yield MIPArray(lvl, temp_arr, start_index, end_index)
     else:
         # get level 0 chunks
+        # block_size is the number of slices to read from tiffs
         for chunk in iterate_numpy_chunks_from_mimgfns(
-                mimgfns, block_size, pad=False,
+                mimgfns, slice_length, pad=False,
                 interleaved_channels=interleaved_channels,
                 channel=channel):
             # KT deskew level 0 chunk
@@ -568,6 +571,7 @@ def write_mimgfns_to_n5(
     # TODO KT DESKEW: reshape joined_shapes to deskewed dimensions
     if deskew_str:
         deskew_options = psd.options_from_str(deskew_str)
+        block_size = chunk_size[2]
         slice_length = int(chunk_size[2]/deskew_options['stride'])
         deskew_kwargs = psd.psdeskew_kwargs(skew_dims_zyx=(slice_length,joined_shapes[1],joined_shapes[2]),
                                             **deskew_options
@@ -575,7 +579,8 @@ def write_mimgfns_to_n5(
         joined_shapes = psd.reshape_joined_shapes(joined_shapes,**deskew_kwargs)
         print('deskewed joined shapes is ' + str(joined_shapes))
     else:
-        slice_length = chunk_size[2]
+        block_size = chunk_size[2]
+        slice_length = block_size
         deskew_kwargs = {} 
 
     # TODO DESKEW: does this generally work regardless of skew?
@@ -628,7 +633,7 @@ def write_mimgfns_to_n5(
         with concurrent.futures.ThreadPoolExecutor(max_workers=workers) as e:
             futs = []
             for miparr in iterate_mip_levels_from_mimgfns(
-                    mimgfns, max_mip, slice_length, mip_dsfactor,
+                    mimgfns, max_mip, block_size, slice_length, mip_dsfactor,
                     lvl_to_mip_kwargs=lvl_to_mip_kwargs,
                     interleaved_channels=interleaved_channels,
                     channel=channel,deskew_kwargs=deskew_kwargs):
