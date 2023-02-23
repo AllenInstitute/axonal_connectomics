@@ -523,7 +523,7 @@ def write_mimgfns_to_n5(
         mip_dsfactor=(2, 2, 2), chunk_size=(32, 32, 32),
         concurrency=10, slice_concurrency=1,
         compression="raw", dtype="uint16", lvl_to_mip_kwargs=None,
-        interleaved_channels=1, channel=0, deskew_str=''):
+        interleaved_channels=1, channel=0, deskew_str='', **kwargs):
     """write a stack represented by an iterator of multi-image files as an n5
     volume
 
@@ -641,7 +641,7 @@ def write_mimgfns_to_zarr(
         mip_dsfactor=(2, 2, 2), chunk_size=(1,1,64, 64, 64),
         concurrency=10, slice_concurrency=1,
         compression="raw", dtype="uint16", lvl_to_mip_kwargs=None,
-        interleaved_channels=1, channel=0, deskew_str=''):
+        interleaved_channels=1, channel=0, deskew_str='', **kwargs):
     """write a stack represented by an iterator of multi-image files as an n5
     volume
 
@@ -761,7 +761,7 @@ def write_mimgfns_to_zarr(
                 _ = fut.result()
 
 
-def tiffdir_to_ngff_group(tiffdir,output='n5', *args, **kwargs):
+def tiffdir_to_ngff_group(tiffdir, *args, **kwargs):
     """convert directory of natsort-consecutive multitiffs to an n5 pyramid
 
     Parameters
@@ -772,10 +772,13 @@ def tiffdir_to_ngff_group(tiffdir,output='n5', *args, **kwargs):
     mimgfns = [str(p) for p in natsorted(
                    pathlib.Path(tiffdir).iterdir(), key=lambda x:str(x))
                if p.is_file()]
-    if output == 'n5':
-        return write_mimgfns_to_n5(mimgfns, *args, **kwargs)
-    elif output == 'zarr':
+    if 'output' in kwargs and kwargs['output'] == 'zarr':
+        print('converting to zarr')
         return write_mimgfns_to_zarr(mimgfns, *args, **kwargs)
+    else:
+        print('converting to n5')
+        return write_mimgfns_to_n5(mimgfns, *args, **kwargs)
+        
 
 class DownsampleOptions(argschema.schemas.DefaultSchema):
     block_divs = argschema.fields.List(
