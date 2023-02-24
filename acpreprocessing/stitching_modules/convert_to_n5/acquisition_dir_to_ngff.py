@@ -51,7 +51,11 @@ def get_strip_positions_from_rootdir(
     md_path = root_path / md_bn
     with md_path.open() as f:
         md = json.load(f)
-    return [(0,p["y_start_um"],p["x_start_um"]) for p in md["positions"]]
+    # FIXME how to do proper version comparison?
+    if md["version"] == "0.0.3":
+        return [(p["z_start_um"],p["y_start_um"],p["x_start_um"]) for p in md["positions"]]
+    else:    
+        return [(0,p["y_start_um"],p["x_start_um"]) for p in md["positions"]]
 
 
 def get_number_interleaved_channels_from_rootdir(

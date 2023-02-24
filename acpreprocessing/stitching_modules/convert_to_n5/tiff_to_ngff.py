@@ -512,7 +512,7 @@ def iterate_mip_levels_from_mimgfns(
             # KT deskew level 0 chunk
             if deskew_kwargs:
                 chunk = numpy.transpose(psd.deskew_block(chunk,chunk_index,**deskew_kwargs),(2,1,0))
-                #print(chunk.shape)
+                print(chunk.shape)
             end_index = start_index + chunk.shape[0]
             yield MIPArray(lvl, chunk, start_index, end_index)
             start_index += chunk.shape[0]
@@ -783,7 +783,7 @@ def write_mimgfns_to_zarr(
         str id for parameters to run pixel shifting deskew (default '')
     """
     group_attributes = ([] if group_attributes is None else group_attributes)
-    group_attributes = []
+    
     joined_shapes = joined_mimg_shape_from_fns(
         mimgfns, concurrency=concurrency,
         interleaved_channels=interleaved_channels, channel=channel)
@@ -811,28 +811,27 @@ def write_mimgfns_to_zarr(
     with zarr.open(zstore,mode='a') as f:
     #with z5py.File(output_n5) as f:
         mip_ds = {}
-        # create groups with custom attributes
-        group_objs = []
-        for i, group_name in enumerate(group_names):
+        # create groups with attributes according to omezarr spec
+        if len(group_names) == 1:
+            group_name = group_names[0]
             try:
-                g = group_objs[-1].create_group(f"{group_name}")
-            except IndexError:
-                try:
-                    g = f.create_group(f"{group_name}")
-                except KeyError:
-                    g = f[f"{group_name}"]
-            group_objs.append(g)
+                g = f.create_group(f"{group_name}")
+            except KeyError:
+                g = f[f"{group_name}"]
             try:
-                attributes = group_attributes[i]
+                attributes = group_attributes[0]
             except IndexError:
-                continue
+                print('attributes error')
             if deskew:
                 print('writing attributes')
                 if "pixelResolution" in attributes:
-                    attributes["pixelResolution"]["dimensions"][0]/=deskew_options["stride"] 
+                    attributes["pixelResolution"]["dimensions"][2]/=deskew_options["stride"] 
                     attributes = omezarr_attrs(group_name,attributes["position"],attributes["pixelResolution"]["dimensions"],max_mip)
-            for k, v in attributes.items():
-                g.attrs[k] = v
+            if attributes:
+                for k, v in attributes.items():
+                    g.attrs[k] = v
+        else:
+            print('omezarr should only have one group')
         scales = []
         
         compression = Blosc(cname='zstd', clevel=1) #shuffle=Blosc.BITSHUFFLE)
@@ -851,7 +850,7 @@ def write_mimgfns_to_zarr(
             mip_ds[mip_lvl] = ds_lvl
             scales.append(dsfactors)
             print(ds_lvl.shape)
-        g.attrs["scales"] = scales
+        #g.attrs["scales"] = scales
         #group_objs[0].attrs["downsamplingFactors"] = scales
         #group_objs[0].attrs["dataType"] = dtype
 
