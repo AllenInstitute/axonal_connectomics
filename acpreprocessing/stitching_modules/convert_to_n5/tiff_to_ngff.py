@@ -821,11 +821,11 @@ def write_mimgfns_to_zarr(
                 attributes = group_attributes[0]
             except IndexError:
                 print('attributes error')
-            if deskew:
-                #print('writing attributes')
-                if "pixelResolution" in attributes:
-                    attributes["pixelResolution"]["dimensions"][2]/=deskew_options["stride"] 
-                    attributes = omezarr_attrs(group_name,attributes["position"],attributes["pixelResolution"]["dimensions"],max_mip)
+                
+            if "pixelResolution" in attributes:
+                if deskew:
+                    attributes["pixelResolution"]["dimensions"][2]/=deskew_options["stride"]
+                attributes = omezarr_attrs(group_name,attributes["position"],attributes["pixelResolution"]["dimensions"],max_mip)
             if attributes:
                 for k, v in attributes.items():
                     g.attrs[k] = v
