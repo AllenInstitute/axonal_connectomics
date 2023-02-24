@@ -783,7 +783,7 @@ def write_mimgfns_to_zarr(
         str id for parameters to run pixel shifting deskew (default '')
     """
     group_attributes = ([] if group_attributes is None else group_attributes)
-
+    group_attributes = []
     joined_shapes = joined_mimg_shape_from_fns(
         mimgfns, concurrency=concurrency,
         interleaved_channels=interleaved_channels, channel=channel)
@@ -808,7 +808,7 @@ def write_mimgfns_to_zarr(
     workers = concurrency // slice_concurrency
     
     zstore = zarr.DirectoryStore(output_n5,dimension_separator='/')
-    with zarr.open(zstore,mode='w') as f:
+    with zarr.open(zstore,mode='a') as f:
     #with z5py.File(output_n5) as f:
         mip_ds = {}
         # create groups with custom attributes
@@ -827,9 +827,10 @@ def write_mimgfns_to_zarr(
             except IndexError:
                 continue
             if deskew:
+                print('writing attributes')
                 if "pixelResolution" in attributes:
                     attributes["pixelResolution"]["dimensions"][0]/=deskew_options["stride"] 
-                    attributes = omezarr_attrs(i,group_name,attributes["position"],attributes["pixelResolution"]["dimensions"],max_mip)
+                    attributes = omezarr_attrs(group_name,attributes["position"],attributes["pixelResolution"]["dimensions"],max_mip)
             for k, v in attributes.items():
                 g.attrs[k] = v
         scales = []
@@ -913,6 +914,7 @@ class N5GenerationParameters(argschema.schemas.DefaultSchema):
         argschema.fields.Int(),
         argschema.fields.Int(),
         argschema.fields.Int()), required=False, default=(2, 2, 2))
+    deskew = argschema.fields.Str(required=False, default='')
 
 
 class N5GroupGenerationParameters(N5GenerationParameters):
@@ -930,7 +932,6 @@ class TiffDirToN5InputParameters(argschema.ArgSchema,
     output_format = argschema.fields.Str(required=True)
     interleaved_channels = argschema.fields.Int(required=False, default=1)
     channel = argschema.fields.Int(required=False, default=0)
-    deskew = argschema.fields.Str(required=False, default='')
 
 
 class TiffDirToN5(argschema.ArgSchemaParser):

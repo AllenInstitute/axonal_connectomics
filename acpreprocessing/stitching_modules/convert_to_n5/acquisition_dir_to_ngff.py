@@ -8,8 +8,8 @@ import pathlib
 import shutil
 
 import argschema
-
-from acpreprocessing.stitching_modules.convert_to_n5.tiff_to_ngff import (
+#from acpreprocessing.stitching_modules.convert_to_n5.tiff_to_ngff
+from tiff_to_ngff import (
     tiffdir_to_ngff_group,
     N5GenerationParameters
 )
@@ -106,14 +106,18 @@ def acquisition_to_ngff(acquisition_dir, output, out_dir, concurrency=5,
                 # pos_group = pospath.name
                 # below is more like legacy structure
                 # out_n5_dir = str(out_path / f"{pos_group}.n5")
+                if output == 'zarr':
+                    group_names = [pospath.name]
+                    group_attributes = [setup_group_attributes[i]]
+                else:
+                    group_names =  [f"channel{channel_idx}", f"setup{i}", "timepoint0"]
+                    group_attributes = [channel_group_attributes,
+                                        setup_group_attributes[i]]
                 
                 futs.append(e.submit(
                     tiffdir_to_ngff_group,
-                    str(pospath), output, out_n5_dir, [
-                        f"channel{channel_idx}", f"setup{i}", "timepoint0"],
-                    group_attributes=[
-                        channel_group_attributes,
-                        setup_group_attributes[i]],
+                    str(pospath), output, out_n5_dir,group_names,
+                    group_attributes=group_attributes,
                     interleaved_channels=interleaved_channels,
                     channel=channel_idx,
                     **n5_generation_kwargs
