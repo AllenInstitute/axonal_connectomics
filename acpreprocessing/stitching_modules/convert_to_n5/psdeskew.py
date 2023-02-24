@@ -16,11 +16,30 @@ from time import sleep
 #NOTE: must be run sequentially as each tiff chunk contains data for the next deskewed block #retained in self.slice1d except for the final chunk which should form the rhomboid edge
 
 def psdeskew_kwargs(skew_dims_zyx,stride=1,deskewFlip=False,dtype='uint16',crop_factor=1,**kwargs):
+    """get keyword arguments for deskew_block
+    
+    Parameters
+    ----------
+    skew_dims_zyx : tuple of int
+        dimensions of raw data array block to be deskewed
+    stride : int
+        number of camera pixels per deskewed sampling plane (divides z resolution)
+    deskewFlip : bool
+        flip data blocks before deskewing
+    dtype : str
+        datatype for deskew output
+    crop_factor : float
+        reduce y dimension according to ydim*crop_factor < ydim
+    
+    Returns
+    ----------
+    dict of parameters representing pixel deskew operation for deskew_block
+    """
     sdims = skew_dims_zyx
     ydim = int(sdims[1]*crop_factor)
     blockdims = (int(sdims[2]/stride),ydim,stride*sdims[0])
     subblocks = int(np.ceil((sdims[2]+stride*sdims[0])/(stride*sdims[0])))
-    print(subblocks)
+    #print(subblocks)
     blockx = sdims[0]
     dsi = []
     si = []
@@ -59,6 +78,26 @@ def deskew_block(blockData,n,dsi,si,slice1d,blockdims,subblocks,flip,dtype,chunk
     
     Parameters
     ----------
+    blockData : numpy.ndarray
+        block of raw (nondeskewed) data to be deskewed
+    n : int
+        current iteration in block sequence (must be run sequentially)
+    dsi : numpy.ndarray
+        deskewed indices for reslicing flattened data
+    si : numpy.ndarray
+        skewed indices for sampling flattened raw data
+    slice1d : numpy.ndarray
+        flattened data from previous iteration containing data for next deskewed block
+    blockdims : tuple of int
+        dimensions of output block
+    subblocks : int
+        number of partitions of input block for processing - likely not necessary
+    flip : bool
+        deskew flip
+    dtype : str
+        datatype
+    chunklength : int
+        number of slices expected for raw data block (for zero filling)
     
     Returns
     ----------
@@ -74,9 +113,9 @@ def deskew_block(blockData,n,dsi,si,slice1d,blockdims,subblocks,flip,dtype,chunk
         y0 = int(np.floor((blockData.shape[1]-ydim)/2))
         y1 = int(np.floor((blockData.shape[1]+ydim)/2))
         blockData = blockData[:,y0:y1,:]
-    print('deskewing block ' + str(n) + ' with shape ' + str(blockData.shape))
+    #print('deskewing block ' + str(n) + ' with shape ' + str(blockData.shape))
     if blockData.shape[0] < chunklength:
-        print('block is short, filling with zeros')
+        #print('block is short, filling with zeros')
         blockData = np.concatenate((blockData,np.zeros((int(chunklength-blockData.shape[0]),blockData.shape[1],blockData.shape[2]))))
     order = (np.arange(subb)+n)%subb
     for y in range(ydim):
@@ -95,6 +134,8 @@ def reshape_joined_shapes(joined_shapes,blockdims,*args,**kwargs):
     return deskewed_shape
 
 def options_from_str(idstr):
+    """config lookup for deskew options by keystring
+    """
     if idstr == 'ispim2':
         options = {'stride':2,
                    'deskewFlip':True,

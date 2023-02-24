@@ -509,10 +509,10 @@ def iterate_mip_levels_from_mimgfns(
                 mimgfns, slice_length, pad=False,
                 interleaved_channels=interleaved_channels,
                 channel=channel):
-            # KT deskew level 0 chunk
+            # deskew level 0 chunk
             if deskew_kwargs:
                 chunk = numpy.transpose(psd.deskew_block(chunk,chunk_index,**deskew_kwargs),(2,1,0))
-                print(chunk.shape)
+                #print(chunk.shape)
             end_index = start_index + chunk.shape[0]
             yield MIPArray(lvl, chunk, start_index, end_index)
             start_index += chunk.shape[0]
@@ -576,7 +576,7 @@ def write_mimgfns_to_n5(
                                             **deskew_options
                                             )
         joined_shapes = psd.reshape_joined_shapes(joined_shapes,**deskew_kwargs)
-        print('deskewed joined shapes is ' + str(joined_shapes))
+        #print('deskewed joined shapes is ' + str(joined_shapes))
     else:
         block_size = chunk_size[0]
         slice_length = block_size
@@ -621,7 +621,7 @@ def write_mimgfns_to_n5(
             ds_lvl.attrs["downsamplingFactors"] = dsfactors
             mip_ds[mip_lvl] = ds_lvl
             scales.append(dsfactors)
-            print(ds_lvl.shape)
+            #print(ds_lvl.shape)
         g.attrs["scales"] = scales
         group_objs[0].attrs["downsamplingFactors"] = scales
         group_objs[0].attrs["dataType"] = dtype
@@ -753,7 +753,7 @@ def write_mimgfns_to_zarr(
     mimgfns : list of str
         imageio-compatible name inputs to be opened as multi-images
     output_n5 : str
-        output n5 directory
+        output zarr directory
     group_names : list of str
         names of groups to generate within n5
     group_attributes : list of dict, optional
@@ -797,7 +797,7 @@ def write_mimgfns_to_zarr(
                                             **deskew_options
                                             )
         joined_shapes = psd.reshape_joined_shapes(joined_shapes,**deskew_kwargs)
-        print('deskewed joined shapes is ' + str(joined_shapes))
+        #print('deskewed joined shapes is ' + str(joined_shapes))
     else:
         block_size = chunk_size[2]
         slice_length = block_size
@@ -809,7 +809,6 @@ def write_mimgfns_to_zarr(
     
     zstore = zarr.DirectoryStore(output_n5,dimension_separator='/')
     with zarr.open(zstore,mode='a') as f:
-    #with z5py.File(output_n5) as f:
         mip_ds = {}
         # create groups with attributes according to omezarr spec
         if len(group_names) == 1:
@@ -823,7 +822,7 @@ def write_mimgfns_to_zarr(
             except IndexError:
                 print('attributes error')
             if deskew:
-                print('writing attributes')
+                #print('writing attributes')
                 if "pixelResolution" in attributes:
                     attributes["pixelResolution"]["dimensions"][2]/=deskew_options["stride"] 
                     attributes = omezarr_attrs(group_name,attributes["position"],attributes["pixelResolution"]["dimensions"],max_mip)
@@ -849,7 +848,7 @@ def write_mimgfns_to_zarr(
             #ds_lvl.attrs["downsamplingFactors"] = dsfactors
             mip_ds[mip_lvl] = ds_lvl
             scales.append(dsfactors)
-            print(ds_lvl.shape)
+            #print(ds_lvl.shape)
         #g.attrs["scales"] = scales
         #group_objs[0].attrs["downsamplingFactors"] = scales
         #group_objs[0].attrs["dataType"] = dtype
