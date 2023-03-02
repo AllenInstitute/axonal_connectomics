@@ -18,6 +18,7 @@ import argschema
 
 import acpreprocessing.utils.convert
 import psdeskew as psd
+import json
 
 
 def iterate_chunks(it, slice_length):
@@ -878,6 +879,11 @@ def tiffdir_to_ngff_group(tiffdir, output, *args, **kwargs):
     mimgfns = [str(p) for p in natsorted(
                    pathlib.Path(tiffdir).iterdir(), key=lambda x:str(x))
                if p.is_file()]
+    if not kwargs["group_attributes"]:
+        if kwargs["attributes_json"]:
+            # TODO: catch bad json error
+            kwargs["group_attributes"] = json.loads(kwargs["attributes_json"])
+                
     if output == 'zarr':
         print('converting to zarr')
         return write_mimgfns_to_zarr(mimgfns, *args, **kwargs)
@@ -930,6 +936,7 @@ class TiffDirToN5InputParameters(argschema.ArgSchema,
     output_format = argschema.fields.Str(required=True)
     interleaved_channels = argschema.fields.Int(required=False, default=1)
     channel = argschema.fields.Int(required=False, default=0)
+    attributes_json = argschema.fields.Str(required=False,default='')
 
 
 class TiffDirToN5(argschema.ArgSchemaParser):
@@ -949,7 +956,8 @@ class TiffDirToN5(argschema.ArgSchemaParser):
             # FIXME not sure why this dict errors
             lvl_to_mip_kwargs={},
             # TODO input for deskew parameters (default is ispim2)
-            deskew=self.args["deskew"])
+            deskew=self.args["deskew"],
+            attributes_json=self.args["attributes_json"])
 
 
 if __name__ == "__main__":
