@@ -879,10 +879,10 @@ def tiffdir_to_ngff_group(tiffdir, output, *args, **kwargs):
     mimgfns = [str(p) for p in natsorted(
                    pathlib.Path(tiffdir).iterdir(), key=lambda x:str(x))
                if p.is_file()]
-    if not args[2]:
+    if not kwargs["group_attributes"]:
         if kwargs["attributes_json"]:
             # TODO: catch bad json error
-            args[2] = json.loads(kwargs["attributes_json"])
+            kwargs["group_attributes"] = json.loads(kwargs["attributes_json"])
                 
     if output == 'zarr':
         print('converting to zarr')
@@ -945,8 +945,7 @@ class TiffDirToN5(argschema.ArgSchemaParser):
     def run(self):
         tiffdir_to_ngff_group(
             self.args["input_dir"], self.args["output_format"], 
-            self.args["out_n5"],
-            self.args["group_names"], self.args["group_attributes"],
+            self.args["out_n5"], self.args["group_names"],
             self.args["max_mip"],
             self.args["mip_dsfactor"],
             self.args["chunk_size"],
@@ -957,6 +956,7 @@ class TiffDirToN5(argschema.ArgSchemaParser):
             lvl_to_mip_kwargs={},
             # TODO input for deskew parameters (default is ispim2)
             deskew=self.args["deskew"],
+            group_attributes=self.args["group_attributes"],
             attributes_json=self.args["attributes_json"])
 
 
