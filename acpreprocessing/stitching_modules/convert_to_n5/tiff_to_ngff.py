@@ -947,6 +947,7 @@ class TiffDirToN5(argschema.ArgSchemaParser):
         tiffdir_to_ngff_group(
             self.args["input_dir"], self.args["output_format"], 
             self.args["out_n5"], self.args["group_names"],
+            self.args["group_attributes"],
             self.args["max_mip"],
             self.args["mip_dsfactor"],
             self.args["chunk_size"],
@@ -957,7 +958,6 @@ class TiffDirToN5(argschema.ArgSchemaParser):
             lvl_to_mip_kwargs={},
             # TODO input for deskew parameters (default is ispim2)
             deskew=self.args["deskew"],
-            group_attributes=self.args["group_attributes"],
             attributes_json=self.args["attributes_json"])
 
 
