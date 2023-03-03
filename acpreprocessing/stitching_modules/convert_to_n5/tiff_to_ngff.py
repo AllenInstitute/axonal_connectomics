@@ -581,7 +581,7 @@ def write_mimgfns_to_n5(
         deskew_kwargs = psd.psdeskew_kwargs(skew_dims_zyx=(slice_length,joined_shapes[1],joined_shapes[2]),
                                             **deskew_options
                                             )
-        joined_shapes = psd.reshape_joined_shapes(joined_shapes,**deskew_kwargs)
+        joined_shapes = psd.reshape_joined_shapes(joined_shapes,deskew_options['stride'],**deskew_kwargs)
         #print('deskewed joined shapes is ' + str(joined_shapes))
     else:
         block_size = chunk_size[0]
@@ -807,7 +807,7 @@ def write_mimgfns_to_zarr(
         deskew_kwargs = psd.psdeskew_kwargs(skew_dims_zyx=(slice_length,joined_shapes[1],joined_shapes[2]),
                                             **deskew_options
                                             )
-        joined_shapes = psd.reshape_joined_shapes(joined_shapes,**deskew_kwargs)
+        joined_shapes = psd.reshape_joined_shapes(joined_shapes,deskew_options['stride'],**deskew_kwargs)
         #print('deskewed joined shapes is ' + str(joined_shapes))
     else:
         block_size = chunk_size[2]

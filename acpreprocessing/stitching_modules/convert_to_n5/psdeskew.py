@@ -127,8 +127,8 @@ def deskew_block(blockData,n,dsi,si,slice1d,blockdims,subblocks,flip,dtype,chunk
         slice1d[n%subb,y,:]=0
     return block3d
     
-def reshape_joined_shapes(joined_shapes,blockdims,*args,**kwargs):
-    deskewed_shape = (int(np.ceil(joined_shapes[0]/blockdims[2])*blockdims[2]),
+def reshape_joined_shapes(joined_shapes,stride,blockdims,*args,**kwargs):
+    deskewed_shape = (int(np.ceil(joined_shapes[0]/(blockdims[2]/stride))*blockdims[2]),
                                    blockdims[1],
                                    blockdims[0])
     return deskewed_shape
