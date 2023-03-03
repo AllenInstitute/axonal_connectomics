@@ -784,6 +784,11 @@ def write_mimgfns_to_zarr(
         str id for parameters to run pixel shifting deskew (default '')
     """
     group_attributes = ([] if group_attributes is None else group_attributes)
+    if not group_attributes:
+        if kwargs["attributes_json"]:
+            # TODO: catch bad json error
+            group_attributes = json.loads(kwargs["attributes_json"])
+            print(group_attributes)
     
     joined_shapes = joined_mimg_shape_from_fns(
         mimgfns, concurrency=concurrency,
@@ -879,10 +884,6 @@ def tiffdir_to_ngff_group(tiffdir, output, *args, **kwargs):
     mimgfns = [str(p) for p in natsorted(
                    pathlib.Path(tiffdir).iterdir(), key=lambda x:str(x))
                if p.is_file()]
-    if not kwargs["group_attributes"]:
-        if kwargs["attributes_json"]:
-            # TODO: catch bad json error
-            kwargs["group_attributes"] = json.loads(kwargs["attributes_json"])
                 
     if output == 'zarr':
         print('converting to zarr')
