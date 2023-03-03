@@ -563,7 +563,12 @@ def write_mimgfns_to_n5(
         str id for parameters to run pixel shifting deskew (default '')
     """
     group_attributes = ([] if group_attributes is None else group_attributes)
-
+    if not group_attributes:
+        if kwargs["attributes_json"]:
+            # TODO: catch bad json error
+            group_attributes = json.loads(kwargs["attributes_json"])
+            print(group_attributes)
+            
     joined_shapes = joined_mimg_shape_from_fns(
         mimgfns, concurrency=concurrency,
         interleaved_channels=interleaved_channels, channel=channel)
