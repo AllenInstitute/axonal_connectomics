@@ -879,10 +879,10 @@ def tiffdir_to_ngff_group(tiffdir, output, *args, **kwargs):
     mimgfns = [str(p) for p in natsorted(
                    pathlib.Path(tiffdir).iterdir(), key=lambda x:str(x))
                if p.is_file()]
-    if not kwargs["group_attributes"]:
+    if not args[2]:
         if kwargs["attributes_json"]:
             # TODO: catch bad json error
-            kwargs["group_attributes"] = json.loads(kwargs["attributes_json"])
+            args[2] = json.loads(kwargs["attributes_json"])
                 
     if output == 'zarr':
         print('converting to zarr')
