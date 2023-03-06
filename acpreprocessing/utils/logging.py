@@ -2,17 +2,17 @@ import logging
 
 
 def setup_logger(name=None):
-	"""create logger with Nullhandler appended to the handlers
-	Parameters
-	----------
-	name : str
-	    name for logger
+    """create logger with Nullhandler appended to the handlers
+    Parameters
+    ----------
+    name : str
+        name for logger
 
-	Returns
-	-------
-	logger : :class:`logging.logger`
-	    logger with given name and nullhandler appended to handlers
-	"""
+    Returns
+    -------
+    logger : :class:`logging.logger`
+        logger with given name and nullhandler appended to handlers
+    """
     name = (name or __name__)
     logger = logging.getLogger(name)
     logger.addHandler(logging.NullHandler())
