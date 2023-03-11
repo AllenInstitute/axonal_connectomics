@@ -648,7 +648,7 @@ def write_mimgfns_to_n5(
 def omezarr_attrs(name,position_xyz,lvl0_xyz_res,max_lvl):
     # TODO only single channel implemented
     datasets = []
-    for i in range(max_lvl):
+    for i in range(max_lvl+1):
         s = [(2**i)*r for r in lvl0_xyz_res]
         d = {"coordinateTransformations": [
                 {"scale": [

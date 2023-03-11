@@ -1,19 +1,14 @@
-import os
-from threading import Thread
+"""Pixel shift deskew
+implements (chunked) pixel shifting deskew
+skew_dims_zyx = dimensions of skewed (input) tiff data (xy are camera coordinates, z is tiff chunk #size, xz define skewed plane and y is non-skewed axis)
+stride = number of camera (x) pixels to shift onto a sample (z') plane (sample z dim = camera x #dim/stride)
+deskewFlip = flip volume (reflection, parity inversion)
+dtype = datatype of input data
+
+NOTE: must be run sequentially as each tiff chunk contains data for the next deskewed block #retained in self.slice1d except for the final chunk which should form the rhomboid edge
+"""
+
 import numpy as np
-from datetime import datetime
-from time import sleep
-
-#class PixelShiftDeskew(object):
-
-#implements (chunked) pixel shifting deskew
-#class parameters:
-#skew_dims_zyx = dimensions of skewed (input) tiff data (xy are camera coordinates, z is tiff chunk #size, xz define skewed plane and y is non-skewed axis)
-#stride = number of camera (x) pixels to shift onto a sample (z') plane (sample z dim = camera x #dim/stride)
-#deskewFlip = flip volume (reflection, parity inversion)
-#dtype = datatype of input data
-
-#NOTE: must be run sequentially as each tiff chunk contains data for the next deskewed block #retained in self.slice1d except for the final chunk which should form the rhomboid edge
 
 def psdeskew_kwargs(skew_dims_zyx,stride=1,deskewFlip=False,dtype='uint16',crop_factor=1,**kwargs):
     """get keyword arguments for deskew_block
