@@ -14,6 +14,9 @@ import os
 from PIL import Image
 import time
 
+from acpreprocessing.utils.logging import setup_logger
+logger = setup_logger(__name__)
+
 
 def transformed_vol_dims(aff_mtx, shape):
     """get output dimensions of a 3D volume given a 4x4 affine transform.
@@ -62,10 +65,10 @@ def deskew_from_config(vol,config):
 	deskewfactor = np.cos(angle*np.pi/180.0)*dzstage/dx
 	dzdx_aspect = dz/dx
 
-	print("deskewing..")
+	logger.debug("deskewing..")
 	skew = np.eye(4)
 	skew[2,0] = deskewfactor
-	print(skew)
+	logger.debug(skew)
 	output_shape = transformed_vol_dims(skew, vol.shape)
 	deskewed = affine_transform(vol, np.linalg.inv(skew),output_shape=output_shape,order=1)
 	return deskewed
