@@ -399,7 +399,7 @@ def dswrite_chunk(ds, start, end, arr, silent_overflow=True):
     if end >= ds.shape[2] and silent_overflow:
         end = ds.shape[2]
     if end > start:
-        ds[0,0,start:end, :, :] = arr[:(end - start), :, :]
+        ds[0, 0, start:end, :, :] = arr[:(end - start), :, :]
 
 
 @dataclasses.dataclass
@@ -439,7 +439,7 @@ def iterate_mip_levels_from_mimgfns(
         channel from which interleaved data should be read (default 0)
     deskew_kwargs : dict, optional
         parameters for pixel shifting deskew
-    
+
     Yields
     ------
     ma : acpreprocessing.stitching_modules.convert_to_n5.tiff_to_n5.MipArray
@@ -458,7 +458,7 @@ def iterate_mip_levels_from_mimgfns(
                 mimgfns, lvl-1, block_size, slice_length,
                 downsample_factor, downsample_method,
                 lvl_to_mip_kwargs, interleaved_channels=interleaved_channels,
-                channel=channel,deskew_kwargs=deskew_kwargs):
+                channel=channel, deskew_kwargs=deskew_kwargs):
             chunk = ma.array
             # throw array up for further processing
             yield ma
@@ -512,12 +512,14 @@ def iterate_mip_levels_from_mimgfns(
                 channel=channel):
             # deskew level 0 chunk
             if deskew_kwargs:
-                chunk = numpy.transpose(psd.deskew_block(chunk,chunk_index,**deskew_kwargs),(2,1,0))
-                #print(chunk.shape)
+                chunk = numpy.transpose(psd.deskew_block(
+                    chunk, chunk_index, **deskew_kwargs), (2, 1, 0))
+                # print(chunk.shape)
             end_index = start_index + chunk.shape[0]
             yield MIPArray(lvl, chunk, start_index, end_index)
             start_index += chunk.shape[0]
             chunk_index += 1
+
 
 def write_mimgfns_to_n5(
         mimgfns, output_n5, group_names, group_attributes=None, max_mip=0,
@@ -568,7 +570,7 @@ def write_mimgfns_to_n5(
             # TODO: catch bad json error
             group_attributes = json.loads(kwargs["attributes_json"])
             print(group_attributes)
-            
+
     joined_shapes = joined_mimg_shape_from_fns(
         mimgfns, concurrency=concurrency,
         interleaved_channels=interleaved_channels, channel=channel)
@@ -578,11 +580,12 @@ def write_mimgfns_to_n5(
         deskew_options = psd.options_from_str(deskew)
         block_size = chunk_size[0]
         slice_length = int(chunk_size[0]/deskew_options['stride'])
-        deskew_kwargs = psd.psdeskew_kwargs(skew_dims_zyx=(slice_length,joined_shapes[1],joined_shapes[2]),
+        deskew_kwargs = psd.psdeskew_kwargs(skew_dims_zyx=(slice_length, joined_shapes[1], joined_shapes[2]),
                                             **deskew_options
                                             )
-        joined_shapes = psd.reshape_joined_shapes(joined_shapes,deskew_options['stride'],**deskew_kwargs)
-        #print('deskewed joined shapes is ' + str(joined_shapes))
+        joined_shapes = psd.reshape_joined_shapes(
+            joined_shapes, deskew_options['stride'], **deskew_kwargs)
+        # print('deskewed joined shapes is ' + str(joined_shapes))
     else:
         block_size = chunk_size[0]
         slice_length = block_size
@@ -611,7 +614,7 @@ def write_mimgfns_to_n5(
                 continue
             if deskew:
                 if "pixelResolution" in attributes:
-                    attributes["pixelResolution"]["dimensions"][0]/=deskew_options["stride"] 
+                    attributes["pixelResolution"]["dimensions"][0] /= deskew_options["stride"]
             for k, v in attributes.items():
                 g.attrs[k] = v
         scales = []
@@ -627,7 +630,7 @@ def write_mimgfns_to_n5(
             ds_lvl.attrs["downsamplingFactors"] = dsfactors
             mip_ds[mip_lvl] = ds_lvl
             scales.append(dsfactors)
-            #print(ds_lvl.shape)
+            # print(ds_lvl.shape)
         g.attrs["scales"] = scales
         group_objs[0].attrs["downsamplingFactors"] = scales
         group_objs[0].attrs["dataType"] = dtype
@@ -638,34 +641,35 @@ def write_mimgfns_to_n5(
                     mimgfns, max_mip, slice_length, mip_dsfactor,
                     lvl_to_mip_kwargs=lvl_to_mip_kwargs,
                     interleaved_channels=interleaved_channels,
-                    channel=channel,deskew_kwargs=deskew_kwargs):
+                    channel=channel, deskew_kwargs=deskew_kwargs):
                 futs.append(e.submit(
                     dswrite_chunk, mip_ds[miparr.lvl],
                     miparr.start, miparr.end, miparr.array))
             for fut in concurrent.futures.as_completed(futs):
                 _ = fut.result()
 
-def omezarr_attrs(name,position_xyz,lvl0_xyz_res,max_lvl):
+
+def omezarr_attrs(name, position_xyz, lvl0_xyz_res, max_lvl):
     # TODO only single channel implemented
     datasets = []
     for i in range(max_lvl+1):
         s = [(2**i)*r for r in lvl0_xyz_res]
         d = {"coordinateTransformations": [
-                {"scale": [
-                            1.0,
-                            1.0,
-                            s[2],
-                            s[1],
-                            s[0]
-                            ],
-                        "type": "scale"
-                        }
-                ],
-                "path": str(i)
+            {"scale": [
+                1.0,
+                1.0,
+                s[2],
+                s[1],
+                s[0]
+            ],
+                "type": "scale"
             }
+        ],
+            "path": str(i)
+        }
         datasets.append(d)
     attrs = {}
-    attrs["multiscales"]=[
+    attrs["multiscales"] = [
         {
             "axes": [
                 {
@@ -745,12 +749,13 @@ def omezarr_attrs(name,position_xyz,lvl0_xyz_res,max_lvl):
     }
     return attrs
 
+
 def write_mimgfns_to_zarr(
         mimgfns, output_n5, group_names, group_attributes=None, max_mip=0,
-        mip_dsfactor=(2, 2, 2), chunk_size=(1,1,64, 64, 64),
+        mip_dsfactor=(2, 2, 2), chunk_size=(1, 1, 64, 64, 64),
         concurrency=10, slice_concurrency=1,
         compression="raw", dtype="uint16", lvl_to_mip_kwargs=None,
-        interleaved_channels=1, channel=0, deskew='', **kwargs):
+        interleaved_channels=1, channel=0, deskew_options='', **kwargs):
     """write a stack represented by an iterator of multi-image files as an n5
     volume
 
@@ -794,7 +799,7 @@ def write_mimgfns_to_zarr(
             # TODO: catch bad json error
             group_attributes = json.loads(kwargs["attributes_json"])
             print(group_attributes)
-    
+
     joined_shapes = joined_mimg_shape_from_fns(
         mimgfns, concurrency=concurrency,
         interleaved_channels=interleaved_channels, channel=channel)
@@ -804,11 +809,12 @@ def write_mimgfns_to_zarr(
         deskew_options = psd.options_from_str(deskew)
         block_size = chunk_size[2]
         slice_length = int(chunk_size[2]/deskew_options['stride'])
-        deskew_kwargs = psd.psdeskew_kwargs(skew_dims_zyx=(slice_length,joined_shapes[1],joined_shapes[2]),
+        deskew_kwargs = psd.psdeskew_kwargs(skew_dims_zyx=(slice_length, joined_shapes[1], joined_shapes[2]),
                                             **deskew_options
                                             )
-        joined_shapes = psd.reshape_joined_shapes(joined_shapes,deskew_options['stride'],**deskew_kwargs)
-        #print('deskewed joined shapes is ' + str(joined_shapes))
+        joined_shapes = psd.reshape_joined_shapes(
+            joined_shapes, deskew_options['stride'], **deskew_kwargs)
+        # print('deskewed joined shapes is ' + str(joined_shapes))
     else:
         block_size = chunk_size[2]
         slice_length = block_size
@@ -817,9 +823,9 @@ def write_mimgfns_to_zarr(
     # TODO DESKEW: does this generally work regardless of skew?
 
     workers = concurrency // slice_concurrency
-    
-    zstore = zarr.DirectoryStore(output_n5,dimension_separator='/')
-    with zarr.open(zstore,mode='a') as f:
+
+    zstore = zarr.DirectoryStore(output_n5, dimension_separator='/')
+    with zarr.open(zstore, mode='a') as f:
         mip_ds = {}
         # create groups with attributes according to omezarr spec
         if len(group_names) == 1:
@@ -832,37 +838,39 @@ def write_mimgfns_to_zarr(
                 attributes = group_attributes[0]
             except IndexError:
                 print('attributes error')
-                
+
             if "pixelResolution" in attributes:
                 if deskew:
-                    attributes["pixelResolution"]["dimensions"][2]/=deskew_options["stride"]
-                attributes = omezarr_attrs(group_name,attributes["position"],attributes["pixelResolution"]["dimensions"],max_mip)
+                    attributes["pixelResolution"]["dimensions"][2] /= deskew_options["stride"]
+                attributes = omezarr_attrs(
+                    group_name, attributes["position"], attributes["pixelResolution"]["dimensions"], max_mip)
             if attributes:
                 for k, v in attributes.items():
                     g.attrs[k] = v
         else:
             print('omezarr should only have one group')
         scales = []
-        
-        compression = Blosc(cname='zstd', clevel=1) #shuffle=Blosc.BITSHUFFLE)
+
+        # shuffle=Blosc.BITSHUFFLE)
+        compression = Blosc(cname='zstd', clevel=1)
         for mip_lvl in range(max_mip + 1):
             mip_3dshape = mip_level_shape(mip_lvl, joined_shapes)
             ds_lvl = g.create_dataset(
                 f"{mip_lvl}",
                 chunks=chunk_size,
-                shape=(1,1,mip_3dshape[0],mip_3dshape[1],mip_3dshape[2]),
+                shape=(1, 1, mip_3dshape[0], mip_3dshape[1], mip_3dshape[2]),
                 compression=compression,
                 dtype=dtype
-                #n_threads=slice_concurrency
-                )
+                # n_threads=slice_concurrency
+            )
             dsfactors = [int(i)**mip_lvl for i in mip_dsfactor]
-            #ds_lvl.attrs["downsamplingFactors"] = dsfactors
+            # ds_lvl.attrs["downsamplingFactors"] = dsfactors
             mip_ds[mip_lvl] = ds_lvl
             scales.append(dsfactors)
-            #print(ds_lvl.shape)
-        #g.attrs["scales"] = scales
-        #group_objs[0].attrs["downsamplingFactors"] = scales
-        #group_objs[0].attrs["dataType"] = dtype
+            # print(ds_lvl.shape)
+        # g.attrs["scales"] = scales
+        # group_objs[0].attrs["downsamplingFactors"] = scales
+        # group_objs[0].attrs["dataType"] = dtype
 
         with concurrent.futures.ThreadPoolExecutor(max_workers=workers) as e:
             futs = []
@@ -870,7 +878,7 @@ def write_mimgfns_to_zarr(
                     mimgfns, max_mip, block_size, slice_length, mip_dsfactor,
                     lvl_to_mip_kwargs=lvl_to_mip_kwargs,
                     interleaved_channels=interleaved_channels,
-                    channel=channel,deskew_kwargs=deskew_kwargs):
+                    channel=channel, deskew_kwargs=deskew_kwargs):
                 futs.append(e.submit(
                     dswrite_chunk, mip_ds[miparr.lvl],
                     miparr.start, miparr.end, miparr.array))
@@ -887,16 +895,16 @@ def tiffdir_to_ngff_group(tiffdir, output, *args, **kwargs):
         directory of consecutive multitiffs to convert
     """
     mimgfns = [str(p) for p in natsorted(
-                   pathlib.Path(tiffdir).iterdir(), key=lambda x:str(x))
-               if p.is_file()]
-                
+        pathlib.Path(tiffdir).iterdir(), key=lambda x:str(x))
+        if p.is_file()]
+
     if output == 'zarr':
         print('converting to zarr')
         return write_mimgfns_to_zarr(mimgfns, *args, **kwargs)
     else:
         print('converting to n5')
         return write_mimgfns_to_n5(mimgfns, *args, **kwargs)
-        
+
 
 class DownsampleOptions(argschema.schemas.DefaultSchema):
     block_divs = argschema.fields.List(
@@ -904,7 +912,14 @@ class DownsampleOptions(argschema.schemas.DefaultSchema):
     n_threads = argschema.fields.Int(required=False, allow_none=True)
 
 
-class N5GenerationParameters(argschema.schemas.DefaultSchema):
+class DeskewOptions(argschema.schemas.DefaultSchema):
+    deskew_method = argschema.fields.Str(required=False, default='')
+    deskew_stride = argschema.fields.Int(required=False, default=None)
+    deskew_flip = argschema.fields.Bool(required=False, default=True)
+    deskew_crop = argschema.fields.Float(required=False, default=0.5)
+
+
+class NGFFGenerationParameters(argschema.schemas.DefaultSchema):
     max_mip = argschema.fields.Int(required=False, default=0)
     concurrency = argschema.fields.Int(required=False, default=10)
     compression = argschema.fields.Str(required=False, default="raw")
@@ -914,20 +929,14 @@ class N5GenerationParameters(argschema.schemas.DefaultSchema):
 
     # FIXME argschema supports lists and tuples,
     #   but has some version differences
-    chunk_size = argschema.fields.Tuple((
-        argschema.fields.Int(),
-        argschema.fields.Int(),
-        argschema.fields.Int(),
-        argschema.fields.Int(),
-        argschema.fields.Int()), required=False, default=(1, 1, 64, 64, 64))
+
     mip_dsfactor = argschema.fields.Tuple((
         argschema.fields.Int(),
         argschema.fields.Int(),
         argschema.fields.Int()), required=False, default=(2, 2, 2))
-    deskew = argschema.fields.Str(required=False, default='')
 
 
-class N5GroupGenerationParameters(N5GenerationParameters):
+class NGFFGroupGenerationParameters(NGFFGenerationParameters):
     group_names = argschema.fields.List(
         argschema.fields.Str, required=True)
     group_attributes = argschema.fields.List(
@@ -935,14 +944,21 @@ class N5GroupGenerationParameters(N5GenerationParameters):
         required=False)
 
 
-class TiffDirToN5InputParameters(argschema.ArgSchema,
-                                 N5GroupGenerationParameters):
+class TiffDirToNGFFParameters(NGFFGroupGenerationParameters):
     input_dir = argschema.fields.InputDir(required=True)
-    out_n5 = argschema.fields.Str(required=True)
-    output_format = argschema.fields.Str(required=True)
     interleaved_channels = argschema.fields.Int(required=False, default=1)
     channel = argschema.fields.Int(required=False, default=0)
-    attributes_json = argschema.fields.Str(required=False,default='')
+    attributes_json = argschema.fields.Str(required=False, default='')
+
+
+class TiffDirToN5InputParameters(argschema.ArgSchema,
+                                 TiffDirToNGFFParameters,
+                                 DeskewOptions):
+    out_n5 = argschema.fields.Str(required=True)
+    chunk_size = argschema.fields.Tuple((
+        argschema.fields.Int(),
+        argschema.fields.Int(),
+        argschema.fields.Int()), required=False, default=(64, 64, 64))
 
 
 class TiffDirToN5(argschema.ArgSchemaParser):
@@ -950,7 +966,7 @@ class TiffDirToN5(argschema.ArgSchemaParser):
 
     def run(self):
         tiffdir_to_ngff_group(
-            self.args["input_dir"], self.args["output_format"], 
+            self.args["input_dir"], self.args["output_format"],
             self.args["out_n5"], self.args["group_names"],
             self.args["group_attributes"],
             self.args["max_mip"],
@@ -958,12 +974,44 @@ class TiffDirToN5(argschema.ArgSchemaParser):
             self.args["chunk_size"],
             concurrency=self.args["concurrency"],
             compression=self.args["compression"],
-            #lvl_to_mip_kwargs=self.args["lvl_to_mip_kwargs"],
+            # lvl_to_mip_kwargs=self.args["lvl_to_mip_kwargs"],
             # FIXME not sure why this dict errors
             lvl_to_mip_kwargs={},
             # TODO input for deskew parameters (default is ispim2)
             deskew=self.args["deskew"],
             attributes_json=self.args["attributes_json"])
+
+
+class TiffDirToZarrInputParameters(argschema.ArgSchema,
+                                   TiffDirToNGFFParameters,
+                                   DeskewOptions):
+    out_zarr = argschema.fields.Str(required=True)
+    chunk_size = argschema.fields.Tuple((
+        argschema.fields.Int(),
+        argschema.fields.Int(),
+        argschema.fields.Int(),
+        argschema.fields.Int(),
+        argschema.fields.Int()), required=False, default=(1, 1, 64, 64, 64))
+
+
+class TiffDirToZarr(argschema.ArgSchemaParser):
+    default_schema = TiffDirToZarrInputParameters
+
+    def run(self):
+        tiffdir_to_ngff_group(
+            self.args["input_dir"], self.args["output_format"],
+            self.args["out_zarr"], self.args["group_names"],
+            self.args["group_attributes"],
+            self.args["max_mip"],
+            self.args["mip_dsfactor"],
+            self.args["chunk_size"],
+            concurrency=self.args["concurrency"],
+            compression=self.args["compression"],
+            # lvl_to_mip_kwargs=self.args["lvl_to_mip_kwargs"],
+            # FIXME not sure why this dict errors
+            lvl_to_mip_kwargs={},
+            # TODO input for deskew parameters (default is ispim2)
+            deskew_stride=self.args["deskew_stride"])
 
 
 if __name__ == "__main__":
