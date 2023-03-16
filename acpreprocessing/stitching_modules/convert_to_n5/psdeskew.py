@@ -11,7 +11,7 @@ NOTE: must be run sequentially as each tiff chunk contains data for the next des
 import numpy as np
 
 
-def psdeskew_kwargs(skew_dims_zyx, stride=1, deskewFlip=False, dtype='uint16', crop_factor=1, **kwargs):
+def psdeskew_kwargs(skew_dims_zyx, deskew_stride=1, deskew_flip=False, deskew_crop=1, dtype='uint16', **kwargs):
     """get keyword arguments for deskew_block
 
     Parameters
@@ -32,6 +32,8 @@ def psdeskew_kwargs(skew_dims_zyx, stride=1, deskewFlip=False, dtype='uint16', c
     dict of parameters representing pixel deskew operation for deskew_block
     """
     sdims = skew_dims_zyx
+    crop_factor = deskew_crop
+    stride = deskew_stride
     ydim = int(sdims[1]*crop_factor)
     blockdims = (int(sdims[2]/stride), ydim, stride*sdims[0])
     subblocks = int(np.ceil((sdims[2]+stride*sdims[0])/(stride*sdims[0])))
@@ -64,7 +66,7 @@ def psdeskew_kwargs(skew_dims_zyx, stride=1, deskewFlip=False, dtype='uint16', c
               'slice1d': np.zeros((subblocks, blockdims[1], blockdims[2]*blockdims[0]), dtype=dtype),
               'blockdims': blockdims,
               'subblocks': subblocks,
-              'flip': deskewFlip,
+              'flip': deskew_flip,
               'dtype': dtype,
               'chunklength': blockx
               }
