@@ -139,7 +139,7 @@ def options_from_str(idstr):
     """
     if idstr == 'ispim1':
         options = {'stride': 2,
-                   'deskewFlip': False,
+                   'deskewFlip': True,
                    'dtype': 'uint16',
                    'crop_factor': 0.5}
     elif idstr == 'ispim2':
