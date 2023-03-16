@@ -8,11 +8,7 @@ import pathlib
 import shutil
 
 import argschema
-#from acpreprocessing.stitching_modules.convert_to_n5.tiff_to_ngff
-from tiff_to_ngff import (
-    tiffdir_to_ngff_group,
-    N5GenerationParameters
-)
+from acpreprocessing.stitching_modules.convert_to_n5.tiff_to_ngff import tiffdir_to_ngff_group, NGFFGenerationParameters
 
 
 def yield_position_paths_from_rootdir(
@@ -25,7 +21,8 @@ def yield_position_paths_from_rootdir(
     stripdirs_bns = stripjson_md[stripjson_key]
     for stripdir_bn in stripdirs_bns:
         yield root_path / stripdir_bn
-        
+
+
 def get_position_names_from_rootdir(
         root_dir, stripjson_bn="hh.log",
         stripjson_key="stripdirs"):
@@ -34,6 +31,7 @@ def get_position_names_from_rootdir(
     with stripjson_path.open() as f:
         stripjson_md = json.load(f)
     return stripjson_md[stripjson_key]
+
 
 def get_pixel_resolution_from_rootdir(
         root_dir, md_bn="acqinfo_metadata.json"):
@@ -45,6 +43,7 @@ def get_pixel_resolution_from_rootdir(
     z = md["positions"][0]["x_step_um"]
     return [xy, xy, z]
 
+
 def get_strip_positions_from_rootdir(
         root_dir, md_bn="acqinfo_metadata.json"):
     root_path = pathlib.Path(root_dir)
@@ -53,9 +52,9 @@ def get_strip_positions_from_rootdir(
         md = json.load(f)
     # FIXME how to do proper version comparison?
     if md["version"] == "0.0.3":
-        return [(p["z_start_um"],p["y_start_um"],p["x_start_um"]) for p in md["positions"]]
-    else:    
-        return [(0,p["y_start_um"],p["x_start_um"]) for p in md["positions"]]
+        return [(p["z_start_um"], p["y_start_um"], p["x_start_um"]) for p in md["positions"]]
+    else:
+        return [(0, p["y_start_um"], p["x_start_um"]) for p in md["positions"]]
 
 
 def get_number_interleaved_channels_from_rootdir(
@@ -70,19 +69,19 @@ def get_number_interleaved_channels_from_rootdir(
 
 
 def acquisition_to_ngff(acquisition_dir, output, out_dir, concurrency=5,
-                      n5_generation_kwargs=None, copy_top_level_files=True):
+                        ngff_generation_kwargs=None, copy_top_level_files=True):
     """
     """
-    n5_generation_kwargs = (
-        {} if n5_generation_kwargs is None
-        else n5_generation_kwargs)
+    ngff_generation_kwargs = (
+        {} if ngff_generation_kwargs is None
+        else ngff_generation_kwargs)
 
     acquisition_path = pathlib.Path(acquisition_dir)
     out_path = pathlib.Path(out_dir)
     if output == 'zarr':
-        out_n5_dir = str(out_path / f"{out_path.name}.zarr")
+        output_dir = str(out_path / f"{out_path.name}.zarr")
     else:
-        out_n5_dir = str(out_path / f"{out_path.name}.n5")
+        output_dir = str(out_path / f"{out_path.name}.n5")
 
     interleaved_channels = get_number_interleaved_channels_from_rootdir(
         acquisition_path)
@@ -99,7 +98,7 @@ def acquisition_to_ngff(acquisition_dir, output, out_dir, concurrency=5,
         } for p in positionList]
     except (KeyError, FileNotFoundError):
         setup_group_attributes = {}
-    
+
     for channel_idx in range(interleaved_channels):
         channel_group_attributes = {}
         with concurrent.futures.ProcessPoolExecutor(max_workers=concurrency) as e:
@@ -114,17 +113,18 @@ def acquisition_to_ngff(acquisition_dir, output, out_dir, concurrency=5,
                     group_names = [pospath.name]
                     group_attributes = [setup_group_attributes[i]]
                 else:
-                    group_names =  [f"channel{channel_idx}", f"setup{i}", "timepoint0"]
+                    group_names = [
+                        f"channel{channel_idx}", f"setup{i}", "timepoint0"]
                     group_attributes = [channel_group_attributes,
                                         setup_group_attributes[i]]
-                
+
                 futs.append(e.submit(
                     tiffdir_to_ngff_group,
-                    str(pospath), output, out_n5_dir,group_names,
+                    str(pospath), output, output_dir, group_names,
                     group_attributes=group_attributes,
                     interleaved_channels=interleaved_channels,
                     channel=channel_idx,
-                    **n5_generation_kwargs
+                    **ngff_generation_kwargs
                 ))
 
             for fut in concurrent.futures.as_completed(futs):
@@ -139,8 +139,8 @@ def acquisition_to_ngff(acquisition_dir, output, out_dir, concurrency=5,
             shutil.copy(str(tlf_path), str(out_tlf_path))
 
 
-class AcquisitionDirToN5DirParameters(
-        argschema.ArgSchema, N5GenerationParameters):
+class AcquisitionDirToNGFFParameters(
+        argschema.ArgSchema, NGFFGenerationParameters):
     input_dir = argschema.fields.Str(required=True)
     output_format = argschema.fields.Str(required=True)
     output_dir = argschema.fields.Str(required=True)
@@ -148,25 +148,25 @@ class AcquisitionDirToN5DirParameters(
     position_concurrency = argschema.fields.Int(required=False, default=5)
 
 
-class AcquisitionDirToN5Dir(argschema.ArgSchemaParser):
-    default_schema = AcquisitionDirToN5DirParameters
+class AcquisitionDirToNGFF(argschema.ArgSchemaParser):
+    default_schema = AcquisitionDirToNGFFParameters
 
-    def _get_n5_kwargs(self):
-        n5_keys = {
+    def _get_ngff_kwargs(self):
+        ngff_keys = {
             "max_mip", "concurrency", "compression",
             "lvl_to_mip_kwargs", "chunk_size", "mip_dsfactor", "deskew"}
-        return {k: self.args[k] for k in (n5_keys & self.args.keys())}
+        return {k: self.args[k] for k in (ngff_keys & self.args.keys())}
 
     def run(self):
-        n5_kwargs = self._get_n5_kwargs()
+        ngff_kwargs = self._get_ngff_kwargs()
         acquisition_to_ngff(
             self.args["input_dir"], self.args["output_format"], self.args["output_dir"],
             concurrency=self.args["position_concurrency"],
-            n5_generation_kwargs=n5_kwargs,
+            ngff_generation_kwargs=ngff_kwargs,
             copy_top_level_files=self.args["copy_top_level_files"]
-            )
+        )
 
 
 if __name__ == "__main__":
-    mod = AcquisitionDirToN5Dir()
+    mod = AcquisitionDirToNGFF()
     mod.run()

@@ -17,8 +17,7 @@ from numcodecs import Blosc
 import argschema
 
 import acpreprocessing.utils.convert
-import psdeskew as psd
-import json
+import acpreprocessing.stitching_modules.convert_to_n5.psdeskew as psd
 
 
 def iterate_chunks(it, slice_length):
@@ -565,11 +564,6 @@ def write_mimgfns_to_n5(
         dictionary of parameters to run pixel shifting deskew (default {})
     """
     group_attributes = ([] if group_attributes is None else group_attributes)
-    if not group_attributes:
-        if kwargs["attributes_json"]:
-            # TODO: catch bad json error
-            group_attributes = json.loads(kwargs["attributes_json"])
-            print(group_attributes)
 
     joined_shapes = joined_mimg_shape_from_fns(
         mimgfns, concurrency=concurrency,
@@ -793,11 +787,6 @@ def write_mimgfns_to_zarr(
         dictionary of parameters to run pixel shifting deskew (default {})
     """
     group_attributes = ([] if group_attributes is None else group_attributes)
-    if not group_attributes:
-        if kwargs["attributes_json"]:
-            # TODO: catch bad json error
-            group_attributes = json.loads(kwargs["attributes_json"])
-            print(group_attributes)
 
     joined_shapes = joined_mimg_shape_from_fns(
         mimgfns, concurrency=concurrency,
