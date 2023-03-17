@@ -513,7 +513,6 @@ def iterate_mip_levels_from_mimgfns(
             if deskew_kwargs:
                 chunk = numpy.transpose(psd.deskew_block(
                     chunk, chunk_index, **deskew_kwargs), (2, 1, 0))
-                # print(chunk.shape)
             end_index = start_index + chunk.shape[0]
             yield MIPArray(lvl, chunk, start_index, end_index)
             start_index += chunk.shape[0]
@@ -525,7 +524,7 @@ def write_mimgfns_to_n5(
         mip_dsfactor=(2, 2, 2), chunk_size=(32, 32, 32),
         concurrency=10, slice_concurrency=1,
         compression="raw", dtype="uint16", lvl_to_mip_kwargs=None,
-        interleaved_channels=1, channel=0, deskew_options={}, **kwargs):
+        interleaved_channels=1, channel=0, deskew_options=None, **kwargs):
     """write a stack represented by an iterator of multi-image files as an n5
     volume
 
@@ -561,9 +560,10 @@ def write_mimgfns_to_n5(
     channel : int, optional
         channel from which interleaved data should be read (default 0)
     deskew_options : dict, optional
-        dictionary of parameters to run pixel shifting deskew (default {})
+        dictionary of parameters to run pixel shifting deskew (default None)
     """
     group_attributes = ([] if group_attributes is None else group_attributes)
+    deskew_options = ({} if deskew_options is None else deskew_options)
 
     joined_shapes = joined_mimg_shape_from_fns(
         mimgfns, concurrency=concurrency,
@@ -748,7 +748,7 @@ def write_mimgfns_to_zarr(
         mip_dsfactor=(2, 2, 2), chunk_size=(1, 1, 64, 64, 64),
         concurrency=10, slice_concurrency=1,
         compression="raw", dtype="uint16", lvl_to_mip_kwargs=None,
-        interleaved_channels=1, channel=0, deskew_options={}, **kwargs):
+        interleaved_channels=1, channel=0, deskew_options=None, **kwargs):
     """write a stack represented by an iterator of multi-image files as an n5
     volume
 
@@ -784,9 +784,10 @@ def write_mimgfns_to_zarr(
     channel : int, optional
         channel from which interleaved data should be read (default 0)
     deskew_options : dict, optional
-        dictionary of parameters to run pixel shifting deskew (default {})
+        dictionary of parameters to run pixel shifting deskew (default None)
     """
     group_attributes = ([] if group_attributes is None else group_attributes)
+    deskew_options = ({} if deskew_options is None else deskew_options)
 
     joined_shapes = joined_mimg_shape_from_fns(
         mimgfns, concurrency=concurrency,
@@ -972,9 +973,9 @@ class TiffDirToZarr(argschema.ArgSchemaParser):
             self.args["chunk_size"],
             concurrency=self.args["concurrency"],
             compression=self.args["compression"],
-            # lvl_to_mip_kwargs=self.args["lvl_to_mip_kwargs"],
+            lvl_to_mip_kwargs=self.args["lvl_to_mip_kwargs"],
             # FIXME not sure why this dict errors
-            lvl_to_mip_kwargs={},
+            # lvl_to_mip_kwargs={},
             deskew_options=self.args["deskew_options"])
 
 
