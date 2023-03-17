@@ -155,7 +155,7 @@ class AcquisitionDirToNGFF(argschema.ArgSchemaParser):
         ngff_keys = {
             "max_mip", "concurrency", "compression",
             "lvl_to_mip_kwargs", "chunk_size", "mip_dsfactor",
-            "deskew_method", "deskew_stride", "deskew_flip", "deskew_crop"}
+            "deskew_options"}
         return {k: self.args[k] for k in (ngff_keys & self.args.keys())}
 
     def run(self):
