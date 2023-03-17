@@ -923,6 +923,8 @@ class NGFFGenerationParameters(argschema.schemas.DefaultSchema):
         argschema.fields.Int(),
         argschema.fields.Int(),
         argschema.fields.Int()), required=False, default=(2, 2, 2))
+    deskew_options = argschema.fields.Nested(
+        DeskewOptions, required=False, default={})
 
 
 class NGFFGroupGenerationParameters(NGFFGenerationParameters):
@@ -937,8 +939,6 @@ class TiffDirToNGFFParameters(NGFFGroupGenerationParameters):
     input_dir = argschema.fields.InputDir(required=True)
     interleaved_channels = argschema.fields.Int(required=False, default=1)
     channel = argschema.fields.Int(required=False, default=0)
-    deskew_options = argschema.fields.Nested(
-        DeskewOptions, required=False, default={})
 
 
 class TiffDirToZarrInputParameters(argschema.ArgSchema,
