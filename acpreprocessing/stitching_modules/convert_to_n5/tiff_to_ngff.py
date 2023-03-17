@@ -907,7 +907,7 @@ class DeskewOptions(argschema.schemas.DefaultSchema):
 
 
 class NGFFGenerationParameters(argschema.schemas.DefaultSchema):
-    output_format = argschema.field.Str(required=True)
+    output_format = argschema.fields.Str(required=True)
     output_file = argschema.fields.Str(required=True)
     max_mip = argschema.fields.Int(required=False, default=0)
     concurrency = argschema.fields.Int(required=False, default=10)
