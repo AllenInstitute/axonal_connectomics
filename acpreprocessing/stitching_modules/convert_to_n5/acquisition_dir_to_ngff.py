@@ -143,7 +143,7 @@ class AcquisitionDirToNGFFParameters(
         argschema.ArgSchema, NGFFGenerationParameters):
     input_dir = argschema.fields.Str(required=True)
     output_format = argschema.fields.Str(required=True)
-    output_dir = argschema.fields.Str(required=True)
+    # output_dir = argschema.fields.Str(required=True)
     copy_top_level_files = argschema.fields.Bool(required=False, default=True)
     position_concurrency = argschema.fields.Int(required=False, default=5)
 
@@ -161,7 +161,7 @@ class AcquisitionDirToNGFF(argschema.ArgSchemaParser):
     def run(self):
         ngff_kwargs = self._get_ngff_kwargs()
         acquisition_to_ngff(
-            self.args["input_dir"], self.args["output_format"], self.args["output_dir"],
+            self.args["input_dir"], self.args["output_format"], self.args["output_file"],
             concurrency=self.args["position_concurrency"],
             ngff_generation_kwargs=ngff_kwargs,
             copy_top_level_files=self.args["copy_top_level_files"]
