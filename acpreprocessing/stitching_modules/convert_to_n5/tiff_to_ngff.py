@@ -480,9 +480,9 @@ def iterate_mip_levels_from_mimgfns(
                 block_offset:block_offset+chunk_size, :, :] = chunk[:, :, :]
 
             # copy op only for uneven final chunk
-            # if chunk_size != block_size:
-            #     temp_lminus1_arr = temp_lminus1_arr[
-            #         :block_offset+chunk_size, :, :]
+            if chunk_size != block_size:
+                temp_lminus1_arr = temp_lminus1_arr[
+                    :block_offset+chunk_size, :, :]
 
             if i == num_chunks - 1:
                 temp_arr = (
