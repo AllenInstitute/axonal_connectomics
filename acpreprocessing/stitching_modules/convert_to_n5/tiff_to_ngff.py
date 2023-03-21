@@ -925,7 +925,7 @@ class NGFFGenerationParameters(argschema.schemas.DefaultSchema):
         argschema.fields.Int(),
         argschema.fields.Int()), required=False, default=(2, 2, 2))
     deskew_options = argschema.fields.Nested(
-        DeskewOptions, required=False, default={})
+        DeskewOptions, required=False)
 
 
 class NGFFGroupGenerationParameters(NGFFGenerationParameters):
@@ -964,6 +964,8 @@ class TiffDirToZarr(argschema.ArgSchemaParser):
     default_schema = TiffDirToZarrInputParameters
 
     def run(self):
+        deskew_options = (self.args["deskew_options"]
+                          if "deskew_options" in self.args else {})
         tiffdir_to_ngff_group(
             self.args["input_dir"], self.args["output_format"],
             self.args["output_file"], self.args["group_names"],
@@ -974,9 +976,7 @@ class TiffDirToZarr(argschema.ArgSchemaParser):
             concurrency=self.args["concurrency"],
             compression=self.args["compression"],
             lvl_to_mip_kwargs=self.args["lvl_to_mip_kwargs"],
-            # FIXME not sure why this dict errors
-            # lvl_to_mip_kwargs={},
-            deskew_options=self.args["deskew_options"])
+            deskew_options=deskew_options)
 
 
 class TiffDirToN5(TiffDirToZarr):
