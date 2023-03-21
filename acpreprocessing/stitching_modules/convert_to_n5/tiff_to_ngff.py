@@ -631,7 +631,7 @@ def write_mimgfns_to_n5(
         with concurrent.futures.ThreadPoolExecutor(max_workers=workers) as e:
             futs = []
             for miparr in iterate_mip_levels_from_mimgfns(
-                    mimgfns, max_mip, slice_length, mip_dsfactor,
+                    mimgfns, max_mip, block_size, slice_length, mip_dsfactor,
                     lvl_to_mip_kwargs=lvl_to_mip_kwargs,
                     interleaved_channels=interleaved_channels,
                     channel=channel, deskew_kwargs=deskew_kwargs):
