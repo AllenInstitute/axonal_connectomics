@@ -383,7 +383,7 @@ def dswrite_chunk(ds, start, end, arr, silent_overflow=True):
 
     Parameters
     ----------
-    ds : z5py.dataset.Dataset
+    ds : z5py.dataset.Dataset (n5 3D) or zarr.dataset (zarr 5D)
         array-like dataset to fill in
     start : int
         start index along 0 axis of ds to fill in
@@ -395,10 +395,16 @@ def dswrite_chunk(ds, start, end, arr, silent_overflow=True):
         whether to shrink the end index to match the
         shape of ds (default: True)
     """
-    if end >= ds.shape[2] and silent_overflow:
-        end = ds.shape[2]
-    if end > start:
-        ds[0, 0, start:end, :, :] = arr[:(end - start), :, :]
+    if len(ds.shape) == 5:  # dataset dimensions should be 3 or 5
+        if end >= ds.shape[2] and silent_overflow:
+            end = ds.shape[2]
+        if end > start:
+            ds[0, 0, start:end, :, :] = arr[:(end - start), :, :]
+    elif len(ds.shape) == 3:
+        if end >= ds.shape[0] and silent_overflow:
+            end = ds.shape[0]
+        if end > start:
+            ds[start:end, :, :] = arr[:(end - start), :, :]
 
 
 @dataclasses.dataclass
