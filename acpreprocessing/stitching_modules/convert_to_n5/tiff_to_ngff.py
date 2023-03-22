@@ -568,8 +568,6 @@ def write_mimgfns_to_n5(
     joined_shapes = joined_mimg_shape_from_fns(
         mimgfns, concurrency=concurrency,
         interleaved_channels=interleaved_channels, channel=channel)
-    # TODO also get dtype from mimg
-    # TODO KT DESKEW: reshape joined_shapes to deskewed dimensions
     if deskew_options and deskew_options["deskew_method"] == "ps":
         block_size = chunk_size[0]
         slice_length = int(chunk_size[0]/deskew_options['deskew_stride'])
@@ -578,7 +576,6 @@ def write_mimgfns_to_n5(
                                             )
         joined_shapes = psd.reshape_joined_shapes(
             joined_shapes, deskew_options['deskew_stride'], **deskew_kwargs)
-        #print('deskewed joined shapes is ' + str(joined_shapes))
     else:
         block_size = chunk_size[0]
         slice_length = block_size
@@ -623,7 +620,6 @@ def write_mimgfns_to_n5(
             ds_lvl.attrs["downsamplingFactors"] = dsfactors
             mip_ds[mip_lvl] = ds_lvl
             scales.append(dsfactors)
-            # print(ds_lvl.shape)
         g.attrs["scales"] = scales
         group_objs[0].attrs["downsamplingFactors"] = scales
         group_objs[0].attrs["dataType"] = dtype
@@ -792,8 +788,6 @@ def write_mimgfns_to_zarr(
     joined_shapes = joined_mimg_shape_from_fns(
         mimgfns, concurrency=concurrency,
         interleaved_channels=interleaved_channels, channel=channel)
-    # TODO also get dtype from mimg
-    # TODO KT DESKEW: reshape joined_shapes to deskewed dimensions
     if deskew_options and deskew_options["deskew_method"] == "ps":
         block_size = chunk_size[2]
         slice_length = int(chunk_size[2]/deskew_options['deskew_stride'])
@@ -802,7 +796,6 @@ def write_mimgfns_to_zarr(
                                             )
         joined_shapes = psd.reshape_joined_shapes(
             joined_shapes, deskew_options['deskew_stride'], **deskew_kwargs)
-        #print('deskewed joined shapes is ' + str(joined_shapes))
     else:
         block_size = chunk_size[2]
         slice_length = block_size
@@ -849,16 +842,10 @@ def write_mimgfns_to_zarr(
                 shape=(1, 1, mip_3dshape[0], mip_3dshape[1], mip_3dshape[2]),
                 compression=compression,
                 dtype=dtype
-                # n_threads=slice_concurrency
             )
             dsfactors = [int(i)**mip_lvl for i in mip_dsfactor]
-            #ds_lvl.attrs["downsamplingFactors"] = dsfactors
             mip_ds[mip_lvl] = ds_lvl
             scales.append(dsfactors)
-            # print(ds_lvl.shape)
-        #g.attrs["scales"] = scales
-        #group_objs[0].attrs["downsamplingFactors"] = scales
-        #group_objs[0].attrs["dataType"] = dtype
 
         with concurrent.futures.ThreadPoolExecutor(max_workers=workers) as e:
             futs = []
