@@ -745,14 +745,22 @@ def omezarr_attrs(name, position_xyz, lvl0_xyz_res, max_lvl):
     return attrs
 
 
+class TiffToNGFFException(Exception):
+    """class to describe exceptions with TiffToNGFF module"""
+
+
+class TiffToNGFFValueError(TiffToNGFFException, ValueError):
+    """value error in TiffToNgff"""
+
+
 def write_mimgfns_to_zarr(
         mimgfns, output_n5, group_names, group_attributes=None, max_mip=0,
         mip_dsfactor=(2, 2, 2), chunk_size=(1, 1, 64, 64, 64),
         concurrency=10, slice_concurrency=1,
         compression="raw", dtype="uint16", lvl_to_mip_kwargs=None,
         interleaved_channels=1, channel=0, deskew_options=None, **kwargs):
-    """write a stack represented by an iterator of multi-image files as an n5
-    volume
+    """write a stack represented by an iterator of multi-image files as a zarr
+    volume with ome-ngff metadata
 
     Parameters
     ----------
@@ -835,7 +843,7 @@ def write_mimgfns_to_zarr(
                 for k, v in attributes.items():
                     g.attrs[k] = v
         else:
-            print('omezarr should only have one group')
+            raise TiffToNGFFValueError("only one group name expected")
         scales = []
 
         # shuffle=Blosc.BITSHUFFLE)

@@ -29,7 +29,8 @@ def psdeskew_kwargs(skew_dims_zyx, deskew_stride=1, deskew_flip=False, deskew_cr
 
     Returns
     ----------
-    dict of parameters representing pixel deskew operation for deskew_block
+    kwargs : dict
+        parameters representing pixel deskew operation for deskew_block
     """
     sdims = skew_dims_zyx
     crop_factor = deskew_crop
@@ -101,7 +102,8 @@ def deskew_block(blockData, n, dsi, si, slice1d, blockdims, subblocks, flip, dty
 
     Returns
     ----------
-    ndarray of pixel shifted deskewed data ordered (z,y,x) by sample axes 
+    block3d : numpy.ndarray
+        pixel shifted deskewed data ordered (z,y,x) by sample axes 
     """
     subb = subblocks
     block3d = np.zeros(blockdims, dtype=dtype)
@@ -130,6 +132,22 @@ def deskew_block(blockData, n, dsi, si, slice1d, blockdims, subblocks, flip, dty
 
 
 def reshape_joined_shapes(joined_shapes, stride, blockdims, *args, **kwargs):
+    """get dimensions of deskewed joined shapes from skewed joined shapes
+
+    Parameters
+    ----------
+    joined_shapes : tuple of int
+        shape of 3D array represented by concatenating mimg_fns
+    stride : int
+        number of camera pixels per deskewed sampling plane (divides z resolution)
+    blockdims : tuple of int
+        dimensions of output block
+
+    Returns
+    ----------
+    deskewed_shape : tuple of int
+        shape of deskewed 3D array represented by joined_shapes
+    """
     deskewed_shape = (int(np.ceil(joined_shapes[0]/(blockdims[2]/stride))*blockdims[2]),
                       blockdims[1],
                       blockdims[0])
