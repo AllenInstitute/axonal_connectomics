@@ -5,8 +5,8 @@ Created on Mon Jul 31 13:39:58 2023
 @author: kevint
 """
 
-from sift_stitch import SiftDetector
-from zarrutils import get_group_from_src
+from acpreprocessing.stitching_modules.acstitch.sift_stitch import SiftDetector
+from acpreprocessing.stitching_modules.acstitch.zarrutils import get_group_from_src
 
 def generate_sift_pointmatches(p_srclist,q_srclist,miplvl=0,sift_kwargs=None,stitch_kwargs=None):
     p_datasets = [get_group_from_src(src)[miplvl] for src in p_srclist]
