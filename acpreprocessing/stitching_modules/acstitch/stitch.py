@@ -33,6 +33,7 @@ def generate_ccorr_pointmatches(p_srclist,q_srclist,miplvl=0,ccorr_kwargs=None,s
     q_datasets = [get_group_from_src(src)[miplvl] for src in q_srclist]
     pmlist = []
     for i in range(len(p_datasets)):
+        print("computing pointmatches for source pair " + str(i))
         pds = p_datasets[i]
         qds = q_datasets[i]
         if not sift_pmlist is None:
