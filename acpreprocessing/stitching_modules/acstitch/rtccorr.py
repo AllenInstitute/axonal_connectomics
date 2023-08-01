@@ -60,9 +60,9 @@ def ccorr_disp(img1, img2, autocorrelation_threshold=None, padarray=False, value
         ac2max = ac2.max()
         if (not numpy.isnan(ac1max) and ac1max > 0) and (not numpy.isnan(ac2max) and ac2max > 0):
             autocorrelation_ratio = cc.max() / (numpy.sqrt(ac1max*ac2max))
-            print(autocorrelation_ratio)
             if autocorrelation_ratio < autocorrelation_threshold:
                 # what to do here?
+                print("ratio below threshold: " + str(autocorrelation_ratio))
                 return None
         else:
             return None
