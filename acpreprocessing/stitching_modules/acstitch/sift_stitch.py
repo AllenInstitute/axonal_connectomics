@@ -36,7 +36,7 @@ class SiftDetector(object):
             if m.distance < self.ratio*n.distance:
                 matchesMask[i]=[1,0]
                 good.append(m)
-        print(len(good))
+        #print(len(good))
         k1xy = np.array([np.array(k.pt) for k in kp1])
         k2xy = np.array([np.array(k.pt) for k in kp2])
         k1 = []
