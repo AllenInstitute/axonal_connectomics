@@ -18,7 +18,7 @@ class NumpyEncoder(json.JSONEncoder):
     
 def save_pointmatch_file(pmdata,jsonpath):
     with gzip.open(jsonpath, 'w') as fout:
-        fout.write(json.dumps(pmdata).encode('utf-8'))
+        fout.write(json.dumps(pmdata,cls=NumpyEncoder).encode('utf-8'))
         
 
 def read_pointmatch_file(jsonpath):
