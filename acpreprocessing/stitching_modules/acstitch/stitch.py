@@ -53,17 +53,18 @@ def get_cc_points_from_sift(p_ds,q_ds,p_siftpts,q_siftpts,n_cc_pts=1,axis_shift=
     # TODO: handle overly granular bins with potentially 0 sift points returned
     if axis_range is None:
         axis_range = [[] for i in range(p_siftpts.shape[1])]
-    zstarts = numpy.linspace(numpy.min(p_siftpts,axis=0),numpy.max(p_siftpts,axis=0),n_cc_pts+1)
+    if len(axis_range[0]) == 0:
+        zstarts = numpy.linspace(numpy.min(p_siftpts[:,0]),numpy.max(p_siftpts[:,0]),n_cc_pts+1)
     p_pts = numpy.empty((n_cc_pts,3),dtype=int)
     q_pts = numpy.empty((n_cc_pts,3),dtype=int)
     for i in range(n_cc_pts):
-        if len(axis_range[0]) == 0:
-            axis_range[0] = [zstarts[i],zstarts[i+1]]
         r = numpy.full(p_siftpts.shape,True)
         for i,a in enumerate(axis_range):
             print(a)
-            if a:
+            if len(a)>0:
                 r = r & ((p_siftpts[:,i]>=a[0]) & (p_siftpts[:,i]<=a[1]))
+            elif i == 0:
+                r = r & ((p_siftpts[:,i]>=zstarts[i]) & (p_siftpts[:,i]<=zstarts[i+1]))
         pr = p_siftpts[r]
         imax = numpy.argmax(p_ds[0,0,pr[:,0],pr[:,1],pr[:,2]])
         ppt = pr[imax,:]
