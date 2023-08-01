@@ -46,6 +46,8 @@ def generate_ccorr_pointmatches(p_srclist,q_srclist,miplvl=0,ccorr_kwargs=None,s
 
 def run_ccorr_with_sift_points(p_ds,q_ds,p_siftpts,q_siftpts,n_cc_pts=1,axis_w=[32,32,32],pad_array=False,axis_shift=[0,0,0],axis_range=None,**kwargs):
     p_pts,q_pts = get_cc_points_from_sift(p_ds, q_ds, p_siftpts, q_siftpts,n_cc_pts,axis_shift,axis_range)
+    print(p_pts)
+    print(q_pts)
     ppm,qpm = get_correspondences(p_ds,q_ds,p_pts,q_pts,numpy.asarray(axis_w),pad_array)
     return ppm,qpm
 
@@ -60,13 +62,13 @@ def get_cc_points_from_sift(p_ds,q_ds,p_siftpts,q_siftpts,n_cc_pts=1,axis_shift=
     for i in range(n_cc_pts):
         r = numpy.full(p_siftpts.shape[0],True)
         for i,a in enumerate(axis_range):
-            print(a)
             if len(a)>0:
                 r = r & ((p_siftpts[:,i]>=a[0]) & (p_siftpts[:,i]<=a[1]))
             elif i == 0:
                 r = r & ((p_siftpts[:,i]>=zstarts[i]) & (p_siftpts[:,i]<=zstarts[i+1]))
         pr = p_siftpts[r]
         imax = numpy.argmax(p_ds[0,0,pr[:,0],pr[:,1],pr[:,2]])
+        print(imax)
         ppt = pr[imax,:]
         print(p_ds[0,0,ppt[0],ppt[1],ppt[2]])        
         p_pts[i] = ppt
