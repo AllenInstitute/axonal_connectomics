@@ -50,6 +50,7 @@ def run_ccorr_with_sift_points(p_ds,q_ds,p_siftpts,q_siftpts,n_cc_pts=1,axis_w=[
     return ppm,qpm
 
 def get_cc_points_from_sift(p_ds,q_ds,p_siftpts,q_siftpts,n_cc_pts=1,axis_shift=[0,0,0],axis_range=None):
+    # TODO: handle overly granular bins with potentially 0 sift points returned
     if axis_range is None:
         axis_range = [[] for i in range(p_siftpts.shape[1])]
     zstarts = numpy.linspace(numpy.min(p_siftpts,axis=0),numpy.max(p_siftpts,axis=0),n_cc_pts+1)
@@ -60,6 +61,7 @@ def get_cc_points_from_sift(p_ds,q_ds,p_siftpts,q_siftpts,n_cc_pts=1,axis_shift=
             axis_range[0] = [zstarts[i],zstarts[i+1]]
         r = numpy.full(p_siftpts.shape,True)
         for i,a in enumerate(axis_range):
+            print(a)
             if a:
                 r = r & ((p_siftpts[:,i]>=a[0]) & (p_siftpts[:,i]<=a[1]))
         pr = p_siftpts[r]
