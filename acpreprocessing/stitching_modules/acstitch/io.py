@@ -24,4 +24,8 @@ def save_pointmatch_file(pmdata,jsonpath):
 def read_pointmatch_file(jsonpath):
     with gzip.open(jsonpath, 'r') as fin:
         data = json.loads(fin.read().decode('utf-8'))
+    if data:
+        for tspec in data:
+            for key in ["p_pts","q_pts"]:
+                tspec[key] = numpy.asarray(tspec[key])
     return data
