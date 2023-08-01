@@ -119,8 +119,8 @@ class SiftDetector(object):
                     for ii in range(n_tiles):
                         if not pm[i][ii] is None:
                             tile_pmlist[i][ii].append(pm[i][ii])
-            p_ptlist = [np.concatenate(pm) for pm in tile_pmlist[0]]
-            q_ptlist = [np.concatenate(pm) for pm in tile_pmlist[1]]
+            p_ptlist = [np.concatenate(pm) if pm else [] for pm in tile_pmlist[0]]
+            q_ptlist = [np.concatenate(pm) if pm else [] for pm in tile_pmlist[1]]
             return p_ptlist,q_ptlist
         else:
             return None,None

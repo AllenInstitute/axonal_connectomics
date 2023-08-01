@@ -16,5 +16,6 @@ def generate_sift_pointmatches(p_srclist,q_srclist,miplvl=0,sift_kwargs=None,sti
     pmlist = []
     if not p_ptlist is None:
         for p_src,q_src,p_pts,q_pts in zip(p_srclist,q_srclist,p_ptlist,q_ptlist):
-            pmlist.append({"p_tile":p_src,"q_tile":q_src,"p_pts":p_pts,"q_pts":q_pts})
+            if not p_pts is None and len(p_pts) > 0:
+                pmlist.append({"p_tile":p_src,"q_tile":q_src,"p_pts":p_pts,"q_pts":q_pts})
     return pmlist
