@@ -58,7 +58,7 @@ def get_cc_points_from_sift(p_ds,q_ds,p_siftpts,q_siftpts,n_cc_pts=1,axis_shift=
     p_pts = numpy.empty((n_cc_pts,3),dtype=int)
     q_pts = numpy.empty((n_cc_pts,3),dtype=int)
     for i in range(n_cc_pts):
-        r = numpy.full(p_siftpts.shape,True)
+        r = numpy.full(p_siftpts.shape[0],True)
         for i,a in enumerate(axis_range):
             print(a)
             if len(a)>0:
