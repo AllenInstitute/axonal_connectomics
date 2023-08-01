@@ -4,9 +4,12 @@ Created on Mon Jul 31 13:39:58 2023
 
 @author: kevint
 """
-
+import numpy
 from acpreprocessing.stitching_modules.acstitch.sift_stitch import SiftDetector
+from acpreprocessing.stitching_modules.acstitch.ccorr_stitch import get_correspondences
 from acpreprocessing.stitching_modules.acstitch.zarrutils import get_group_from_src
+from acpreprocessing.stitching_modules.acstitch.io import read_pointmatch_file
+
 
 def generate_sift_pointmatches(p_srclist,q_srclist,miplvl=0,sift_kwargs=None,stitch_kwargs=None):
     p_datasets = [get_group_from_src(src)[miplvl] for src in p_srclist]
@@ -19,3 +22,55 @@ def generate_sift_pointmatches(p_srclist,q_srclist,miplvl=0,sift_kwargs=None,sti
             if not p_pts is None and len(p_pts) > 0:
                 pmlist.append({"p_tile":p_src,"q_tile":q_src,"p_pts":p_pts,"q_pts":q_pts})
     return pmlist
+
+
+def generate_ccorr_pointmatches(p_srclist,q_srclist,miplvl=0,ccorr_kwargs=None,stitch_kwargs=None):
+    if "sift_pointmatch_file" in ccorr_kwargs and ccorr_kwargs["sift_pointmatch_file"]:
+        sift_pmlist = read_pointmatch_file(ccorr_kwargs["sift_pointmatch_file"])
+    else:
+        sift_pmlist = None
+    p_datasets = [get_group_from_src(src)[miplvl] for src in p_srclist]
+    q_datasets = [get_group_from_src(src)[miplvl] for src in q_srclist]
+    pmlist = []
+    for i in range(len(p_datasets)):
+        pds = p_datasets[i]
+        qds = q_datasets[i]
+        if not sift_pmlist is None:
+            ppts,qpts = run_ccorr_with_sift_points(pds, qds, sift_pmlist[i]["p_pts"].astype(int), sift_pmlist[i]["q_pts"].astype(int), **ccorr_kwargs)
+        else:
+            ppts,qpts = run_ccorr(**ccorr_kwargs)
+        if not ppts is None and len(ppts) > 0:
+            pmlist.append({"p_tile":p_srclist[i],"q_tile":q_srclist[i],"p_pts":ppts,"q_pts":qpts})
+    return pmlist
+    
+
+def run_ccorr_with_sift_points(p_ds,q_ds,p_siftpts,q_siftpts,n_cc_pts=1,axis_w=[32,32,32],pad_array=False,axis_shift=[0,0,0],axis_range=None,**kwargs):
+    p_pts,q_pts = get_cc_points_from_sift(p_ds, q_ds, p_siftpts, q_siftpts,n_cc_pts,axis_shift,axis_range)
+    ppm,qpm = get_correspondences(p_ds,q_ds,p_pts,q_pts,numpy.asarray(axis_w),pad_array)
+    return ppm,qpm
+
+def get_cc_points_from_sift(p_ds,q_ds,p_siftpts,q_siftpts,n_cc_pts=1,axis_shift=[0,0,0],axis_range=None):
+    if axis_range is None:
+        axis_range = [[] for i in range(p_siftpts.shape[1])]
+    zstarts = numpy.linspace(numpy.min(p_siftpts,axis=0),numpy.max(p_siftpts,axis=0),n_cc_pts+1)
+    p_pts = numpy.empty((n_cc_pts,3),dtype=int)
+    q_pts = numpy.empty((n_cc_pts,3),dtype=int)
+    for i in range(n_cc_pts):
+        if len(axis_range[0]) == 0:
+            axis_range[0] = [zstarts[i],zstarts[i+1]]
+        r = numpy.full(p_siftpts.shape,True)
+        for i,a in enumerate(axis_range):
+            if a:
+                r = r & ((p_siftpts[:,i]>=a[0]) & (p_siftpts[:,i]<=a[1]))
+        pr = p_siftpts[r]
+        imax = numpy.argmax(p_ds[0,0,pr[:,0],pr[:,1],pr[:,2]])
+        ppt = pr[imax,:]
+        print(p_ds[0,0,ppt[0],ppt[1],ppt[2]])        
+        p_pts[i] = ppt
+        q_pts[i] = ppt + numpy.array(axis_shift)
+    return p_pts,q_pts
+    
+    
+    
+def run_ccorr(**kwargs):
+    pass
