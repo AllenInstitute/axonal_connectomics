@@ -27,5 +27,6 @@ def read_pointmatch_file(jsonpath):
     if data:
         for tspec in data:
             for key in ["p_pts","q_pts"]:
-                tspec[key] = numpy.asarray(tspec[key])
+                if not tspec[key] is None:
+                    tspec[key] = numpy.asarray(tspec[key])
     return data
