@@ -39,11 +39,17 @@ def generate_ccorr_pointmatches(p_srclist,q_srclist,miplvl=0,ccorr_kwargs=None,s
         pds = p_datasets[i]
         qds = q_datasets[i]
         if not sift_pmlist is None:
-            ppts,qpts = run_ccorr_with_sift_points(pds, qds, sift_pmlist[i]["p_pts"].astype(int), sift_pmlist[i]["q_pts"].astype(int), **ccorr_kwargs)
+            if not sift_pmlist[i]["p_pts"] is None and len(sift_pmlist[i]["p_pts"])>0:
+                ppts,qpts = run_ccorr_with_sift_points(pds, qds, sift_pmlist[i]["p_pts"].astype(int), sift_pmlist[i]["q_pts"].astype(int), **ccorr_kwargs)
+            else:
+                ppts = None
+                qpts = None
         else:
             ppts,qpts = run_ccorr(**ccorr_kwargs)
         if not ppts is None and len(ppts) > 0:
             pmlist.append({"p_tile":p_srclist[i],"q_tile":q_srclist[i],"p_pts":ppts,"q_pts":qpts})
+        else:
+            pmlist.append({"p_tile":p_srclist[i],"q_tile":q_srclist[i],"p_pts":None,"q_pts":None})
     return pmlist
     
 
