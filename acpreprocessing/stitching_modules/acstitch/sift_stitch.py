@@ -178,13 +178,12 @@ class SiftDetector(object):
                     t.append(None)
         return siftstitch
 
-    def run_zy_stitch(sift_detector,
+    def run_zy_stitch(self,
                       p_srclist,
                       q_srclist,
                       z0,z1,i_slice,j_slice,nx,dx,
                       scatter=False):
         # estimate translation between strips with the median 2D displacement of matching point correspondences
-        kms = np.zeros((len(p_srclist),2))
         siftklist = []
         j_slices = np.ones(len(p_srclist),dtype=int)*j_slice
         for i,dsRef in enumerate(p_srclist):
@@ -193,18 +192,17 @@ class SiftDetector(object):
             dsStack = q_srclist[i]
             imgRef = dsRef[0,0,z0:z1,:,i_slice]
             # detect SIFT keypoints for reference slice
-            kp1, des1, cimg1 = sift_detector.detect_keypoints(imgRef)
+            kp1, des1, cimg1 = self.detect_keypoints(imgRef)
             imgStack = dsStack[0,0,z0:z1,:,(ji-nx*dx):(ji+(nx+1)*dx):dx]
             # detect correspondences in slices from neighboring strip
-            k1_tot,k2_tot,good,k2slice = sift_detector.detect_and_combine(kp1,des1,cimg1,imgStack,False,axis=2,max_only=False)
+            k1_tot,k2_tot,good,k2slice = self.detect_and_combine(kp1,des1,cimg1,imgStack,False,axis=2,max_only=True)
             print("Number of correspondences: " + str(good))
-            if not k1_tot is None and k1_tot.shape[0]>50:
+            if not k1_tot is None and k1_tot.shape[0]>100:
                 k = k2_tot-k1_tot
                 print('total correspondences for analysis: ' + str(k.shape[0]))
                 # estimate stitching translation with median displacement
                 km = np.median(k,axis=0)
                 print('median pixel displacements:' + str(km))
-                kms[i] = km
                 # display scatter of displacements around median estimate
                 if scatter:
                     plt.scatter(k[:,0]-km[0],k[:,1]-km[1],s=1)
@@ -217,23 +215,18 @@ class SiftDetector(object):
             else:
                 print("not enough correspondences for strip " + str(i))
                 siftklist.append(None)
-                
-        trest = np.zeros((kms.shape[0],3))
-        trest[:,0] = kms[:,1]
-        trest[:,1] = kms[:,0]
-        trest[:,2] = j_slices - j_slice
-        
+
         siftstitch = [[],[]]
         for i,s in enumerate(siftklist):
             zi = z0
-            yi = j_slices[i]
+            xi = j_slices[i]
             for ii,t in enumerate(siftstitch):
                 if not s is None:
                     kzyx = np.empty((s[ii].shape[0],3))
                     kzyx[:,0] = s[ii][:,0] + zi
-                    kzyx[:,2] = i_slice if ii == 0 else yi
                     kzyx[:,1] = s[ii][:,1]
+                    kzyx[:,2] = i_slice if ii == 0 else xi
                     t.append(kzyx)
                 else:
                     t.append(None)
-        return siftstitch,trest
+        return siftstitch
