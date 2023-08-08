@@ -111,6 +111,10 @@ class SiftDetector(object):
             for zs in zstarts:
                 seglist = self.run_zx_stitch(p_dslist,q_dslist,zs,zs+zlength,**kwargs)
                 pmlist.append(seglist)
+        elif slice_axes == "zy":
+            for zs in zstarts:
+                seglist = self.run_zy_stitch(p_dslist,q_dslist,zs,zs+zlength,**kwargs)
+                pmlist.append(seglist)
         if pmlist:
             n_tiles = len(pmlist[0][0])
             tile_pmlist = [[[] for i in range(n_tiles)],[[] for i in range(n_tiles)]]
