@@ -11,11 +11,11 @@ from acpreprocessing.stitching_modules.acstitch.zarrutils import get_group_from_
 from acpreprocessing.stitching_modules.acstitch.io import read_pointmatch_file
 
 
-def generate_sift_pointmatches(p_srclist,q_srclist,miplvl=0,sift_kwargs=None,stitch_kwargs=None):
+def generate_sift_pointmatches(p_srclist,q_srclist,stitch_axes="zx",miplvl=0,sift_kwargs=None,stitch_kwargs=None):
     p_datasets = [get_group_from_src(src)[miplvl] for src in p_srclist]
     q_datasets = [get_group_from_src(src)[miplvl] for src in q_srclist]
     sd = SiftDetector(**sift_kwargs)
-    p_ptlist,q_ptlist = sd.stitch_over_segments("zx",p_datasets,q_datasets,**stitch_kwargs) # zstarts, zlength, i_slice, j_slice, ny, dy)
+    p_ptlist,q_ptlist = sd.stitch_over_segments(stitch_axes,p_datasets,q_datasets,**stitch_kwargs) # zstarts, zlength, i_slice, j_slice, ny, dy)
     pmlist = []
     if not p_ptlist is None:
         for p_src,q_src,p_pts,q_pts in zip(p_srclist,q_srclist,p_ptlist,q_ptlist):
