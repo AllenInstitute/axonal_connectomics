@@ -11,11 +11,15 @@ from acpreprocessing.stitching_modules.acstitch.zarrutils import get_group_from_
 from acpreprocessing.stitching_modules.acstitch.io import read_pointmatch_file
 
 
-def generate_sift_pointmatches(p_srclist,q_srclist,stitch_axes="zx",miplvl=0,sift_kwargs=None,stitch_kwargs=None):
+def generate_sift_pointmatches(p_srclist,q_srclist,miplvl=0,sift_kwargs=None,stitch_kwargs=None):
     p_datasets = [get_group_from_src(src)[miplvl] for src in p_srclist]
     q_datasets = [get_group_from_src(src)[miplvl] for src in q_srclist]
     sd = SiftDetector(**sift_kwargs)
-    p_ptlist,q_ptlist = sd.stitch_over_segments(stitch_axes,p_datasets,q_datasets,**stitch_kwargs) # zstarts, zlength, i_slice, j_slice, ny, dy)
+    if "sift_pointmatch_file" in stitch_kwargs and stitch_kwargs["sift_pointmatch_file"]:
+        sift_pmlist = read_pointmatch_file(stitch_kwargs["sift_pointmatch_file"])
+    else:
+        sift_pmlist = None
+    p_ptlist,q_ptlist = sd.stitch_over_segments(p_datasets,q_datasets,**stitch_kwargs) # zstarts, zlength, i_slice, j_slice, ny, dy)
     pmlist = []
     if not p_ptlist is None:
         for p_src,q_src,p_pts,q_pts in zip(p_srclist,q_srclist,p_ptlist,q_ptlist):
@@ -27,8 +31,9 @@ def generate_sift_pointmatches(p_srclist,q_srclist,stitch_axes="zx",miplvl=0,sif
 
 
 def generate_ccorr_pointmatches(p_srclist,q_srclist,miplvl=0,ccorr_kwargs=None,stitch_kwargs=None):
-    if "sift_pointmatch_file" in ccorr_kwargs and ccorr_kwargs["sift_pointmatch_file"]:
-        sift_pmlist = read_pointmatch_file(ccorr_kwargs["sift_pointmatch_file"])
+    if "sift_pointmatch_file" in stitch_kwargs and stitch_kwargs["sift_pointmatch_file"]:
+        print("running crosscorrelation with points from " + stitch_kwargs["sift_pointmatch_file"])
+        sift_pmlist = read_pointmatch_file(stitch_kwargs["sift_pointmatch_file"])
     else:
         sift_pmlist = None
     p_datasets = [get_group_from_src(src)[miplvl] for src in p_srclist]

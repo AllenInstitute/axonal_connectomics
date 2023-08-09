@@ -105,13 +105,13 @@ class SiftDetector(object):
             return None,None,None,None
         
         
-    def stitch_over_segments(self,slice_axes,p_dslist,q_dslist,zstarts,zlength,**kwargs):
+    def stitch_over_segments(self,p_dslist,q_dslist,zstarts,zlength,stitch_axes,**kwargs):
         pmlist = []
-        if slice_axes == "zx":
+        if stitch_axes == "zx":
             for zs in zstarts:
                 seglist = self.run_zx_stitch(p_dslist,q_dslist,zs,zs+zlength,**kwargs)
                 pmlist.append(seglist)
-        elif slice_axes == "zy":
+        elif stitch_axes == "zy":
             for zs in zstarts:
                 seglist = self.run_zy_stitch(p_dslist,q_dslist,zs,zs+zlength,**kwargs)
                 pmlist.append(seglist)
