@@ -11,8 +11,7 @@ def generate_rois_from_pointmatches(pm_list,axis_range,roi_dims,**kwargs):
     for pm in pm_list:
         p_siftpts = pm["p_pts"]
         z,roipts = get_roipoints_from_siftpoints(p_siftpts,axis_range,roi_dims[0])
-        print(roipts)
-        if len(roipts==0):
+        if len(roipts)==0:
             print("no roi points found")
             roilist.append(None)
         else:
