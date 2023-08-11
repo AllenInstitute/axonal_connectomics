@@ -17,9 +17,13 @@ def generate_rois_from_pointmatches(pm_list,axis_range,roi_dims,**kwargs):
             if len(roipts.shape) == 1:
                 roipts = roipts[np.newaxis,:]
             ptsmean = np.mean(roipts,axis=0)
-            y = ptsmean[1]
-            x = ptsmean[2]
-            roilist.append([[z,z+roi_dims[0]],[y,y+roi_dims[1]],[x,x+roi_dims[2]]])
+            if roi_dims[1] is None:
+                x = ptsmean[2]
+                roi = [[z,z+roi_dims[0]],[],[x,x+roi_dims[2]]]
+            elif roi_dims[2] is None:
+                y = ptsmean[1]
+                roi = [[z,z+roi_dims[0]],[y,y+roi_dims[1]],[]]
+            roilist.append(roi)
     return roilist
 
 
@@ -43,6 +47,7 @@ def get_roipoints_from_siftpoints(p_siftpts,axis_range,roi_length):
             p_pts = pr
             z = zs
     return z,p_pts
+
 
 class SiftDetector(object):
     def __init__(self,clahe_kwargs,sift_kwargs,flann_args,ratio=0.7,min_inliers=100):
