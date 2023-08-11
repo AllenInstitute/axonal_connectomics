@@ -19,10 +19,10 @@ def generate_rois_from_pointmatches(pm_list,axis_range,roi_dims,**kwargs):
                 roipts = roipts[np.newaxis,:]
             ptsmean = np.mean(roipts,axis=0)
             if roi_dims[1] is None:
-                x = ptsmean[2]
+                x = int(ptsmean[2])
                 roi = [[z,z+roi_dims[0]],[],[x,x+roi_dims[2]]]
             elif roi_dims[2] is None:
-                y = ptsmean[1]
+                y = int(ptsmean[1])
                 roi = [[z,z+roi_dims[0]],[y,y+roi_dims[1]],[]]
             roilist.append(roi)
     return roilist
