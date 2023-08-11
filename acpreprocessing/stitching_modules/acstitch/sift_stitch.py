@@ -24,6 +24,7 @@ def generate_rois_from_pointmatches(pm_list,axis_range,roi_dims,**kwargs):
                 y = ptsmean[1]
                 roi = [[z,z+roi_dims[0]],[y,y+roi_dims[1]],[]]
             roilist.append(roi)
+    print(roilist)
     return roilist
 
 
