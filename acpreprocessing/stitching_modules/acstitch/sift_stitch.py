@@ -224,7 +224,7 @@ class SiftDetector(object):
             return None,None
     
     
-    def zy_stitch(self,p_src,q_src,z0,z1,p_slice,q_slice,nx,dx,scatter=False):
+    def zy_stitch(self,p_src,q_src,z0,z1,p_slice,q_slice,nx,dx,scatter=False,**kwargs):
         ji = q_slice
         imgRef = p_src[0,0,z0:z1,:,p_slice]
         # detect SIFT keypoints for reference slice
