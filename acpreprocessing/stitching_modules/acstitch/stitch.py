@@ -62,9 +62,9 @@ def generate_ccorr_pointmatches(p_srclist,q_srclist,miplvl=0,ccorr_kwargs=None,s
     return pmlist
     
 
-def run_ccorr_with_sift_points(p_ds,q_ds,p_siftpts,q_siftpts,n_cc_pts=1,axis_w=[32,32,32],pad_array=False,axis_shift=[0,0,0],axis_range=None,**kwargs):
+def run_ccorr_with_sift_points(p_ds,q_ds,p_siftpts,q_siftpts,n_cc_pts=1,axis_w=[32,32,32],pad_array=False,axis_shift=[0,0,0],axis_range=None,cc_threshold=0.8,**kwargs):
     p_pts,q_pts = get_cc_points_from_sift(p_ds, q_ds, p_siftpts, q_siftpts,n_cc_pts,axis_shift,axis_range)
-    ppm,qpm = get_correspondences(p_ds,q_ds,p_pts,q_pts,numpy.asarray(axis_w),pad_array)
+    ppm,qpm = get_correspondences(p_ds,q_ds,p_pts,q_pts,numpy.asarray(axis_w),pad_array,cc_threshold=cc_threshold)
     return ppm,qpm
 
 def get_cc_points_from_sift(p_ds,q_ds,p_siftpts,q_siftpts,n_cc_pts=1,axis_shift=[0,0,0],axis_range=None):
