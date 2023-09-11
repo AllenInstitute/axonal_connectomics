@@ -83,13 +83,16 @@ def get_cc_points_from_sift(p_ds,q_ds,p_siftpts,q_siftpts,n_cc_pts=1,axis_shift=
             elif ai == 0:
                 r = r & ((p_siftpts[:,ai]>=zstarts[i]) & (p_siftpts[:,ai]<=zstarts[i+1]))
         pr = p_siftpts[r]
+        qr = q_siftpts[r]
         if len(pr) > 0:
             imax = numpy.argmax(p_ds[0,0,pr[:,0],pr[:,1],pr[:,2]])
             ppt = pr[imax,:]
+            qpt = qr[imax,:]
         else:
             ppt = numpy.array([(zstarts[i]+zstarts[i+1])/2,numpy.mean(p_siftpts[:,1]),numpy.mean(p_siftpts[:,2])],dtype=int)
+            qpt = ppt + numpy.array(axis_shift)
         p_pts[i] = ppt
-        q_pts[i] = ppt + numpy.array(axis_shift)
+        q_pts[i] = qpt
     return p_pts,q_pts
     
     
