@@ -1,5 +1,6 @@
 import pathlib
 import zarr
+import json
 
 def get_zarr_group(zpath,grpname):
     # key to working with zarr files
@@ -18,3 +19,10 @@ def get_group_from_src(srcpath,
     else:
         print(str(p) + " not found!")
         return None
+    
+def get_src_from_json(sourcejson,plane,tile):
+    with open(sourcejson,'r') as f:
+        js = json.load(f)
+    srcList = js[plane]['sources']
+    ind = [s.split("_")[-1] for s in srcList].index(tile)
+    return srcList[ind]
