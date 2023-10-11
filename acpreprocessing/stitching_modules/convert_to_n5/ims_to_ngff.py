@@ -818,7 +818,7 @@ class IMSToZarr(argschema.ArgSchemaParser):
             self.args["chunk_size"],
             concurrency=self.args["concurrency"],
             compression=self.args["compression"],
-            lvl_to_mip_kwargs=self.args["lvl_to_mip_kwargs"],
+            #lvl_to_mip_kwargs=self.args["lvl_to_mip_kwargs"],
             deskew_options=deskew_options)
 
 
