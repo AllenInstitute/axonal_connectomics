@@ -12,6 +12,7 @@ import numpy
 import skimage
 
 import h5py
+import hdf5plugin
 import zarr
 from numcodecs import Blosc
 import argschema
