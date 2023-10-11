@@ -682,7 +682,7 @@ def write_ims_to_zarr(
                 g = f.create_group(f"{group_name}")
             except KeyError:
                 g = f[f"{group_name}"]
-            if not group_attributes is None:
+            if group_attributes:
                 try:
                     attributes = group_attributes[0]
                 except IndexError:
