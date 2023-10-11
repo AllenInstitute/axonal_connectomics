@@ -650,8 +650,8 @@ def write_ims_to_zarr(
     group_attributes = ([] if group_attributes is None else group_attributes)
     deskew_options = ({} if deskew_options is None else deskew_options)
     
-    with h5py.File(ims_fn, 'r') as f:
-        dataset = f['DataSet']['ResolutionLevel 0']['TimePoint 0']['Channel 0']['Data']
+    f = h5py.File(ims_fn, 'r')
+    dataset = f['DataSet']['ResolutionLevel 0']['TimePoint 0']['Channel 0']['Data']
     
     joined_shapes = dataset.shape
 
@@ -726,6 +726,8 @@ def write_ims_to_zarr(
                     miparr.start, miparr.end, miparr.array))
             for fut in concurrent.futures.as_completed(futs):
                 _ = fut.result()
+    print("conversion complete, closing file")
+    f.close()
 
 
 def ims_to_ngff_group(ims_fn, output, *args, **kwargs):
