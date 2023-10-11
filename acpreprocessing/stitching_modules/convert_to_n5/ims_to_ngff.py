@@ -682,10 +682,13 @@ def write_ims_to_zarr(
                 g = f.create_group(f"{group_name}")
             except KeyError:
                 g = f[f"{group_name}"]
-            try:
-                attributes = group_attributes[0]
-            except IndexError:
-                print('attributes error')
+            if not group_attributes is None:
+                try:
+                    attributes = group_attributes[0]
+                except IndexError:
+                    print('attributes error')
+            else:
+                attributes = {}
 
             if "pixelResolution" in attributes:
                 if deskew_options:
