@@ -5,7 +5,7 @@ Created on Mon Jul 31 13:39:58 2023
 @author: kevint
 """
 import numpy
-from acpreprocessing.stitching_modules.acstitch.sift_stitch import SiftDetector,generate_rois_from_pointmatches
+from acpreprocessing.stitching_modules.acstitch.sift_stitch import generate_rois_from_pointmatches,stitch_over_rois,stitch_over_segments
 from acpreprocessing.stitching_modules.acstitch.ccorr_stitch import get_correspondences
 from acpreprocessing.stitching_modules.acstitch.zarrutils import get_group_from_src
 from acpreprocessing.stitching_modules.acstitch.io import read_pointmatch_file
@@ -14,16 +14,20 @@ from acpreprocessing.stitching_modules.acstitch.io import read_pointmatch_file
 def generate_sift_pointmatches(p_srclist,q_srclist,miplvl=0,sift_kwargs=None,stitch_kwargs=None):
     p_datasets = [get_group_from_src(src)[miplvl] for src in p_srclist]
     q_datasets = [get_group_from_src(src)[miplvl] for src in q_srclist]
-    sd = SiftDetector(**sift_kwargs)
+    # sd = SiftDetector(**sift_kwargs)
     if "sift_pointmatch_file" in stitch_kwargs and stitch_kwargs["sift_pointmatch_file"]:
         sift_pmlist = read_pointmatch_file(stitch_kwargs["sift_pointmatch_file"])
     else:
         sift_pmlist = None
     if sift_pmlist is None:
-        p_ptlist,q_ptlist = sd.stitch_over_segments(p_datasets,q_datasets,**stitch_kwargs) # zstarts, zlength, stitch_axes, i_slice, j_slice, ny, dy
+        if "roi_list" in stitch_kwargs and not stitch_kwargs["roi_list"] is None:
+            roilist = stitch_kwargs["roi_list"]
+            p_ptlist,q_ptlist = stitch_over_rois(p_datasets,q_datasets,roilist,sift_kwargs,**stitch_kwargs)
+        else:
+            p_ptlist,q_ptlist = stitch_over_segments(p_datasets,q_datasets,sift_kwargs,**stitch_kwargs) # zstarts, zlength, stitch_axes, i_slice, j_slice, ny, dy
     else:
         roilist = generate_rois_from_pointmatches(pm_list=sift_pmlist,**stitch_kwargs) # axis_range, roi_dims, stitch_axes, ij_shift, nx, dx
-        p_ptlist,q_ptlist = sd.stitch_over_rois(p_datasets,q_datasets,roilist,**stitch_kwargs)
+        p_ptlist,q_ptlist = stitch_over_rois(p_datasets,q_datasets,roilist,sift_kwargs,**stitch_kwargs)
     pmlist = []
     if not p_ptlist is None:
         for p_src,q_src,p_pts,q_pts in zip(p_srclist,q_srclist,p_ptlist,q_ptlist):

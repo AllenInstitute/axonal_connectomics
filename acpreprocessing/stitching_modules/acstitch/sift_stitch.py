@@ -50,6 +50,134 @@ def get_roipoints_from_siftpoints(p_siftpts,axis_range,roi_length):
     return z,p_pts
 
 
+def stitch_over_segments(p_dslist,q_dslist,zstarts,zlength,stitch_axes,sd_kwargs,**kwargs):
+    pmlist = []
+    sd = SiftDetector(**sd_kwargs)
+    if stitch_axes == "zx":
+        for zs in zstarts:
+            seglist = sd.run_zx_stitch(p_dslist,q_dslist,zs,zs+zlength,**kwargs)
+            pmlist.append(seglist)
+    elif stitch_axes == "zy":
+        for zs in zstarts:
+            seglist = sd.run_zy_stitch(p_dslist,q_dslist,zs,zs+zlength,**kwargs)
+            pmlist.append(seglist)
+    if pmlist:
+        n_tiles = len(pmlist[0][0])
+        tile_pmlist = [[[] for i in range(n_tiles)],[[] for i in range(n_tiles)]]
+        for pm in pmlist:
+            for i in range(2):
+                for ii in range(n_tiles):
+                    if not pm[i][ii] is None:
+                        tile_pmlist[i][ii].append(pm[i][ii])
+        p_ptlist = [np.concatenate(pm) if pm else [] for pm in tile_pmlist[0]]
+        q_ptlist = [np.concatenate(pm) if pm else [] for pm in tile_pmlist[1]]
+        return p_ptlist,q_ptlist
+    else:
+        return None,None
+
+
+def stitch_over_rois(sd_kwargs,p_dslist,q_dslist,axis_type,roi_list,ij_shift,ns,ds,s0=0,**kwargs):
+    '''
+    Parameters
+    ----------
+    p_dslist : TYPE
+        DESCRIPTION.
+    q_dslist : TYPE
+        DESCRIPTION.
+    axis_type : TYPE
+        DESCRIPTION.
+    roi_list : TYPE
+        DESCRIPTION.
+    stitch_axes : TYPE
+        DESCRIPTION.
+    ij_shift : TYPE
+        DESCRIPTION.
+    **kwargs : TYPE
+        DESCRIPTION.
+
+    Returns
+    -------
+    p_ptlist,q_ptlist: lists of ndarray zyx coordinates of point matches for each pq pair in dslists
+
+    '''
+    pmlist = []
+    sd = SiftDetector(**sd_kwargs)
+    for p_src,q_src,roi in zip(p_dslist,q_dslist,roi_list):
+        if not roi is None:
+            # k1_tot,k2_tot,j_slice = self.zy_stitch(p_src,q_src,roi[0][0],roi[0][1],roi[2][0],roi[2][0]+ij_shift,**kwargs)
+            if axis_type == "ispim":
+                axis = 1
+                z0,z1 = roi[0]
+                py = roi[1]
+                qs = roi[1] + ij_shift + s0
+                x0,x1 = roi[2]
+                p_img = p_src[0,0,z0:z1,py,x0:x1]
+                q_stack = q_src[0,0,z0:z1,(qs-ns*ds):(qs+(ns+1)*ds):ds,x0:x1]
+                k2_add = np.array([0,0])
+            elif axis_type == "zyx":
+                axis = 2
+                z0,z1 = roi[0]
+                y0,y1 = roi[1]
+                px = roi[2]
+                qs = roi[2] + s0
+                p_img = p_src[0,0,z0:z1,y0:y1,px]
+                q_stack = q_src[0,0,z0:z1,y0+ij_shift:y1+ij_shift,(qs-ns*ds):(qs+(ns+1)*ds):ds]
+                k2_add = np.array([ij_shift,0])
+            elif axis_type == "xzy":
+                axis = 2
+                z0,z1 = roi[1]
+                y0,y1 = roi[2]
+                px = roi[0]
+                qs = roi[0] + s0
+                p_img = p_src[0,0,px,z0:z1,y0:y1]
+                q_stack = q_src[0,0,(qs-ns*ds):(qs+(ns+1)*ds):ds,z0:z1,y0+ij_shift:y1+ij_shift].transpose((1,2,0))
+                k2_add = np.array([ij_shift,0])
+            k1_tot,k2_tot,best_slice = sd.detect_in_best_slice(p_img, q_stack, axis=axis, **kwargs)
+            k2_tot += k2_add
+            if not k1_tot is None:
+                k2_slice = qs - ns*ds + ds*best_slice
+                pmlist.append((k1_tot,k2_tot,k2_slice))
+            else:
+                pmlist.append(None)
+        else:
+            pmlist.append(None)
+    if pmlist:
+        pq_lists = [[],[]]
+        for s,roi in zip(pmlist,roi_list):
+            for ii,t in enumerate(pq_lists):
+                if not s is None:
+                    k = np.empty((s[ii].shape[0],3))
+                    if axis_type == "ispim":
+                        zi = roi[0][0]
+                        xi = roi[2][0]
+                        y = roi[1]
+                        k[:,0] = s[ii][:,1] + zi
+                        k[:,1] = y if ii == 0 else s[2]
+                        k[:,2] = s[ii][:,0] + xi
+                    elif axis_type == "zyx":
+                        zi = roi[0][0]
+                        yi = roi[1][0]
+                        x = roi[2]
+                        k[:,0] = s[ii][:,1] + zi
+                        k[:,1] = s[ii][:,0] + yi
+                        k[:,2] = x if ii == 0 else s[2]
+                    elif axis_type == "xzy":
+                        x = roi[0]
+                        zi = roi[1][0]
+                        yi = roi[2][0]
+                        k[:,0] = x if ii == 0 else s[2]
+                        k[:,1] = s[ii][:,1] + zi
+                        k[:,2] = s[ii][:,0] + yi
+                    t.append(k)
+                else:
+                    t.append(None)
+        p_ptlist = pq_lists[0]
+        q_ptlist = pq_lists[1]
+        return p_ptlist,q_ptlist
+    else:
+        return None,None
+
+
 class SiftDetector(object):
     def __init__(self,clahe_kwargs,sift_kwargs,flann_args,ratio=0.7,min_inliers=100):
         # CLAHE equalizer
@@ -62,16 +190,13 @@ class SiftDetector(object):
         self.minin = min_inliers
         
     def detect_keypoints(self,img):
-        cimg1 = self.clahe.apply(img)
-        cimg1 = np.sqrt(cimg1).astype('uint8')
-        kp1, des1 = self.sift.detectAndCompute(cimg1,None)
-        return kp1,des1,cimg1
+        cimg = self.clahe.apply(img)
+        cimg = np.sqrt(cimg).astype('uint8')
+        kp, des = self.sift.detectAndCompute(cimg,None)
+        return kp,des,cimg
     
-    def detect_matches(self,kp1,des1,cimg1,img,draw=False):
-        cimg2 = self.clahe.apply(img)
-        cimg2 = np.sqrt(cimg2).astype('uint8')
-        # find the keypoints and descriptors with SIFT
-        kp2, des2 = self.sift.detectAndCompute(cimg2,None)
+    
+    def compute_matches(self,kp1,des1,kp2,des2,draw=False,cimg1=None,cimg2=None):
         matches = self.flann.knnMatch(des1,des2,k=2)
         # Need to draw only good matches, so create a mask
         matchesMask = [[0,0] for i in range(len(matches))]
@@ -82,8 +207,6 @@ class SiftDetector(object):
                 matchesMask[i]=[1,0]
                 good.append(m)
         #print(len(good))
-        k1xy = np.array([np.array(k.pt) for k in kp1])
-        k2xy = np.array([np.array(k.pt) for k in kp2])
         k1 = []
         k2 = []
         if len(good)>self.minin:
@@ -91,19 +214,15 @@ class SiftDetector(object):
             dst_pts = np.float32([ kp2[m.trainIdx].pt for m in good ]).reshape(-1,1,2)
             M, mask = cv.findHomography(src_pts, dst_pts, cv.RANSAC,5.0)
             matchesMask = mask.ravel().tolist()
-            if draw:
-                draw_params = dict(matchColor = (0,255,0), # draw matches in green color
-                               singlePointColor = None,
-                               matchesMask = matchesMask, # draw only inliers
-                               flags = 2)
-                img4 = cv.drawMatches(cimg1,kp1,cimg2,kp2,good,None,**draw_params)
-                plt.figure(figsize=(20,20))
-                plt.imshow(img4, 'gray'),plt.show()
+            if draw and not cimg1 is None and not cimg2 is None:
+                self.draw_matches(cimg1,kp1,cimg2,kp2,good,matchesMask)
+            goodMask = np.asarray(good)[np.asarray(matchesMask).astype('bool')]
+            imgIdx = np.array([g.imgIdx for g in goodMask])
+            tIdx = np.array([g.trainIdx for g in goodMask])
+            qIdx = np.array([g.queryIdx for g in goodMask])
+            k1xy = np.array([np.array(k.pt) for k in kp1])
+            k2xy = np.array([np.array(k.pt) for k in kp2])
 
-            good = np.array(good)[np.array(matchesMask).astype('bool')]
-            imgIdx = np.array([g.imgIdx for g in good])
-            tIdx = np.array([g.trainIdx for g in good])
-            qIdx = np.array([g.queryIdx for g in good])
             for i in range(len(tIdx)):
                 if imgIdx[i] == 1:
                     k1.append(k1xy[tIdx[i]])
@@ -111,7 +230,6 @@ class SiftDetector(object):
                 else:
                     k1.append(k1xy[qIdx[i]])
                     k2.append(k2xy[tIdx[i]])
-
             if len(k1)>0:
                 k1 = np.array(k1)
                 k2 = np.array(k2)
@@ -121,8 +239,18 @@ class SiftDetector(object):
                     np.random.shuffle(a)
                     k1 = k1[a[0: 10000], :]
                     k2 = k2[a[0: 10000], :]
-
-        return k1,k2
+        return k1,k2,good,matchesMask
+        
+        
+    def draw_matches(self,cimg1,kp1,cimg2,kp2,good,mask=[],**draw_kwargs):
+        draw_params = dict(matchColor = (0,255,0), # draw matches in green color
+                        singlePointColor = None,
+                        matchesMask = mask, # draw only inliers
+                        flags = 2)
+        draw_params.update(draw_kwargs)
+        cvimg = cv.drawMatches(cimg1,kp1,cimg2,kp2,good,None,**draw_params)
+        return cvimg
+        
     
     def detect_and_combine(self,kp1,des1,cimg1,imgStack,draw=False,axis=2,max_only=False):
         k1_tot = []
@@ -134,7 +262,8 @@ class SiftDetector(object):
                 img = imgStack[:,:,i]
             elif axis==1:
                 img = imgStack[:,i,:]
-            k1,k2 = self.detect_matches(kp1,des1,cimg1,img,draw)
+            kp2,des2,cimg2 = self.detect_keypoints(img)
+            k1,k2,_,__ = self.compute_matches(kp1,des1,kp2,des2)
             if isinstance(k1, np.ndarray):
                 k1_tot.append(k1)
                 k2_tot.append(k2)
@@ -149,91 +278,17 @@ class SiftDetector(object):
         else:
             return None,None,None,None
         
-        
-    def stitch_over_segments(self,p_dslist,q_dslist,zstarts,zlength,stitch_axes,**kwargs):
-        pmlist = []
-        if stitch_axes == "zx":
-            for zs in zstarts:
-                seglist = self.run_zx_stitch(p_dslist,q_dslist,zs,zs+zlength,**kwargs)
-                pmlist.append(seglist)
-        elif stitch_axes == "zy":
-            for zs in zstarts:
-                seglist = self.run_zy_stitch(p_dslist,q_dslist,zs,zs+zlength,**kwargs)
-                pmlist.append(seglist)
-        if pmlist:
-            n_tiles = len(pmlist[0][0])
-            tile_pmlist = [[[] for i in range(n_tiles)],[[] for i in range(n_tiles)]]
-            for pm in pmlist:
-                for i in range(2):
-                    for ii in range(n_tiles):
-                        if not pm[i][ii] is None:
-                            tile_pmlist[i][ii].append(pm[i][ii])
-            p_ptlist = [np.concatenate(pm) if pm else [] for pm in tile_pmlist[0]]
-            q_ptlist = [np.concatenate(pm) if pm else [] for pm in tile_pmlist[1]]
-            return p_ptlist,q_ptlist
-        else:
-            return None,None
-        
-        
-    def stitch_over_rois(self,p_dslist,q_dslist,roi_list,stitch_axes,ij_shift,**kwargs):
-        '''
-        Parameters
-        ----------
-        p_dslist : TYPE
-            DESCRIPTION.
-        q_dslist : TYPE
-            DESCRIPTION.
-        roi_list : TYPE
-            DESCRIPTION.
-        stitch_axes : TYPE
-            DESCRIPTION.
-        ij_shift : TYPE
-            DESCRIPTION.
-        **kwargs : TYPE
-            DESCRIPTION.
-
-        Returns
-        -------
-        p_ptlist,q_ptlist: lists of ndarray zyx coordinates of point matches for each pq pair in dslists
-
-        '''
-        pmlist = []
-        if stitch_axes == "zy":
-            for p_src,q_src,roi in zip(p_dslist,q_dslist,roi_list):
-                if not roi is None:
-                    k1_tot,k2_tot,j_slice = self.zy_stitch(p_src,q_src,roi[0][0],roi[0][1],roi[2][0],roi[2][0]+ij_shift,**kwargs)
-                    pmlist.append((k1_tot,k2_tot,j_slice))
-        if pmlist:
-            pq_lists = [[],[]]
-            for i,s in enumerate(pmlist):
-                zi = roi_list[0][0]
-                xi = roi_list[0][2]
-                for ii,t in enumerate(pq_lists):
-                    if not s is None:
-                        kzyx = np.empty((s[ii].shape[0],3))
-                        kzyx[:,0] = s[ii][:,0] + zi
-                        kzyx[:,1] = s[ii][:,1]
-                        kzyx[:,2] = xi if ii == 0 else s[2]
-                        t.append(kzyx)
-                    else:
-                        t.append(None)
-            p_ptlist = pq_lists[0]
-            q_ptlist = pq_lists[1]
-            return p_ptlist,q_ptlist
-        else:
-            return None,None
     
-    
-    def zy_stitch(self,p_src,q_src,z0,z1,p_slice,q_slice,nx,dx,scatter=False,**kwargs):
-        ji = q_slice
-        imgRef = p_src[0,0,z0:z1,:,p_slice]
+    def detect_in_best_slice(self,p_img,q_stack,axis,scatter=False,**kwargs):
+        # ji = q_slice
+        # imgRef = p_src[0,0,z0:z1,:,p_slice]
         # detect SIFT keypoints for reference slice
-        kp1, des1, cimg1 = self.detect_keypoints(imgRef)
-        imgStack = q_src[0,0,z0:z1,:,(ji-nx*dx):(ji+(nx+1)*dx):dx]
+        kp1, des1, cimg1 = self.detect_keypoints(p_img)
+        # imgStack = q_src[0,0,z0:z1,:,(ji-nx*dx):(ji+(nx+1)*dx):dx]
         # detect correspondences in slices from neighboring strip
-        k1_tot,k2_tot,good,k2slice = self.detect_and_combine(kp1,des1,cimg1,imgStack,False,axis=2,max_only=True)
+        k1_tot,k2_tot,good,k2slice = self.detect_and_combine(kp1,des1,cimg1,q_stack,False,axis=axis,max_only=True)
         print("Number of correspondences: " + str(good))
-        if not k1_tot is None and k1_tot.shape[0]>100:
+        if not k1_tot is None and k1_tot.shape[0]>10:
             k = k2_tot-k1_tot
             print('total correspondences for analysis: ' + str(k.shape[0]))
             # estimate stitching translation with median displacement
@@ -246,8 +301,9 @@ class SiftDetector(object):
                 plt.ylim((-5,5))
                 plt.show()
             # identify slice index with most correspondences
-            j_slice = ji - nx*dx + dx*np.argmax(good)
-            return k1_tot,k2_tot,j_slice
+            # j_slice = ji - nx*dx + dx*np.argmax(good)
+            best_slice = np.argmax(good)
+            return k1_tot,k2_tot,best_slice
         else:
             print("not enough correspondences")
             return None,None,None
