@@ -22,12 +22,12 @@ def generate_sift_pointmatches(p_srclist,q_srclist,miplvl=0,sift_kwargs=None,sti
     if sift_pmlist is None:
         if "roi_list" in stitch_kwargs and not stitch_kwargs["roi_list"] is None:
             roilist = stitch_kwargs["roi_list"]
-            p_ptlist,q_ptlist = stitch_over_rois(p_datasets,q_datasets,roilist,sift_kwargs,**stitch_kwargs)
+            p_ptlist,q_ptlist = stitch_over_rois(sift_kwargs,p_datasets,q_datasets,roilist,**stitch_kwargs)
         else:
-            p_ptlist,q_ptlist = stitch_over_segments(p_datasets,q_datasets,sift_kwargs,**stitch_kwargs) # zstarts, zlength, stitch_axes, i_slice, j_slice, ny, dy
+            p_ptlist,q_ptlist = stitch_over_segments(sift_kwargs,p_datasets,q_datasets,**stitch_kwargs) # zstarts, zlength, i_slice, ij_shift, ns, ds
     else:
         roilist = generate_rois_from_pointmatches(pm_list=sift_pmlist,**stitch_kwargs) # axis_range, roi_dims, stitch_axes, ij_shift, nx, dx
-        p_ptlist,q_ptlist = stitch_over_rois(p_datasets,q_datasets,roilist,sift_kwargs,**stitch_kwargs)
+        p_ptlist,q_ptlist = stitch_over_rois(sift_kwargs,p_datasets,q_datasets,roilist,**stitch_kwargs)
     pmlist = []
     if not p_ptlist is None:
         for p_src,q_src,p_pts,q_pts in zip(p_srclist,q_srclist,p_ptlist,q_ptlist):
@@ -68,7 +68,7 @@ def generate_ccorr_pointmatches(p_srclist,q_srclist,miplvl=0,ccorr_kwargs=None,s
 
 def run_ccorr_with_sift_points(p_ds,q_ds,p_siftpts,q_siftpts,n_cc_pts=1,axis_w=[32,32,32],pad_array=False,axis_shift=[0,0,0],axis_range=None,cc_threshold=0.8,**kwargs):
     p_pts,q_pts = get_cc_points_from_sift(p_ds, q_ds, p_siftpts, q_siftpts,n_cc_pts,axis_shift,axis_range)
-    ppm,qpm = get_correspondences(p_ds,q_ds,p_pts,q_pts,numpy.asarray(axis_w),pad_array,cc_threshold=cc_threshold)
+    ppm,qpm = get_correspondences(p_ds,q_ds,p_pts,q_pts,numpy.asarray(axis_w),pad=pad_array,cc_threshold=cc_threshold)
     return ppm,qpm
 
 def get_cc_points_from_sift(p_ds,q_ds,p_siftpts,q_siftpts,n_cc_pts=1,axis_shift=[0,0,0],axis_range=None):

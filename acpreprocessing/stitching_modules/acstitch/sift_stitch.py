@@ -50,30 +50,42 @@ def get_roipoints_from_siftpoints(p_siftpts,axis_range,roi_length):
     return z,p_pts
 
 
-def stitch_over_segments(p_dslist,q_dslist,zstarts,zlength,stitch_axes,sd_kwargs,**kwargs):
-    pmlist = []
-    sd = SiftDetector(**sd_kwargs)
-    if stitch_axes == "zx":
-        for zs in zstarts:
-            seglist = sd.run_zx_stitch(p_dslist,q_dslist,zs,zs+zlength,**kwargs)
-            pmlist.append(seglist)
-    elif stitch_axes == "zy":
-        for zs in zstarts:
-            seglist = sd.run_zy_stitch(p_dslist,q_dslist,zs,zs+zlength,**kwargs)
-            pmlist.append(seglist)
-    if pmlist:
-        n_tiles = len(pmlist[0][0])
-        tile_pmlist = [[[] for i in range(n_tiles)],[[] for i in range(n_tiles)]]
-        for pm in pmlist:
-            for i in range(2):
-                for ii in range(n_tiles):
-                    if not pm[i][ii] is None:
-                        tile_pmlist[i][ii].append(pm[i][ii])
-        p_ptlist = [np.concatenate(pm) if pm else [] for pm in tile_pmlist[0]]
-        q_ptlist = [np.concatenate(pm) if pm else [] for pm in tile_pmlist[1]]
-        return p_ptlist,q_ptlist
-    else:
-        return None,None
+def stitch_over_segments(sd_kwargs,p_dslist,q_dslist,zstarts,zlength,i_slice,ij_shift,ns,ds,s0=0,**kwargs):
+    ''' stitch by segment for ispim data (legacy, axis_type = "ispim")
+    '''
+    xdim = p_dslist[0].shape[4]
+    roi_list = [[[z,z+zlength],i_slice,[0,xdim]] for z in zstarts]
+    p_ptlist,q_ptlist = stitch_over_rois(sd_kwargs=sd_kwargs,
+                                         p_dslist=p_dslist,
+                                         q_dslist=q_dslist,
+                                         axis_type="ispim",
+                                         roi_list=roi_list,
+                                         ij_shift=ij_shift,
+                                         ns=ns,
+                                         ds=ds,
+                                         s0=s0)
+    return p_ptlist,q_ptlist
+    # if stitch_axes == "zx":
+    #     for zs in zstarts:
+    #         seglist = sd.run_zx_stitch(p_dslist,q_dslist,zs,zs+zlength,**kwargs)
+    #         pmlist.append(seglist)
+    # elif stitch_axes == "zy":
+    #     for zs in zstarts:
+    #         seglist = sd.run_zy_stitch(p_dslist,q_dslist,zs,zs+zlength,**kwargs)
+    #         pmlist.append(seglist)
+    # if pmlist:
+    #     n_tiles = len(pmlist[0][0])
+    #     tile_pmlist = [[[] for i in range(n_tiles)],[[] for i in range(n_tiles)]]
+    #     for pm in pmlist:
+    #         for i in range(2):
+    #             for ii in range(n_tiles):
+    #                 if not pm[i][ii] is None:
+    #                     tile_pmlist[i][ii].append(pm[i][ii])
+    #     p_ptlist = [np.concatenate(pm) if pm else [] for pm in tile_pmlist[0]]
+    #     q_ptlist = [np.concatenate(pm) if pm else [] for pm in tile_pmlist[1]]
+    #     return p_ptlist,q_ptlist
+    # else:
+    #     return None,None
 
 
 def stitch_over_rois(sd_kwargs,p_dslist,q_dslist,axis_type,roi_list,ij_shift,ns,ds,s0=0,**kwargs):
