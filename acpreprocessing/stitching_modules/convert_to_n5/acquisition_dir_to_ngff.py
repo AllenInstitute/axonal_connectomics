@@ -91,7 +91,11 @@ def acquisition_to_ngff(acquisition_dir, output, out_dir, concurrency=5, acq_par
         acquisition_path)
     positionList = get_strip_positions_from_rootdir(acquisition_path)
     if acq_parameters and "stage_axes" in acq_parameters:
-        axes = acq_parameters["stage_axes"]
+        axesStr = acq_parameters["stage_axes"]
+        if axesStr=="yxz":
+            axes = (1,0,2)
+        else:
+            axes = (0,1,2)
     else:
         axes = (0,1,2)
 
@@ -148,10 +152,7 @@ def acquisition_to_ngff(acquisition_dir, output, out_dir, concurrency=5, acq_par
             
             
 class AcquisitionParameters(argschema.schemas.DefaultSchema):
-    stage_axes = argschema.fields.Tuple((
-        argschema.fields.Int(),
-        argschema.fields.Int(),
-        argschema.fields.Int()), required=False, default=(0,1,2))
+    stage_axes = argschema.fields.Str(required=False,default='')
 
 
 class AcquisitionDirToNGFFParameters(
