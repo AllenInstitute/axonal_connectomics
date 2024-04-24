@@ -78,7 +78,7 @@ def copy_zarr_levels_from_base(input_zarr_base, output_zarr_base,
                     only_top_files=True, concurrency=concurrency)
 
 
-class ZarrMIPTransferParameters(argschema.Argschema):
+class ZarrMIPTransferParameters(argschema.ArgSchema):
     levels_to_copy = argschema.fields.Tuple(
         argschema.fields.Int, default=(1,), required=False)
     input_zarr = argschema.fields.InputPath(required=True)
@@ -86,7 +86,7 @@ class ZarrMIPTransferParameters(argschema.Argschema):
     concurrency = argschema.fields.Int(default=5, required=False)
 
 
-class ZarrMIPTransferModule(argschema.ArgScehemaParser):
+class ZarrMIPTransferModule(argschema.ArgSchemaParser):
     default_schema = ZarrMIPTransferParameters
 
     def run(self):
