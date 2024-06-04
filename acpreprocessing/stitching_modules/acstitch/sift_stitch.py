@@ -124,8 +124,8 @@ def stitch_over_rois(sd_kwargs,p_dslist,q_dslist,axis_type,roi_list,ij_shift,ns,
                 q_stack = q_src[0,0,(qs-ns*ds):(qs+(ns+1)*ds):ds,z0:z1,y0+ij_shift:y1+ij_shift].transpose((1,2,0))
                 k2_add = np.array([ij_shift,0])
             k1_tot,k2_tot,best_slice = sd.detect_in_best_slice(p_img, q_stack, axis=axis, **kwargs)
-            k2_tot += k2_add
             if not k1_tot is None:
+                k2_tot += k2_add
                 k2_slice = qs - ns*ds + ds*best_slice
                 pmlist.append((k1_tot,k2_tot,k2_slice))
             else:

@@ -21,8 +21,8 @@ def generate_sift_pointmatches(p_srclist,q_srclist,miplvl=0,sift_kwargs=None,sti
         sift_pmlist = None
     if sift_pmlist is None:
         if "roi_list" in stitch_kwargs and not stitch_kwargs["roi_list"] is None:
-            roilist = stitch_kwargs["roi_list"]
-            p_ptlist,q_ptlist = stitch_over_rois(sift_kwargs,p_datasets,q_datasets,roilist,**stitch_kwargs)
+            #roilist = stitch_kwargs["roi_list"]
+            p_ptlist,q_ptlist = stitch_over_rois(sift_kwargs,p_datasets,q_datasets,**stitch_kwargs)
         else:
             p_ptlist,q_ptlist = stitch_over_segments(sift_kwargs,p_datasets,q_datasets,**stitch_kwargs) # zstarts, zlength, i_slice, ij_shift, ns, ds
     else:
