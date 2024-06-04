@@ -612,10 +612,11 @@ def write_mimgfns_to_zarr(
         # shuffle=Blosc.BITSHUFFLE)
         compression = Blosc(cname='zstd', clevel=1)
         for mip_lvl in range(max_mip + 1):
-            try:
-                g = f.create_group(f"Resolution_Level_{mip_lvl}")
-            except KeyError:
-                g = f[f"Resolution_Level_{mip_lvl}"]
+            mip_group = f"Resolution_Level_{mip_lvl}"
+            if mip_group in f:
+                g = f[mip_group]
+            else:
+                g = f.create_group(mip_group)
             g = g.create_group(f"Stack_{stack_group}")
             mip_3dshape = mip_level_shape(mip_lvl, joined_shapes)
             ds_lvl = g.create_dataset(
