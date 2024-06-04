@@ -612,7 +612,7 @@ def write_mimgfns_to_zarr(
         # shuffle=Blosc.BITSHUFFLE)
         compression = Blosc(cname='zstd', clevel=1)
         for mip_lvl in range(max_mip + 1):
-            mip_group = f"Resolution_Level_{mip_lvl}"
+            mip_group = f"Resolution_Level_{mip_lvl+1}"
             if mip_group in f:
                 g = f[mip_group]
             else:
