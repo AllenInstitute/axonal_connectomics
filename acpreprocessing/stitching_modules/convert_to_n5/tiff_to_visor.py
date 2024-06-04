@@ -676,9 +676,9 @@ class NGFFGenerationParameters(argschema.schemas.DefaultSchema):
     max_mip = argschema.fields.Int(required=False, default=0)
     concurrency = argschema.fields.Int(required=False, default=10)
     compression = argschema.fields.Str(required=False, default="raw")
-    lvl_to_mip_kwargs = argschema.fields.Dict(
-        keys=argschema.fields.Int(),
-        values=argschema.fields.Nested(DownsampleOptions))
+    # lvl_to_mip_kwargs = argschema.fields.Dict(
+    #     keys=argschema.fields.Int(),
+    #     values=argschema.fields.Nested(DownsampleOptions))
 
     # FIXME argschema supports lists and tuples,
     #   but has some version differences
@@ -713,14 +713,6 @@ class TiffDirToZarrInputParameters(argschema.ArgSchema,
         argschema.fields.Int()), required=False, default=(256, 256, 256))
 
 
-class TiffDirToN5LegacyParameters(argschema.ArgSchema,
-                                  TiffDirToNGFFParameters):
-    chunk_size = argschema.fields.Tuple((
-        argschema.fields.Int(),
-        argschema.fields.Int(),
-        argschema.fields.Int()), required=False, default=(64, 64, 64))
-
-
 class TiffDirToZarr(argschema.ArgSchemaParser):
     default_schema = TiffDirToZarrInputParameters
 
@@ -736,12 +728,8 @@ class TiffDirToZarr(argschema.ArgSchemaParser):
             self.args["chunk_size"],
             concurrency=self.args["concurrency"],
             compression=self.args["compression"],
-            lvl_to_mip_kwargs=self.args["lvl_to_mip_kwargs"],
+            #lvl_to_mip_kwargs=self.args["lvl_to_mip_kwargs"],
             deskew_options=deskew_options)
-
-
-class TiffDirToN5(TiffDirToZarr):
-    default_schema = TiffDirToN5LegacyParameters
 
 
 if __name__ == "__main__":
