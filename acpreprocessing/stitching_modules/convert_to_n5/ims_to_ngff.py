@@ -656,7 +656,6 @@ def write_ims_to_zarr(
     
     joined_shapes = dataset.shape
     print("ims_to_ngff dataset shape:" + str(joined_shapes))
-    return
 
     if deskew_options and deskew_options["deskew_method"] == "ps":
         block_size = chunk_size[2]
@@ -666,6 +665,7 @@ def write_ims_to_zarr(
                                             )
         joined_shapes = psd.reshape_joined_shapes(
             joined_shapes, deskew_options['deskew_stride'], **deskew_kwargs)
+        print("deskewed shape:" + str(joined_shapes))
     else:
         block_size = chunk_size[2]
         slice_length = block_size

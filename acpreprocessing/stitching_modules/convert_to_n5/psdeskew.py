@@ -11,7 +11,7 @@ NOTE: must be run sequentially as each tiff chunk contains data for the next des
 import numpy as np
 
 
-def psdeskew_kwargs(skew_dims_zyx, deskew_stride=1, deskew_flip=False, deskew_crop=1, dtype='uint16', **kwargs):
+def psdeskew_kwargs(skew_dims_zyx, deskew_stride=1, deskew_flip=False, deskew_transpose=False, deskew_crop=1, dtype='uint16', **kwargs):
     """get keyword arguments for deskew_block
 
     Parameters
@@ -22,6 +22,8 @@ def psdeskew_kwargs(skew_dims_zyx, deskew_stride=1, deskew_flip=False, deskew_cr
         number of camera pixels per deskewed sampling plane (divides z resolution)
     deskewFlip : bool
         flip data blocks before deskewing
+    deskewTranspose : bool
+        transpose x,y axes before deskewing
     dtype : str
         datatype for deskew output
     crop_factor : float
@@ -32,6 +34,8 @@ def psdeskew_kwargs(skew_dims_zyx, deskew_stride=1, deskew_flip=False, deskew_cr
     kwargs : dict
         parameters representing pixel deskew operation for deskew_block
     """
+    if deskew_transpose:
+        skew_dims_zyx = (skew_dims_zyx[0],skew_dims_zyx[2],skew_dims_zyx[1])
     sdims = skew_dims_zyx
     crop_factor = deskew_crop
     stride = deskew_stride
@@ -68,13 +72,14 @@ def psdeskew_kwargs(skew_dims_zyx, deskew_stride=1, deskew_flip=False, deskew_cr
               'blockdims': blockdims,
               'subblocks': subblocks,
               'flip': deskew_flip,
+              'transpose': deskew_transpose,
               'dtype': dtype,
               'chunklength': blockx
               }
     return kwargs
 
 
-def deskew_block(blockData, n, dsi, si, slice1d, blockdims, subblocks, flip, dtype, chunklength, *args, **kwargs):
+def deskew_block(blockData, n, dsi, si, slice1d, blockdims, subblocks, flip, transpose, dtype, chunklength, *args, **kwargs):
     """deskew a data chunk in sequence with prior chunks
 
     Parameters
@@ -105,6 +110,8 @@ def deskew_block(blockData, n, dsi, si, slice1d, blockdims, subblocks, flip, dty
     block3d : numpy.ndarray
         pixel shifted deskewed data ordered (z,y,x) by sample axes 
     """
+    if transpose:
+        blockData = blockData.transpose((0,2,1))
     subb = subblocks
     block3d = np.zeros(blockdims, dtype=dtype)
     zdim = block3d.shape[0]
