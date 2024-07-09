@@ -149,7 +149,7 @@ def iterate_numpy_chunks_from_dataset(
         3D numpy array representing a consecutive chunk of 2D arrays
     """
     #array_gen = iterate_2d_arrays_from_dataset(mimgfns, *args, **kwargs)
-    for chunk in iterate_chunks(dataset, slice_length,*args,**kwargs):
+    for chunk in iterate_chunks(dataset, slice_length):#,*args,**kwargs):
         arr = numpy.asarray(chunk)
         if pad:
             if arr.shape[0] != slice_length:
