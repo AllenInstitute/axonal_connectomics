@@ -19,7 +19,7 @@ import argschema
 
 import acpreprocessing.utils.convert
 import acpreprocessing.stitching_modules.convert_to_n5.psdeskew as psd
-from acpreprocessing.stitching_modules.convert_to_n5.tiff_to_ngff import iterate_mip_levels_from_dataset,mip_level_shape,dswrite_chunk,omezarr_attrs,TiffDirToZarrInputParameters
+from acpreprocessing.stitching_modules.convert_to_n5.tiff_to_ngff import iterate_mip_levels_from_dataset,mip_level_shape,dswrite_chunk,omezarr_attrs,NGFFGroupGenerationParameters
 
 # def iterate_chunks(ds, slice_length, interleaved_channels=1, channel=0, interleaving_offset=0):
 #     """given an iterator, iterate over tuples of a
@@ -794,25 +794,25 @@ def ims_to_ngff_group(ims_fn, output, *args, **kwargs):
 #         required=False)
 
 
-# class IMSToNGFFParameters(NGFFGroupGenerationParameters):
-#     input_file = argschema.fields.Str(required=True)
-#     interleaved_channels = argschema.fields.Int(required=False, default=1)
-#     channel = argschema.fields.Int(required=False, default=0)
+class IMSToNGFFParameters(NGFFGroupGenerationParameters):
+    input_file = argschema.fields.Str(required=True)
+    interleaved_channels = argschema.fields.Int(required=False, default=1)
+    channel = argschema.fields.Int(required=False, default=0)
 
 
-# class IMSToZarrInputParameters(argschema.ArgSchema,
-#                                    IMSToNGFFParameters):
-#     chunk_size = argschema.fields.Tuple((
-#         argschema.fields.Int(),
-#         argschema.fields.Int(),
-#         argschema.fields.Int(),
-#         argschema.fields.Int(),
-#         argschema.fields.Int()), required=False, default=(1, 1, 64, 64, 64))
+class IMSToZarrInputParameters(argschema.ArgSchema,
+                                    IMSToNGFFParameters):
+    chunk_size = argschema.fields.Tuple((
+        argschema.fields.Int(),
+        argschema.fields.Int(),
+        argschema.fields.Int(),
+        argschema.fields.Int(),
+        argschema.fields.Int()), required=False, default=(1, 1, 64, 64, 64))
 
 
 
 class IMSToZarr(argschema.ArgSchemaParser):
-    default_schema = TiffDirToZarrInputParameters #IMSToZarrInputParameters
+    default_schema = IMSToZarrInputParameters
 
     def run(self):
         deskew_options = (self.args["deskew_options"]
