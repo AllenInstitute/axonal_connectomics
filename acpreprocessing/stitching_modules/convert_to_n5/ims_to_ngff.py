@@ -17,9 +17,9 @@ import zarr
 from numcodecs import Blosc
 import argschema
 
-import acpreprocessing.utils.convert
+# import acpreprocessing.utils.convert
 import acpreprocessing.stitching_modules.convert_to_n5.psdeskew as psd
-from acpreprocessing.stitching_modules.convert_to_n5.tiff_to_ngff import iterate_mip_levels_from_dataset,mip_level_shape,dswrite_chunk,omezarr_attrs,NGFFGroupGenerationParameters
+from acpreprocessing.stitching_modules.convert_to_n5.tiff_to_ngff import iterate_mip_levels_from_dataset,mip_level_shape,dswrite_chunk,omezarr_attrs,NGFFGroupGenerationParameters,TiffToNGFFValueError
 
 # def iterate_chunks(ds, slice_length, interleaved_channels=1, channel=0, interleaving_offset=0):
 #     """given an iterator, iterate over tuples of a
@@ -597,12 +597,12 @@ from acpreprocessing.stitching_modules.convert_to_n5.tiff_to_ngff import iterate
 #     return attrs
 
 
-class TiffToNGFFException(Exception):
-    """class to describe exceptions with TiffToNGFF module"""
+# class TiffToNGFFException(Exception):
+#     """class to describe exceptions with TiffToNGFF module"""
 
 
-class TiffToNGFFValueError(TiffToNGFFException, ValueError):
-    """value error in TiffToNgff"""
+# class TiffToNGFFValueError(TiffToNGFFException, ValueError):
+#     """value error in TiffToNgff"""
 
 
 def write_ims_to_zarr(
