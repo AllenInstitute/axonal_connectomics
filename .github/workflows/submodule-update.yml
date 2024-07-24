@@ -5,9 +5,9 @@ name: Submodule Updates
 #############################
 on:
   push:
-    branches: [auto-update]
+    branches-ignore: [master, main]
   pull_request:
-    branches: [master, main]
+    branches: [master, main] 
  
 ###############
 # Set the Job #
@@ -18,8 +18,8 @@ jobs:
     runs-on: ubuntu-latest
     env:
       PARENT_REPOSITORY: 'AllenInstitute/ac_deploy'
-      CHECKOUT_BRANCH: 'submod_update'
-      PR_AGAINST_BRANCH: 'submod_update'
+      CHECKOUT_BRANCH: 'master'
+      PR_AGAINST_BRANCH: 'master'
       OWNER: 'AllenInstitute'
  
     steps:
@@ -37,6 +37,10 @@ jobs:
         uses: releasehub-com/github-action-create-pr-parent-submodule@v1
         with:
           github_token: ${{ secrets.RELEASE_HUB_SECRET }}
+          parent_repository: ${{ env.PARENT_REPOSITORY }}
+          checkout_branch: ${{ env.CHECKOUT_BRANCH}}
+          pr_against_branch: ${{ env.PR_AGAINST_BRANCH }}
+          owner: ${{ env.OWNER }}
           parent_repository: ${{ env.PARENT_REPOSITORY }}
           checkout_branch: ${{ env.CHECKOUT_BRANCH}}
           pr_against_branch: ${{ env.PR_AGAINST_BRANCH }}
