@@ -5,9 +5,9 @@ name: Submodule Updates
 #############################
 on:
   push:
-    branches-ignore: [develop]
+    branches: [master, main, develop] 
   pull_request:
-    branches: [develop] 
+    branches-ignore: '**'
  
 ###############
 # Set the Job #
