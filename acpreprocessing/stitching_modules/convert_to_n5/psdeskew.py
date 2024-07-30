@@ -79,6 +79,22 @@ def psdeskew_kwargs(skew_dims_zyx, deskew_stride=1, deskew_flip=False, deskew_tr
     return kwargs
 
 
+def calculate_skewed_indices(xi,yi,zi,s):
+    xs = s*zi + xi % s
+    ys = yi
+    zs = xi // s - zi
+    return xs,ys,zs
+
+
+def get_deskewed_block(dataset,xi,yi,zi,**kwargs):
+    sdims = dataset.shape
+    xs,ys,zs = calculate_skewed_indices(xi,yi,zi)
+    fli = np.ravel_multi_index((xs,ys,zs),sdims).flatten()
+    fldata = dataset[fli]
+    block = fldata.reshape((len(xi),len(yi),len(zi)))
+    return block
+
+
 def deskew_block(blockData, n, dsi, si, slice1d, blockdims, subblocks, flip, transpose, dtype, chunklength, *args, **kwargs):
     """deskew a data chunk in sequence with prior chunks
 
