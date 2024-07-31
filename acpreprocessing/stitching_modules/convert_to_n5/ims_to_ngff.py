@@ -19,7 +19,190 @@ import argschema
 
 # import acpreprocessing.utils.convert
 import acpreprocessing.stitching_modules.convert_to_n5.psdeskew as psd
-from acpreprocessing.stitching_modules.convert_to_n5.tiff_to_ngff import iterate_mip_levels_from_dataset,mip_level_shape,dswrite_chunk,omezarr_attrs,NGFFGroupGenerationParameters,TiffToNGFFValueError
+from acpreprocessing.stitching_modules.convert_to_n5.tiff_to_ngff import downsample_array,mip_level_shape,omezarr_attrs,NGFFGroupGenerationParameters,TiffToNGFFValueError
+
+
+@dataclasses.dataclass
+class MIPArray:
+    lvl: int
+    array: numpy.ndarray
+    start: tuple # tuple of indices (int)
+    end: tuple # tuple of indices (int)
+
+
+def dswrite_block(ds, start, end, arr, silent_overflow=True):
+    """write array arr into array-like n5 dataset defined by
+    start and end point 3-tuples.
+
+    Parameters
+    ----------
+    ds : z5py.dataset.Dataset (n5 3D) or zarr.dataset (zarr 5D)
+        array-like dataset to fill in
+    start : tuple[int]
+        start index along 0 axis of ds to fill in
+    end : tuple[int]
+        end index along 0 axis of ds to fill in
+    arr : numpy.ndarray
+        array from which ds values will be taken
+    silent_overflow : bool, optional
+        whether to shrink the end index to match the
+        shape of ds (default: True)
+    """
+    if len(ds.shape) == 5:  # dataset dimensions should be 3 or 5
+        for i in range(3):    
+            if end[i] >= ds.shape[2+i] and silent_overflow:
+                end[i] = ds.shape[2+i]
+        #if end > start:
+        ds[0, 0, start[0]:end[0], start[1]:end[1], start[2]:end[2]] = arr[:(end[0] - start[0]), :(end[1] - start[1]), :(end[2] - start[2])]
+    elif len(ds.shape) == 3:
+        for i in range(3):    
+            if end[i] >= ds.shape[i] and silent_overflow:
+                end[i] = ds.shape[i]
+        #if end > start:
+        ds[start[0]:end[0], start[1]:end[1], start[2]:end[2]] = arr[:(end[0] - start[0]), :(end[1] - start[1]), :(end[2] - start[2])]
+
+
+# def iterate_numpy_chunks_from_dataset(
+#         dataset, block_size=None, pad=True, *args, **kwargs):
+#     """iterate over a contiguous hdf5 daataset as chunks of numpy arrays
+
+#     Parameters
+#     ----------
+#     dataset : hdf5 dataset
+#         imageio-compatible name inputs to be opened as multi-images
+#     slice_length : int
+#         number of 2d arrays from mimgfns included per chunk
+#     pad : bool, optional
+#         whether to extend final returned chunks with zeros
+
+#     Yields
+#     ------
+#     arr : numpy.ndarray
+#         3D numpy array representing a consecutive chunk of 2D arrays
+#     """
+#     for chunk in iterate_chunks(dataset, block_size):#,*args,**kwargs):
+#         arr = numpy.asarray(chunk)
+#         if pad:
+#             if any([arr.shape[k] != block_size[k] for k in range(3)]):
+#                 newarr = numpy.zeros(block_size,
+#                                       dtype=arr.dtype)
+#                 newarr[:arr.shape[0], :arr.shape[1], :arr.shape[2]] = arr[:, :, :]
+#                 yield newarr
+#             else:
+#                 yield arr
+#         else:
+#             yield arr
+
+
+def iterate_numpy_blocks_from_dataset(
+        dataset, maxlvl, nblocks, block_size=None, pad=True, *args, **kwargs):
+    """iterate over a contiguous hdf5 daataset as chunks of numpy arrays
+
+    Parameters
+    ----------
+    dataset : hdf5 dataset
+        imageio-compatible name inputs to be opened as multi-images
+    nblocks : tuple[int]
+        number of 2d arrays from mimgfns included per chunk
+    pad : bool, optional
+        whether to extend final returned chunks with zeros
+
+    Yields
+    ------
+    arr : numpy.ndarray
+        3D numpy array representing a consecutive chunk of 2D arrays
+    """
+    for i in range(numpy.prod(nblocks)):#,*args,**kwargs):
+        chunk_tuple = numpy.unravel_index(i,nblocks)
+        block_start = [chunk_tuple[k]*block_size[k] for k in range(3)]
+        block_end = [block_start[k] + block_size[k] for k in range(3)]
+        arr = dataset[block_start[0]:block_end[0],block_start[1]:block_end[1],block_start[2]:block_end[2]]
+        if pad:
+            if any([arr.shape[k] != block_size[k] for k in range(3)]):
+                newarr = numpy.zeros(block_size,
+                                      dtype=arr.dtype)
+                newarr[:arr.shape[0], :arr.shape[1], :arr.shape[2]] = arr[:, :, :]
+                yield newarr
+            else:
+                yield arr
+        else:
+            yield arr
+
+
+def iterate_mip_levels_from_dataset(
+        dataset, lvl, maxlvl, nblocks, block_size, downsample_factor,
+        downsample_method=None, lvl_to_mip_kwargs=None,
+        interleaved_channels=1, channel=0, deskew_kwargs={}):
+    """recursively generate MIPmap levels from an iterator of blocks
+
+    Parameters
+    ----------
+    dataset : hdf5 dataset
+        imageio-compatible name inputs to be opened as multi-images
+    lvl : int
+        integer mip level to generate
+    block_size : int
+        number of 2D arrays in chunk to process for a chunk at lvl
+    slice_length : int
+        number of 2D arrays to gather from tiff stacks
+    downsample_factor : tuple of int
+        integer downsampling factor for MIP levels
+    downsample_method : str, optional
+        downsampling method for
+        acpreprocessing.utils.convert.downsample_stack_volume
+    lvl_to_mip_kwargs :  dict, optional
+        mapping of MIP level to kwargs used in MIPmap generation
+    interleaved_channels : int
+        number of channels interleaved in the tiff files (default 1)
+    channel : int, optional
+        channel from which interleaved data should be read (default 0)
+    deskew_kwargs : dict, optional
+        parameters for pixel shifting deskew
+
+    Yields
+    ------
+    ma : acpreprocessing.stitching_modules.convert_to_n5.tiff_to_n5.MipArray
+        object describing chunked array, MIP level of origin, and chunk indices
+    """
+    lvl_to_mip_kwargs = ({} if lvl_to_mip_kwargs is None
+                          else lvl_to_mip_kwargs)
+    mip_kwargs = lvl_to_mip_kwargs.get(lvl, {})
+    block_index = 0
+    if lvl > 0:
+        for ma in iterate_mip_levels_from_dataset(
+                dataset, lvl-1, maxlvl, nblocks, block_size,
+                downsample_factor, downsample_method,
+                lvl_to_mip_kwargs, interleaved_channels=interleaved_channels,
+                channel=channel, deskew_kwargs=deskew_kwargs):
+            chunk = ma.array
+            # throw array up for further processing
+            yield ma
+            # ignore if not parent resolution
+            if ma.lvl != lvl-1:
+                continue
+            
+            temp_arr = (
+                downsample_array(
+                    chunk, downsample_factor, dtype=chunk.dtype,
+                    method=downsample_method, **mip_kwargs))
+            chunk_start = (ma.start[k]/(downsample_factor[k]**lvl) for k in range(3))
+            chunk_end = (chunk_start[k] + temp_arr.shape[k] for k in range(3))
+            yield MIPArray(lvl, temp_arr, chunk_start, chunk_end)
+    else:
+        # get level 0 chunks
+        # block_size is the number of slices to read from tiffs
+        for block in iterate_numpy_blocks_from_dataset(
+                dataset, maxlvl, nblocks, pad=False,
+                channel=channel):
+            # deskew level 0 chunk
+            # if deskew_kwargs:
+            #     chunk = numpy.transpose(psd.deskew_block(
+            #         chunk, chunk_index, **deskew_kwargs), (2, 1, 0))
+            block_tuple = numpy.unravel_index(block_index,nblocks)
+            block_start = (block_tuple[k]*block_size[k] for k in range(3))
+            block_end = (block_start[k] + block.shape[k] for k in range(3))
+            yield MIPArray(lvl, block, block_start, block_end)
+            block_index += 1
 
 
 def write_ims_to_zarr(
@@ -84,8 +267,7 @@ def write_ims_to_zarr(
             joined_shapes, deskew_options['deskew_stride'], **deskew_kwargs)
         print("deskewed shape:" + str(joined_shapes))
     else:
-        block_size = chunk_size[2]
-        slice_length = block_size
+        block_size = chunk_size[2:]
         deskew_kwargs = {}
 
     # TODO DESKEW: does this generally work regardless of skew?
@@ -136,16 +318,20 @@ def write_ims_to_zarr(
             dsfactors = [int(i)**mip_lvl for i in mip_dsfactor]
             mip_ds[mip_lvl] = ds_lvl
             scales.append(dsfactors)
+        
+        nblocks = (int(numpy.ceil(joined_shapes[k]/block_size[k])) for k in range(3))
+        print(str(nblocks) + "number of chunks per axis")
+        print(str(g[0].nchunks) + " chunk number sanity check")
 
         with concurrent.futures.ThreadPoolExecutor(max_workers=workers) as e:
             futs = []
             for miparr in iterate_mip_levels_from_dataset(
-                    dataset, max_mip, block_size, slice_length, mip_dsfactor,
+                    dataset, max_mip, max_mip, nblocks, block_size, mip_dsfactor,
                     lvl_to_mip_kwargs=lvl_to_mip_kwargs,
                     interleaved_channels=interleaved_channels,
                     channel=channel, deskew_kwargs=deskew_kwargs):
                 futs.append(e.submit(
-                    dswrite_chunk, mip_ds[miparr.lvl],
+                    dswrite_block, mip_ds[miparr.lvl],
                     miparr.start, miparr.end, miparr.array))
             for fut in concurrent.futures.as_completed(futs):
                 _ = fut.result()
