@@ -185,8 +185,8 @@ def iterate_mip_levels_from_dataset(
                 downsample_array(
                     chunk, downsample_factor, dtype=chunk.dtype,
                     method=downsample_method, **mip_kwargs))
-            chunk_start = (ma.start[k]/(downsample_factor[k]**lvl) for k in range(3))
-            chunk_end = (chunk_start[k] + temp_arr.shape[k] for k in range(3))
+            chunk_start = [ma.start[k]/(downsample_factor[k]**lvl) for k in range(3)]
+            chunk_end = [chunk_start[k] + temp_arr.shape[k] for k in range(3)]
             yield MIPArray(lvl, temp_arr, chunk_start, chunk_end)
     else:
         # get level 0 chunks
@@ -199,8 +199,8 @@ def iterate_mip_levels_from_dataset(
             #     chunk = numpy.transpose(psd.deskew_block(
             #         chunk, chunk_index, **deskew_kwargs), (2, 1, 0))
             block_tuple = numpy.unravel_index(block_index,nblocks)
-            block_start = (block_tuple[k]*block_size[k] for k in range(3))
-            block_end = (block_start[k] + block.shape[k] for k in range(3))
+            block_start = [block_tuple[k]*block_size[k] for k in range(3)]
+            block_end = [block_start[k] + block.shape[k] for k in range(3)]
             yield MIPArray(lvl, block, block_start, block_end)
             block_index += 1
 
@@ -319,7 +319,7 @@ def write_ims_to_zarr(
             mip_ds[mip_lvl] = ds_lvl
             scales.append(dsfactors)
         
-        nblocks = (int(numpy.ceil(joined_shapes[k]/block_size[k])) for k in range(3))
+        nblocks = [int(numpy.ceil(joined_shapes[k]/block_size[k])) for k in range(3)]
         print(str(nblocks) + "number of chunks per axis")
         print(str(g[0].nchunks) + " chunk number sanity check")
 
