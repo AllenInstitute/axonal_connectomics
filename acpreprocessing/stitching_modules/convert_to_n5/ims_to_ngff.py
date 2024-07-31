@@ -113,7 +113,8 @@ def iterate_numpy_blocks_from_dataset(
         3D numpy array representing a consecutive chunk of 2D arrays
     """
     for i in range(numpy.prod(nblocks)):#,*args,**kwargs):
-        chunk_tuple = numpy.unravel_index(i,nblocks)
+        chunk_tuple = numpy.unravel_index(i,tuple(nblocks))
+        print(str(chunk_tuple))
         block_start = [chunk_tuple[k]*block_size[k] for k in range(3)]
         block_end = [block_start[k] + block_size[k] for k in range(3)]
         arr = dataset[block_start[0]:block_end[0],block_start[1]:block_end[1],block_start[2]:block_end[2]]
