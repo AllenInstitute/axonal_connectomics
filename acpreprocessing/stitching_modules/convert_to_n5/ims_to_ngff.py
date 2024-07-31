@@ -193,7 +193,7 @@ def iterate_mip_levels_from_dataset(
         # get level 0 chunks
         # block_size is the number of slices to read from tiffs
         for block in iterate_numpy_blocks_from_dataset(
-                dataset, maxlvl, nblocks, pad=False,
+                dataset, maxlvl, nblocks, block_size=block_size, pad=False,
                 channel=channel):
             # deskew level 0 chunk
             # if deskew_kwargs:
