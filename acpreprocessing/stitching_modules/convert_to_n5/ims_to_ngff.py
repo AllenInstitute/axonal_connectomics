@@ -62,38 +62,6 @@ def dswrite_block(ds, start, end, arr, silent_overflow=True):
         ds[start[0]:end[0], start[1]:end[1], start[2]:end[2]] = arr[:(end[0] - start[0]), :(end[1] - start[1]), :(end[2] - start[2])]
 
 
-# def iterate_numpy_chunks_from_dataset(
-#         dataset, block_size=None, pad=True, *args, **kwargs):
-#     """iterate over a contiguous hdf5 daataset as chunks of numpy arrays
-
-#     Parameters
-#     ----------
-#     dataset : hdf5 dataset
-#         imageio-compatible name inputs to be opened as multi-images
-#     slice_length : int
-#         number of 2d arrays from mimgfns included per chunk
-#     pad : bool, optional
-#         whether to extend final returned chunks with zeros
-
-#     Yields
-#     ------
-#     arr : numpy.ndarray
-#         3D numpy array representing a consecutive chunk of 2D arrays
-#     """
-#     for chunk in iterate_chunks(dataset, block_size):#,*args,**kwargs):
-#         arr = numpy.asarray(chunk)
-#         if pad:
-#             if any([arr.shape[k] != block_size[k] for k in range(3)]):
-#                 newarr = numpy.zeros(block_size,
-#                                       dtype=arr.dtype)
-#                 newarr[:arr.shape[0], :arr.shape[1], :arr.shape[2]] = arr[:, :, :]
-#                 yield newarr
-#             else:
-#                 yield arr
-#         else:
-#             yield arr
-
-
 def iterate_numpy_blocks_from_dataset(
         dataset, maxlvl, nblocks, block_size=None, pad=True, deskew_kwargs={}, *args, **kwargs):
     """iterate over a contiguous hdf5 daataset as chunks of numpy arrays
@@ -114,13 +82,16 @@ def iterate_numpy_blocks_from_dataset(
     """
     for i in range(numpy.prod(nblocks)):#,*args,**kwargs):
         chunk_tuple = numpy.unravel_index(i,tuple(nblocks))
-        #print(str(chunk_tuple))
+        if chunk_tuple[2] == 0:
+            print(str(chunk_tuple))
         block_start = [chunk_tuple[k]*block_size[k] for k in range(3)]
         block_end = [block_start[k] + block_size[k] for k in range(3)]
         if deskew_kwargs:
             if deskew_kwargs["deskew_method"] == "ps":
-                pass
-                #arr = psd.get_deskewed_block(dataset,xi,yi,zi,**deskew_kwargs)
+                zi = numpy.arange(block_start[0],block_end[0])
+                yi = numpy.arange(block_start[1],block_end[1])
+                xi = numpy.arange(block_start[2],block_end[2])
+                arr = psd.get_deskewed_block(dataset,zi,yi,xi,**deskew_kwargs)
         else:
             arr = dataset[block_start[0]:block_end[0],block_start[1]:block_end[1],block_start[2]:block_end[2]]
         if pad:
@@ -273,7 +244,7 @@ def write_ims_to_zarr(
             joined_shapes, deskew_options['deskew_stride'], **deskew_kwargs)
         print("deskewed shape:" + str(joined_shapes))
     else:
-        block_size = chunk_size[2:]
+        block_size = [8*sz for sz in chunk_size[2:]]
         deskew_kwargs = {}
 
     # TODO DESKEW: does this generally work regardless of skew?
@@ -326,7 +297,7 @@ def write_ims_to_zarr(
             scales.append(dsfactors)
         
         nblocks = [int(numpy.ceil(joined_shapes[k]/block_size[k])) for k in range(3)]
-        print(str(nblocks) + "number of chunks per axis")
+        print(str(nblocks) + " number of chunks per axis")
         print(str(g[0].nchunks) + " chunk number sanity check")
 
         with concurrent.futures.ThreadPoolExecutor(max_workers=workers) as e:

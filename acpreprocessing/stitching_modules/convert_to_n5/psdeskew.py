@@ -79,14 +79,14 @@ def psdeskew_kwargs(skew_dims_zyx, deskew_stride=1, deskew_flip=False, deskew_tr
     return kwargs
 
 
-def calculate_skewed_indices(xi,yi,zi,s):
+def calculate_skewed_indices(zi,yi,xi,s):
     xs = s*zi + xi % s
     ys = yi
     zs = xi // s - zi
     return xs,ys,zs
 
 
-def get_deskewed_block(dataset,xi,yi,zi,stride,**kwargs):
+def get_deskewed_block(dataset,zi,yi,xi,stride,**kwargs):
     sdims = dataset.shape
     xs,ys,zs = calculate_skewed_indices(xi,yi,zi,stride)
     fli = np.ravel_multi_index((xs,ys,zs),sdims).flatten()
