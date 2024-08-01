@@ -48,6 +48,8 @@ def dswrite_block(ds, start, end, arr, silent_overflow=True):
         whether to shrink the end index to match the
         shape of ds (default: True)
     """
+    start = list(start)
+    end = list(end)
     if len(ds.shape) == 5:  # dataset dimensions should be 3 or 5
         for i in range(3):    
             if end[i] >= ds.shape[2+i] and silent_overflow:
