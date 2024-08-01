@@ -26,8 +26,8 @@ from acpreprocessing.stitching_modules.convert_to_n5.tiff_to_ngff import downsam
 class MIPArray:
     lvl: int
     array: numpy.ndarray
-    start: tuple # tuple of indices (int)
-    end: tuple # tuple of indices (int)
+    start: tuple # list of indices (int)
+    end: tuple # list of indices (int)
 
 
 def dswrite_block(ds, start, end, arr, silent_overflow=True):
@@ -95,7 +95,7 @@ def dswrite_block(ds, start, end, arr, silent_overflow=True):
 
 
 def iterate_numpy_blocks_from_dataset(
-        dataset, maxlvl, nblocks, block_size=None, pad=True, *args, **kwargs):
+        dataset, maxlvl, nblocks, block_size=None, pad=True, deskew_kwargs={}, *args, **kwargs):
     """iterate over a contiguous hdf5 daataset as chunks of numpy arrays
 
     Parameters
@@ -114,10 +114,15 @@ def iterate_numpy_blocks_from_dataset(
     """
     for i in range(numpy.prod(nblocks)):#,*args,**kwargs):
         chunk_tuple = numpy.unravel_index(i,tuple(nblocks))
-        print(str(chunk_tuple))
+        #print(str(chunk_tuple))
         block_start = [chunk_tuple[k]*block_size[k] for k in range(3)]
         block_end = [block_start[k] + block_size[k] for k in range(3)]
-        arr = dataset[block_start[0]:block_end[0],block_start[1]:block_end[1],block_start[2]:block_end[2]]
+        if deskew_kwargs:
+            if deskew_kwargs["deskew_method"] == "ps":
+                pass
+                #arr = psd.get_deskewed_block(dataset,xi,yi,zi,**deskew_kwargs)
+        else:
+            arr = dataset[block_start[0]:block_end[0],block_start[1]:block_end[1],block_start[2]:block_end[2]]
         if pad:
             if any([arr.shape[k] != block_size[k] for k in range(3)]):
                 newarr = numpy.zeros(block_size,
@@ -186,8 +191,8 @@ def iterate_mip_levels_from_dataset(
                 downsample_array(
                     chunk, downsample_factor, dtype=chunk.dtype,
                     method=downsample_method, **mip_kwargs))
-            chunk_start = [ma.start[k]/(downsample_factor[k]**lvl) for k in range(3)]
-            chunk_end = [chunk_start[k] + temp_arr.shape[k] for k in range(3)]
+            chunk_start = tuple([int(ma.start[k]/(downsample_factor[k]**lvl)) for k in range(3)])
+            chunk_end = tuple([chunk_start[k] + temp_arr.shape[k] for k in range(3)])
             yield MIPArray(lvl, temp_arr, chunk_start, chunk_end)
     else:
         # get level 0 chunks
@@ -200,8 +205,8 @@ def iterate_mip_levels_from_dataset(
             #     chunk = numpy.transpose(psd.deskew_block(
             #         chunk, chunk_index, **deskew_kwargs), (2, 1, 0))
             block_tuple = numpy.unravel_index(block_index,nblocks)
-            block_start = [block_tuple[k]*block_size[k] for k in range(3)]
-            block_end = [block_start[k] + block.shape[k] for k in range(3)]
+            block_start = tuple([block_tuple[k]*block_size[k] for k in range(3)])
+            block_end = tuple([block_start[k] + block.shape[k] for k in range(3)])
             yield MIPArray(lvl, block, block_start, block_end)
             block_index += 1
 

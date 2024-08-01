@@ -86,9 +86,9 @@ def calculate_skewed_indices(xi,yi,zi,s):
     return xs,ys,zs
 
 
-def get_deskewed_block(dataset,xi,yi,zi,**kwargs):
+def get_deskewed_block(dataset,xi,yi,zi,stride,**kwargs):
     sdims = dataset.shape
-    xs,ys,zs = calculate_skewed_indices(xi,yi,zi)
+    xs,ys,zs = calculate_skewed_indices(xi,yi,zi,stride)
     fli = np.ravel_multi_index((xs,ys,zs),sdims).flatten()
     fldata = dataset[fli]
     block = fldata.reshape((len(xi),len(yi),len(zi)))
