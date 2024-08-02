@@ -308,6 +308,7 @@ def write_ims_to_zarr(
                     lvl_to_mip_kwargs=lvl_to_mip_kwargs,
                     interleaved_channels=interleaved_channels,
                     channel=channel, deskew_kwargs=deskew_kwargs):
+                print(str(miparr.lvl))
                 futs.append(e.submit(
                     dswrite_block, mip_ds[miparr.lvl],
                     miparr.start, miparr.end, miparr.array))
