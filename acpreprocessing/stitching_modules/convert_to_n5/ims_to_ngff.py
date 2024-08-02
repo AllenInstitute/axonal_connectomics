@@ -160,12 +160,11 @@ def iterate_mip_levels_from_dataset(
             if ma.lvl != lvl-1:
                 continue
             
-            temp_arr = (
-                downsample_array(
+            temp_arr = (downsample_array(
                     chunk, downsample_factor, dtype=chunk.dtype,
                     method=downsample_method, **mip_kwargs))
-            chunk_start = tuple([int(ma.start[k]/(downsample_factor[k]**lvl)) for k in range(3)])
-            chunk_end = tuple([chunk_start[k] + temp_arr.shape[k] for k in range(3)])
+            chunk_start = tuple(int(ma.start[k]/downsample_factor[k]) for k in range(3))
+            chunk_end = tuple(chunk_start[k] + temp_arr.shape[k] for k in range(3))
             yield MIPArray(lvl, temp_arr, chunk_start, chunk_end)
     else:
         # get level 0 chunks
@@ -178,8 +177,8 @@ def iterate_mip_levels_from_dataset(
             #     chunk = numpy.transpose(psd.deskew_block(
             #         chunk, chunk_index, **deskew_kwargs), (2, 1, 0))
             block_tuple = numpy.unravel_index(block_index,nblocks)
-            block_start = tuple([block_tuple[k]*block_size[k] for k in range(3)])
-            block_end = tuple([block_start[k] + block.shape[k] for k in range(3)])
+            block_start = tuple(block_tuple[k]*block_size[k] for k in range(3))
+            block_end = tuple(block_start[k] + block.shape[k] for k in range(3))
             yield MIPArray(lvl, block, block_start, block_end)
             block_index += 1
 
