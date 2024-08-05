@@ -64,6 +64,11 @@ def dswrite_block(ds, start, end, arr, silent_overflow=True):
         ds[start[0]:end[0], start[1]:end[1], start[2]:end[2]] = arr[:(end[0] - start[0]), :(end[1] - start[1]), :(end[2] - start[2])]
 
 
+def write_mips(zgrp,miparrs):
+    for miparr in miparrs:
+        dswrite_block(ds=zgrp[miparr.lvl],start=miparr.start,end=miparr.end,arr=miparr.array)
+
+
 def iterate_numpy_blocks_from_dataset(
         dataset, maxlvl, nblocks, block_size=None, pad=True, deskew_kwargs={}, *args, **kwargs):
     """iterate over a contiguous hdf5 daataset as chunks of numpy arrays
@@ -303,15 +308,20 @@ def write_ims_to_zarr(
 
         with concurrent.futures.ThreadPoolExecutor(max_workers=workers) as e:
             futs = []
+            mips = []
             for miparr in iterate_mip_levels_from_dataset(
                     dataset, max_mip, max_mip, nblocks, block_size, mip_dsfactor,
                     lvl_to_mip_kwargs=lvl_to_mip_kwargs,
                     interleaved_channels=interleaved_channels,
                     channel=channel, deskew_kwargs=deskew_kwargs):
-                print(str(miparr.lvl))
-                futs.append(e.submit(
-                    dswrite_block, mip_ds[miparr.lvl],
-                    miparr.start, miparr.end, miparr.array))
+                mips.append(miparr)
+                if miparr.lvl == max_mip:
+                    # futs.append(e.submit(
+                    #     dswrite_block, mip_ds[miparr.lvl],
+                    #     miparr.start, miparr.end, miparr.array))
+                    futs.append(e.submit(
+                        write_mips, mip_ds, mips))
+                    mips = []
             for fut in concurrent.futures.as_completed(futs):
                 _ = fut.result()
     print("conversion complete, closing file")
