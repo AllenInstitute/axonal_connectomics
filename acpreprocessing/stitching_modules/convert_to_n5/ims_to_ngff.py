@@ -95,6 +95,8 @@ def iterate_numpy_blocks_from_dataset(
         chunk_size = (deskew_kwargs["chunklength"],block_size[1],block_size[2]*deskew_kwargs["stride"])
     if numberblocks < 1:
         numberblocks = numpy.prod(nblocks)
+    else:
+        numberblocks = numpy.ravel_multi_index((0,numberblocks,0),nblocks,order='F')
     for i in range(numberblocks):#,*args,**kwargs):
         chunk_tuple = numpy.unravel_index(i,tuple(nblocks),order='F')
         if True: #chunk_tuple[0] == 0:
@@ -184,7 +186,7 @@ def iterate_mip_levels_from_dataset(
                 dataset, lvl-1, maxlvl, nblocks, block_size,
                 downsample_factor, downsample_method,
                 lvl_to_mip_kwargs, interleaved_channels=interleaved_channels,
-                channel=channel, deskew_kwargs=deskew_kwargs):
+                channel=channel, numchunks=numchunks, deskew_kwargs=deskew_kwargs):
             chunk = ma.array
             # throw array up for further processing
             yield ma
@@ -261,7 +263,12 @@ def write_ims_to_zarr(
     f = h5py.File(ims_fn, 'r')
     dataset = f['DataSet']['ResolutionLevel 0']['TimePoint 0']['Channel 0']['Data']
     
-    joined_shapes = dataset.shape
+    block_size = [8*sz for sz in chunk_size[2:]]
+    
+    if numchunks < 1:
+        joined_shapes = dataset.shape
+    else:
+        joined_shapes = [dataset.shape[0],numchunks*block_size[1],block_size[2]]
     print("ims_to_ngff dataset shape:" + str(joined_shapes))
 
     if deskew_options and deskew_options["deskew_method"] == "ps":
@@ -270,7 +277,6 @@ def write_ims_to_zarr(
             stride = deskew_options["deskew_stride"]
         else:
             stride = 1
-        block_size = [8*sz for sz in chunk_size[2:]]
         joined_shapes = psd.reshape_joined_shapes(
             joined_shapes, stride, block_size, transpose=True)
         print("deskewed shape:" + str(joined_shapes))
@@ -278,7 +284,6 @@ def write_ims_to_zarr(
         deskew_kwargs = psd.psdeskew_kwargs(skew_dims_zyx=(slice_length, block_size[1], block_size[2]*stride),
                                             **deskew_options)
     else:
-        block_size = [8*sz for sz in chunk_size[2:]]
         deskew_kwargs = {}
 
     # TODO DESKEW: does this generally work regardless of skew?
