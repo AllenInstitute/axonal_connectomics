@@ -99,7 +99,7 @@ def iterate_numpy_blocks_from_dataset(
             print(str(chunk_tuple))
         # deskew level 0 data blocks
         if deskew_kwargs:
-            if chunk_tuple[0] == 0 and i > 0:
+            if chunk_tuple[0] == 0:
                 chunk_index = 0
                 deskew_kwargs["slice1d"] *= 0
             chunk_start = [t*s for t,s in zip(chunk_tuple,chunk_size)]
@@ -265,7 +265,7 @@ def write_ims_to_zarr(
             stride = 1
         block_size = [8*sz for sz in chunk_size[2:]]
         joined_shapes = psd.reshape_joined_shapes(
-            joined_shapes, stride, block_size, transpose=False)
+            joined_shapes, stride, block_size, transpose=True)
         print("deskewed shape:" + str(joined_shapes))
         slice_length = int(block_size[0]/stride)
         deskew_kwargs = psd.psdeskew_kwargs(skew_dims_zyx=(slice_length, block_size[1], block_size[2]*stride),
