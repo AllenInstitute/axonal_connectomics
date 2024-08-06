@@ -70,7 +70,7 @@ def write_mips(zgrp,miparrs):
 
 # HERE : NEED TO UNTANGLE MISMATCH BETWEEN BLOCK (deskewed) and CHUNK (skewed) size
 def iterate_numpy_blocks_from_dataset(
-        dataset, nblocks, block_size=None, pad=True, deskew_kwargs={}, numberblocks=0, *args, **kwargs):
+        dataset, nblocks, block_size=None, pad=True, deskew_kwargs={}, *args, **kwargs):
     """iterate over a contiguous hdf5 daataset as chunks of numpy arrays
 
     Parameters
@@ -93,11 +93,7 @@ def iterate_numpy_blocks_from_dataset(
     #     fb = numpy.ravel_multi_index((zb,yb,xb),block_size)
     if deskew_kwargs:
         chunk_size = (deskew_kwargs["chunklength"],block_size[1],block_size[2]*deskew_kwargs["stride"])
-    if numberblocks < 1:
-        numberblocks = numpy.prod(nblocks)
-    else:
-        numberblocks = numpy.ravel_multi_index((0,numberblocks,0),nblocks,order='F')
-    for i in range(numberblocks):#,*args,**kwargs):
+    for i in range(numpy.prod(nblocks)):#,*args,**kwargs):
         chunk_tuple = numpy.unravel_index(i,tuple(nblocks),order='F')
         if True: #chunk_tuple[0] == 0:
             print(str(chunk_tuple))
@@ -145,7 +141,7 @@ def iterate_numpy_blocks_from_dataset(
 def iterate_mip_levels_from_dataset(
         dataset, lvl, maxlvl, nblocks, block_size, downsample_factor,
         downsample_method=None, lvl_to_mip_kwargs=None,
-        interleaved_channels=1, channel=0, numchunks=0, deskew_kwargs={}):
+        interleaved_channels=1, channel=0, deskew_kwargs={}):
     """recursively generate MIPmap levels from an iterator of blocks
 
     Parameters
@@ -186,7 +182,7 @@ def iterate_mip_levels_from_dataset(
                 dataset, lvl-1, maxlvl, nblocks, block_size,
                 downsample_factor, downsample_method,
                 lvl_to_mip_kwargs, interleaved_channels=interleaved_channels,
-                channel=channel, numchunks=numchunks, deskew_kwargs=deskew_kwargs):
+                channel=channel, deskew_kwargs=deskew_kwargs):
             chunk = ma.array
             # throw array up for further processing
             yield ma
@@ -206,7 +202,7 @@ def iterate_mip_levels_from_dataset(
         for block in iterate_numpy_blocks_from_dataset(
                 dataset, nblocks, block_size=block_size, pad=False,
                 deskew_kwargs=deskew_kwargs,
-                channel=channel,numberblocks=numchunks):
+                channel=channel):
             block_tuple = numpy.unravel_index(block_index,nblocks,order='F')
             block_start = tuple(block_tuple[k]*block_size[k] for k in range(3))
             block_end = tuple(block_start[k] + block.shape[k] for k in range(3))
