@@ -189,6 +189,6 @@ def reshape_joined_shapes(joined_shapes, stride, blockdims, transpose=True, **kw
     else:
         axes = (0,1,2)
     deskewed_shape = (int(np.ceil(joined_shapes[0]/(blockdims[axes[0]]/stride))*blockdims[axes[0]]),
-                      blockdims[axes[1]],
-                      blockdims[axes[2]])
+                      joined_shapes[axes[1]],
+                      joined_shapes[axes[2]])
     return deskewed_shape
