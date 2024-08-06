@@ -80,19 +80,31 @@ def psdeskew_kwargs(skew_dims_zyx, deskew_stride=1, deskew_flip=False, deskew_tr
 
 
 def calculate_skewed_indices(zi,yi,xi,s):
+    # convert input block voxel indices into skewed data space
+    # edge blocks may have negative or out-of-bounds skewed indices
     xs = s*zi + xi % s
     ys = yi
     zs = xi // s - zi
-    return xs,ys,zs
+    return zs,ys,xs
 
 
-def get_deskewed_block(dataset,zi,yi,xi,stride,**kwargs):
+def get_deskewed_block(blockdims,dataset,start,end,stride):
+    # create output block and get flattened indices
+    blockdata = np.zeros(blockdims,dtype=dataset.dtype)
+    zb,yb,xb = np.meshgrid(*[range(d) for d in blockdims],indexing="ij")
+    fb = np.ravel_multi_index((zb,yb,xb),blockdims)
+    # get indices of voxel data for input dataset
     sdims = dataset.shape
-    xs,ys,zs = calculate_skewed_indices(xi,yi,zi,stride)
-    fli = np.ravel_multi_index((xs,ys,zs),sdims).flatten()
-    fldata = dataset[fli]
-    block = fldata.reshape((len(xi),len(yi),len(zi)))
-    return block
+    zi,yi,xi = np.meshgrid(*[range(s,e) for s,e in zip(start,end)],indexing="ij")
+    zs,ys,xs = calculate_skewed_indices(zi,yi,xi,stride)
+    fi = np.ravel_multi_index((zs,ys,xs),sdims,mode='clip').flatten()
+    # filter out-of-bounds voxels
+    r = fi > 0 and fi < np.prod(sdims)-1
+    fb = fb[r]
+    fi = fi[r]
+    # assign input to output
+    blockdata[fb] = dataset[fi]
+    return blockdata
 
 
 def deskew_block(blockData, n, dsi, si, slice1d, blockdims, subblocks, flip, transpose, dtype, chunklength, *args, **kwargs):
@@ -155,7 +167,7 @@ def deskew_block(blockData, n, dsi, si, slice1d, blockdims, subblocks, flip, tra
     return block3d
 
 
-def reshape_joined_shapes(joined_shapes, stride, blockdims, *args, **kwargs):
+def reshape_joined_shapes(joined_shapes, stride, blockdims, transpose=True, **kwargs):
     """get dimensions of deskewed joined shapes from skewed joined shapes
 
     Parameters
@@ -172,7 +184,11 @@ def reshape_joined_shapes(joined_shapes, stride, blockdims, *args, **kwargs):
     deskewed_shape : tuple of int
         shape of deskewed 3D array represented by joined_shapes
     """
-    deskewed_shape = (int(np.ceil(joined_shapes[0]/(blockdims[2]/stride))*blockdims[2]),
-                      blockdims[1],
-                      blockdims[0])
+    if transpose:
+        axes = (2,1,0)
+    else:
+        axes = (0,1,2)
+    deskewed_shape = (int(np.ceil(joined_shapes[0]/(blockdims[axes[0]]/stride))*blockdims[axes[0]]),
+                      blockdims[axes[1]],
+                      blockdims[axes[2]])
     return deskewed_shape
