@@ -111,7 +111,7 @@ def iterate_numpy_blocks_from_dataset(
                 chunk_end = [st+s for st,s in zip(chunk_start,chunk_size)]
                 arr = numpy.transpose(psd.deskew_block(
                     dataset[chunk_start[0]:chunk_end[0],chunk_start[1]:chunk_end[1],chunk_start[2]:chunk_end[2]],
-                    chunk_index,transpose=True,
+                    chunk_index,
                     **deskew_kwargs), (2, 1, 0))
             chunk_index += 1
             # arr = numpy.zeros(block_size,dtype=dataset.dtype)
