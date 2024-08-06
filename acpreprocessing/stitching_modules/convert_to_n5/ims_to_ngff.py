@@ -342,7 +342,7 @@ def write_ims_to_zarr(
                     dataset, max_mip, max_mip, nblocks, block_size, mip_dsfactor,
                     lvl_to_mip_kwargs=lvl_to_mip_kwargs,
                     interleaved_channels=interleaved_channels,
-                    channel=channel, numchunks=numchunks, deskew_kwargs=deskew_kwargs):
+                    channel=channel, deskew_kwargs=deskew_kwargs):
                 mips.append(miparr)
                 if miparr.lvl == max_mip:
                     # futs.append(e.submit(
