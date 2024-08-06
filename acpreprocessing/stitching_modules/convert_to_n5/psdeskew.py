@@ -74,7 +74,8 @@ def psdeskew_kwargs(skew_dims_zyx, deskew_stride=1, deskew_flip=False, deskew_tr
               'flip': deskew_flip,
               'transpose': deskew_transpose,
               'dtype': dtype,
-              'chunklength': blockx
+              'chunklength': blockx,
+              'stride': stride
               }
     return kwargs
 
@@ -99,7 +100,7 @@ def get_deskewed_block(blockdims,dataset,start,end,stride):
     zs,ys,xs = calculate_skewed_indices(zi,yi,xi,stride)
     fi = np.ravel_multi_index((zs,ys,xs),sdims,mode='clip').flatten()
     # filter out-of-bounds voxels
-    r = fi > 0 and fi < np.prod(sdims)-1
+    r = (fi > 0) & (fi < np.prod(sdims)-1)
     fb = fb[r]
     fi = fi[r]
     # assign input to output
