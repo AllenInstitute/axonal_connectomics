@@ -147,8 +147,8 @@ def deskew_block(blockData, n, dsi, si, slice1d, blockdims, subblocks, flip, tra
     """
     if transpose:
         blockData = blockData.transpose((0,2,1))
-    # subb = subblocks
-    subb = 5
+    subb = subblocks
+    # subb = 5
     block3d = np.zeros(blockdims, dtype=dtype)
     zdim = block3d.shape[0]
     ydim = block3d.shape[1]
