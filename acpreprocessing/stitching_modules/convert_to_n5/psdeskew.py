@@ -108,6 +108,11 @@ def get_deskewed_block(blockdims,dataset,start,end,stride):
     return blockdata
 
 
+def calculate_first_chunk(dataset_shape,chunk_size,x_index,stride):
+    first_chunk = x_index*stride // chunk_size[2]
+    first_slice = x_index*stride % chunk_size[2]
+
+
 def deskew_block(blockData, n, dsi, si, slice1d, blockdims, subblocks, flip, transpose, dtype, chunklength, *args, **kwargs):
     """deskew a data chunk in sequence with prior chunks
 
