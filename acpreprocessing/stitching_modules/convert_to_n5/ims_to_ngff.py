@@ -111,7 +111,7 @@ def iterate_numpy_blocks_from_dataset(
                 chunk_end = [st+s for st,s in zip(chunk_start,chunk_size)]
                 arr = numpy.transpose(psd.deskew_block(
                     dataset[chunk_start[0]:chunk_end[0],chunk_start[1]:chunk_end[1],chunk_start[2]:chunk_end[2]],
-                    chunk_index,
+                    chunk_index,transpose=True,
                     **deskew_kwargs), (2, 1, 0))
             chunk_index += 1
             # arr = numpy.zeros(block_size,dtype=dataset.dtype)
@@ -264,7 +264,7 @@ def write_ims_to_zarr(
     if numchunks < 1:
         joined_shapes = dataset.shape
     else:
-        joined_shapes = [dataset.shape[0],numchunks*block_size[1],block_size[2]]
+        joined_shapes = [dataset.shape[0],numchunks*block_size[1],numchunks*block_size[2]]
     print("ims_to_ngff dataset shape:" + str(joined_shapes))
 
     if deskew_options and deskew_options["deskew_method"] == "ps":
