@@ -103,14 +103,25 @@ def iterate_numpy_blocks_from_dataset(
                 chunk_index = 0
                 deskew_kwargs["slice1d"] *= 0
                 first_z,first_slice = psd.calculate_first_chunk(dataset_shape=dataset.shape,chunk_size=chunk_size,x_index=chunk_tuple[2],stride=deskew_kwargs["stride"])
-            if chunk_tuple[0] < first_z or chunk_tuple[0]*chunk_size[0] + first_slice >= dataset.shape[0]:
+            if chunk_tuple[0] < first_z or chunk_tuple[0]*chunk_size[0] - first_slice >= dataset.shape[0]:
                 arr = numpy.zeros(block_size,dtype=dataset.dtype)
             else:
                 chunk_start = [t*s for t,s in zip(chunk_tuple,chunk_size)]
-                chunk_start[0] += first_slice
                 chunk_end = [st+s for st,s in zip(chunk_start,chunk_size)]
+                if chunk_start[0] < first_slice:
+                    chunk_end[0] -= first_slice - chunk_start[0]
+                    chunk = numpy.zeros(chunk_size,dtype=dataset.dtype)
+                    chunk[first_slice-chunk_start[0]:] = dataset[chunk_start[0]:chunk_end[0],chunk_start[1]:chunk_end[1],chunk_start[2]:chunk_end[2]]
+                else:
+                    chunk_start[0] -= first_slice
+                    chunk_end[0] -= first_slice
+                    if chunk_end[0] >= dataset.shape[0]:
+                        chunk = numpy.zeros(chunk_size,dtype=dataset.dtype)
+                        chunk[:dataset.shape[0]-chunk_start[0]] = dataset[chunk_start[0]:,chunk_start[1]:chunk_end[1],chunk_start[2]:chunk_end[2]]
+                    else:
+                        chunk = dataset[chunk_start[0]:chunk_end[0],chunk_start[1]:chunk_end[1],chunk_start[2]:chunk_end[2]]
                 arr = numpy.transpose(psd.deskew_block(
-                    dataset[chunk_start[0]:chunk_end[0],chunk_start[1]:chunk_end[1],chunk_start[2]:chunk_end[2]],
+                    chunk,
                     chunk_index,
                     **deskew_kwargs), (2, 1, 0))
             chunk_index += 1
