@@ -270,7 +270,7 @@ def write_ims_to_zarr(
     f = h5py.File(ims_fn, 'r')
     dataset = f['DataSet']['ResolutionLevel 0']['TimePoint 0']['Channel 0']['Data']
     
-    block_size = [8*sz for sz in chunk_size[2:]]
+    block_size = [16*sz for sz in chunk_size[2:]]
     
     if numchunks < 1:
         joined_shapes = dataset.shape
