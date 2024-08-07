@@ -1048,7 +1048,7 @@ class DownsampleOptions(argschema.schemas.DefaultSchema):
 class DeskewOptions(argschema.schemas.DefaultSchema):
     deskew_method = argschema.fields.Str(required=False, default='')
     deskew_stride = argschema.fields.Int(required=False, default=None)
-    deskew_flip = argschema.fields.Bool(required=False, default=True)
+    deskew_flip = argschema.fields.Bool(required=False, default=False)
     deskew_transpose = argschema.fields.Bool(required=False, default=False)
     deskew_crop = argschema.fields.Float(required=False, default=1.0)
 

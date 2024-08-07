@@ -275,7 +275,7 @@ def write_ims_to_zarr(
     if numchunks < 1:
         joined_shapes = dataset.shape
     else:
-        joined_shapes = [dataset.shape[0],numchunks*block_size[1],numchunks*block_size[2]]
+        joined_shapes = [dataset.shape[0],numchunks*block_size[1],block_size[2]]
     print("ims_to_ngff dataset shape:" + str(joined_shapes))
 
     if deskew_options and deskew_options["deskew_method"] == "ps":
