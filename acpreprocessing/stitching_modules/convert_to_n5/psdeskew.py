@@ -108,7 +108,7 @@ def get_deskewed_block(blockdims,dataset,start,end,stride):
     return blockdata
 
 
-def calculate_first_chunk(dataset_shape,chunk_size,x_index,stride):
+def calculate_first_chunk(chunk_size,x_index,stride):
     first_chunk = x_index*stride
     first_slice = int(x_index*chunk_size[0]*stride) #% chunk_size[0]
     return first_chunk,first_slice

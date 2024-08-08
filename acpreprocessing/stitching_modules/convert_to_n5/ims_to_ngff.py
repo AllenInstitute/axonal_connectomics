@@ -96,7 +96,7 @@ def iterate_numpy_blocks_from_dataset(
         chunk_size = (deskew_kwargs["chunklength"],block_size[1],block_size[2]*deskew_kwargs["stride"])
         if deskew_kwargs["transpose"]:
             chunk_size = (chunk_size[0],chunk_size[2],chunk_size[1])
-            dshape.transpose((0,2,1))
+            dshape = (dshape[0],dshape[2],dshape[1])
     for i in range(numpy.prod(nblocks)):#,*args,**kwargs):
         chunk_tuple = numpy.unravel_index(i,tuple(nblocks),order='F')
         # deskew level 0 data blocks
@@ -107,8 +107,8 @@ def iterate_numpy_blocks_from_dataset(
             if chunk_tuple[0] == 0:
                 chunk_index = 0
                 deskew_kwargs["slice1d"][...] = 0
-                first_z,first_slice = psd.calculate_first_chunk(dataset_shape=dshape,chunk_size=chunk_size,x_index=chunk_tuple[2],stride=deskew_kwargs["stride"])
-            if chunk_tuple[0] < first_z or chunk_tuple[0]*chunk_size[0] - first_slice >= dataset.shape[0]:
+                first_z,first_slice = psd.calculate_first_chunk(chunk_size=chunk_size,x_index=chunk_tuple[2],stride=deskew_kwargs["stride"])
+            if chunk_tuple[0] < first_z or chunk_tuple[0]*chunk_size[0] - first_slice >= dshape[0]:
                 arr = numpy.zeros(block_size,dtype=dataset.dtype)
             else:
                 chunk_start = numpy.array([t*s for t,s in zip(chunk_tuple,chunk_size)])
@@ -120,9 +120,9 @@ def iterate_numpy_blocks_from_dataset(
                 else:
                     chunk_start[0] -= first_slice
                     chunk_end[0] -= first_slice
-                    if chunk_end[0] >= dataset.shape[0]:
+                    if chunk_end[0] >= dshape[0]:
                         chunk = numpy.zeros(chunk_size,dtype=dataset.dtype)
-                        chunk[:dataset.shape[0]-chunk_start[0]] = dataset[chunk_start[0]:,chunk_start[1]:chunk_end[1],chunk_start[2]:chunk_end[2]]
+                        chunk[:dshape[0]-chunk_start[0]] = dataset[chunk_start[0]:,chunk_start[1]:chunk_end[1],chunk_start[2]:chunk_end[2]]
                     else:
                         chunk = dataset[chunk_start[0]:chunk_end[0],chunk_start[1]:chunk_end[1],chunk_start[2]:chunk_end[2]]
                 arr = numpy.transpose(psd.deskew_block(
@@ -286,7 +286,7 @@ def write_ims_to_zarr(
         joined_shapes = dataset.shape
         if deskew_options and deskew_options["deskew_transpose"]:
             # input dataset must be transposed
-            joined_shapes = joined_shapes.transpose((0,2,1))
+            joined_shapes = (joined_shapes[0],joined_shapes[2],joined_shapes[1])
     else:
         joined_shapes = [dataset.shape[0],numchunks*block_size[1],block_size[2]]
     print("ims_to_ngff dataset shape:" + str(joined_shapes))
