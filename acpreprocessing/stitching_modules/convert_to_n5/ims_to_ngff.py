@@ -125,6 +125,8 @@ def iterate_numpy_blocks_from_dataset(
                         chunk[:dshape[0]-chunk_start[0]] = dataset[chunk_start[0]:,chunk_start[1]:chunk_end[1],chunk_start[2]:chunk_end[2]]
                     else:
                         chunk = dataset[chunk_start[0]:chunk_end[0],chunk_start[1]:chunk_end[1],chunk_start[2]:chunk_end[2]]
+                if deskew_kwargs["transpose"]:
+                    chunk = chunk.transpose((0,2,1))
                 arr = numpy.transpose(psd.deskew_block(
                     chunk,
                     chunk_index,
