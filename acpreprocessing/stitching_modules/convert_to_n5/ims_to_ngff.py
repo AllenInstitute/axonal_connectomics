@@ -95,13 +95,12 @@ def iterate_numpy_blocks_from_dataset(
         chunk_size = (deskew_kwargs["chunklength"],block_size[1],block_size[2]*deskew_kwargs["stride"])
     for i in range(numpy.prod(nblocks)):#,*args,**kwargs):
         chunk_tuple = numpy.unravel_index(i,tuple(nblocks),order='F')
-        if True: #chunk_tuple[0] == 0:
-            print(str(chunk_tuple))
         # deskew level 0 data blocks
         if deskew_kwargs:
+            print(str(chunk_tuple))
             if chunk_tuple[0] == 0:
                 chunk_index = 0
-                deskew_kwargs["slice1d"] *= 0
+                deskew_kwargs["slice1d"][...] = 0
                 first_z,first_slice = psd.calculate_first_chunk(dataset_shape=dataset.shape,chunk_size=chunk_size,x_index=chunk_tuple[2],stride=deskew_kwargs["stride"])
             if chunk_tuple[0] < first_z or chunk_tuple[0]*chunk_size[0] - first_slice >= dataset.shape[0]:
                 arr = numpy.zeros(block_size,dtype=dataset.dtype)
@@ -134,6 +133,8 @@ def iterate_numpy_blocks_from_dataset(
             #                                  end=block_end,
             #                                  stride=stride)
         else:
+            if chunk_tuple[0] == 0:
+                print(str(chunk_tuple))
             block_start = [chunk_tuple[k]*block_size[k] for k in range(3)]
             block_end = [block_start[k] + block_size[k] for k in range(3)]
             arr = dataset[block_start[0]:block_end[0],block_start[1]:block_end[1],block_start[2]:block_end[2]]
@@ -269,6 +270,9 @@ def write_ims_to_zarr(
     
     f = h5py.File(ims_fn, 'r')
     dataset = f['DataSet']['ResolutionLevel 0']['TimePoint 0']['Channel 0']['Data']
+    if deskew_options and deskew_options["deskew_transpose"]:
+        dataset = dataset.transpose((0,2,1))
+        print("transposed shape: " + str(dataset.shape))
     
     block_size = [16*sz for sz in chunk_size[2:]]
     
@@ -284,12 +288,12 @@ def write_ims_to_zarr(
             stride = deskew_options["deskew_stride"]
         else:
             stride = 1
-        joined_shapes = psd.reshape_joined_shapes(
-            joined_shapes, stride, block_size, transpose=True)
-        print("deskewed shape:" + str(joined_shapes))
         slice_length = int(block_size[0]/stride)
         deskew_kwargs = psd.psdeskew_kwargs(skew_dims_zyx=(slice_length, block_size[1], block_size[2]*stride),
                                             **deskew_options)
+        joined_shapes = psd.reshape_joined_shapes(
+            joined_shapes, stride, block_size)# transpose=(2,1,0))
+        print("deskewed shape:" + str(joined_shapes))
     else:
         deskew_kwargs = {}
 

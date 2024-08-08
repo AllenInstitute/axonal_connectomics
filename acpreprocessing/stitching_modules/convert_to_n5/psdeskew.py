@@ -34,8 +34,8 @@ def psdeskew_kwargs(skew_dims_zyx, deskew_stride=1, deskew_flip=False, deskew_tr
     kwargs : dict
         parameters representing pixel deskew operation for deskew_block
     """
-    if deskew_transpose:
-        skew_dims_zyx = (skew_dims_zyx[0],skew_dims_zyx[2],skew_dims_zyx[1])
+    # if deskew_transpose:
+    #     skew_dims_zyx = (skew_dims_zyx[0],skew_dims_zyx[2],skew_dims_zyx[1])
     sdims = skew_dims_zyx
     crop_factor = deskew_crop
     stride = deskew_stride
@@ -145,8 +145,8 @@ def deskew_block(blockData, n, dsi, si, slice1d, blockdims, subblocks, flip, tra
     block3d : numpy.ndarray
         pixel shifted deskewed data ordered (z,y,x) by sample axes 
     """
-    if transpose:
-        blockData = blockData.transpose((0,2,1))
+    # if transpose:
+    #     blockData = blockData.transpose((0,2,1))
     subb = subblocks
     # subb = 5
     block3d = np.zeros(blockdims, dtype=dtype)
@@ -174,7 +174,7 @@ def deskew_block(blockData, n, dsi, si, slice1d, blockdims, subblocks, flip, tra
     return block3d
 
 
-def reshape_joined_shapes(joined_shapes, stride, blockdims, transpose=True, **kwargs):
+def reshape_joined_shapes(joined_shapes, stride, blockdims, transpose=None, **kwargs):
     """get dimensions of deskewed joined shapes from skewed joined shapes
 
     Parameters
@@ -191,8 +191,8 @@ def reshape_joined_shapes(joined_shapes, stride, blockdims, transpose=True, **kw
     deskewed_shape : tuple of int
         shape of deskewed 3D array represented by joined_shapes
     """
-    if transpose:
-        axes = (2,1,0)
+    if not transpose is None:
+        axes = transpose
     else:
         axes = (0,1,2)
     # deskewed_shape = (int(np.ceil(joined_shapes[axes[0]]/(blockdims[axes[0]]/stride))*blockdims[axes[0]]),
