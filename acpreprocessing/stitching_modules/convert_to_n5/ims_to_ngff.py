@@ -91,22 +91,28 @@ def iterate_numpy_blocks_from_dataset(
     #     # create output block and get flattened indices
     #     zb,yb,xb = numpy.meshgrid(*[range(d) for d in block_size],indexing="ij")
     #     fb = numpy.ravel_multi_index((zb,yb,xb),block_size)
+    dshape = dataset.shape
     if deskew_kwargs:
         chunk_size = (deskew_kwargs["chunklength"],block_size[1],block_size[2]*deskew_kwargs["stride"])
+        if deskew_kwargs["transpose"]:
+            chunk_size = (chunk_size[0],chunk_size[2],chunk_size[1])
+            dshape.transpose((0,2,1))
     for i in range(numpy.prod(nblocks)):#,*args,**kwargs):
         chunk_tuple = numpy.unravel_index(i,tuple(nblocks),order='F')
         # deskew level 0 data blocks
         if deskew_kwargs:
+            if deskew_kwargs["transpose"]:
+                chunk_tuple = (chunk_tuple[0],chunk_tuple[2],chunk_tuple[1])
             print(str(chunk_tuple))
             if chunk_tuple[0] == 0:
                 chunk_index = 0
                 deskew_kwargs["slice1d"][...] = 0
-                first_z,first_slice = psd.calculate_first_chunk(dataset_shape=dataset.shape,chunk_size=chunk_size,x_index=chunk_tuple[2],stride=deskew_kwargs["stride"])
+                first_z,first_slice = psd.calculate_first_chunk(dataset_shape=dshape,chunk_size=chunk_size,x_index=chunk_tuple[2],stride=deskew_kwargs["stride"])
             if chunk_tuple[0] < first_z or chunk_tuple[0]*chunk_size[0] - first_slice >= dataset.shape[0]:
                 arr = numpy.zeros(block_size,dtype=dataset.dtype)
             else:
-                chunk_start = [t*s for t,s in zip(chunk_tuple,chunk_size)]
-                chunk_end = [st+s for st,s in zip(chunk_start,chunk_size)]
+                chunk_start = numpy.array([t*s for t,s in zip(chunk_tuple,chunk_size)])
+                chunk_end = chunk_start + numpy.array(chunk_size)
                 if chunk_start[0] < first_slice:
                     chunk_end[0] -= first_slice - chunk_start[0]
                     chunk = numpy.zeros(chunk_size,dtype=dataset.dtype)
@@ -270,14 +276,17 @@ def write_ims_to_zarr(
     
     f = h5py.File(ims_fn, 'r')
     dataset = f['DataSet']['ResolutionLevel 0']['TimePoint 0']['Channel 0']['Data']
-    if deskew_options and deskew_options["deskew_transpose"]:
-        dataset = dataset.transpose((0,2,1))
-        print("transposed shape: " + str(dataset.shape))
+    # if deskew_options and deskew_options["deskew_transpose"]:
+    #     dataset = dataset.transpose((0,2,1))
+    #     print("transposed shape: " + str(dataset.shape))
     
     block_size = [16*sz for sz in chunk_size[2:]]
     
     if numchunks < 1:
         joined_shapes = dataset.shape
+        if deskew_options and deskew_options["deskew_transpose"]:
+            # input dataset must be transposed
+            joined_shapes = joined_shapes.transpose((0,2,1))
     else:
         joined_shapes = [dataset.shape[0],numchunks*block_size[1],block_size[2]]
     print("ims_to_ngff dataset shape:" + str(joined_shapes))
@@ -289,7 +298,7 @@ def write_ims_to_zarr(
         else:
             stride = 1
         slice_length = int(block_size[0]/stride)
-        deskew_kwargs = psd.psdeskew_kwargs(skew_dims_zyx=(slice_length, block_size[1], block_size[2]*stride),
+        deskew_kwargs = psd.psdeskew_kwargs(skew_dims_zyx=(slice_length, block_size[1], block_size[2]*stride), # size of skewed chunk to iterate for deskewed block
                                             **deskew_options)
         joined_shapes = psd.reshape_joined_shapes(
             joined_shapes, stride, block_size)# transpose=(2,1,0))
