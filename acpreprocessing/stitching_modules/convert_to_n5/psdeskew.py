@@ -73,7 +73,7 @@ def psdeskew_kwargs(skew_dims_zyx, deskew_stride=1, deskew_flip=False, deskew_tr
         si.append(np.ravel_multi_index((szv,syv,sxv), sdims))
     kwargs = {'dsi': dsi,
               'si': si,
-              'slice1d': np.zeros((subblocks, blockdims[1], blockdims[2]*blockdims[0]), dtype=dtype),
+              'slice1d': np.zeros((subblocks, blockdims[2]*blockdims[1]*blockdims[0]), dtype=dtype),
               'blockdims': blockdims,
               'subblocks': subblocks,
               'flip': deskew_flip,
@@ -172,9 +172,9 @@ def deskew_block(blockData, n, dsi, si, slice1d, blockdims, subblocks, flip, tra
     for i, o in enumerate(order):
         # flip stack axis 2 for ispim2
         s = -1 if flip else 1
-        slice1d[o, :, :][dsi[i]] = blockData[:, :, ::s].ravel()[si[i]]
-    block3d[:, :, :] = slice1d[n % subb, :, :].reshape((zdim,ydim,xdim))
-    slice1d[n % subb, :, :] = 0
+        slice1d[o, :][dsi[i]] = blockData[:, :, ::s].ravel()[si[i]]
+    block3d[:, :, :] = slice1d[n % subb, :].reshape((zdim,ydim,xdim))
+    slice1d[n % subb, :] = 0
     return block3d
 
 
