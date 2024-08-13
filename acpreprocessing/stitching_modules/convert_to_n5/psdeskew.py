@@ -169,13 +169,12 @@ def deskew_block(blockData, n, dsi, si, slice1d, blockdims, subblocks, flip, tra
         blockData = np.concatenate((blockData, np.zeros(
             (int(chunklength-blockData.shape[0]), blockData.shape[1], blockData.shape[2]))))
     order = (np.arange(subb)+n) % subb
-    for y in range(ydim):
-        for i, o in enumerate(order):
-            # flip stack axis 2 for ispim2
-            s = -1 if flip else 1
-            slice1d[o, y, :][dsi[i]] = blockData[:, y, ::s].ravel()[si[i]]
-        block3d[:, y, :] = slice1d[n % subb, y, :].reshape((zdim, xdim))
-        slice1d[n % subb, y, :] = 0
+    for i, o in enumerate(order):
+        # flip stack axis 2 for ispim2
+        s = -1 if flip else 1
+        slice1d[o, :, :][dsi[i]] = blockData[:, :, ::s].ravel()[si[i]]
+    block3d[:, :, :] = slice1d[n % subb, :, :].reshape((zdim,ydim,xdim))
+    slice1d[n % subb, :, :] = 0
     return block3d
 
 
