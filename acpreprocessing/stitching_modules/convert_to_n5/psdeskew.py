@@ -59,13 +59,18 @@ def psdeskew_kwargs(skew_dims_zyx, deskew_stride=1, deskew_flip=False, deskew_tr
             sx = np.arange(sxstart, sxend)
             sxv.append(sx)
             szv.append(sz*np.ones(sx.shape, dtype=sx.dtype))
-        sxv = np.concatenate(sxv)
-        szv = np.concatenate(szv)
+        sxv = np.tile(np.concatenate(sxv)[:,np.newaxis],[1,blockdims[1]])
+        szv = np.tile(np.concatenate(szv)[:,np.newaxis],[1,blockdims[1]])
+        syv = np.tile(np.arange(blockdims[1]),[sxv.shape[0],1])
+        sxv = sxv.flatten()
+        szv = szv.flatten()
+        syv = syv.flatten()
         dsx = sxv + stride*szv - i_block*stride*blockx
         dsz = np.floor(sxv/stride).astype(int)
+        dsy = syv
         dsi.append(np.ravel_multi_index(
-            (dsz, dsx), (blockdims[0], blockdims[2])))
-        si.append(np.ravel_multi_index((szv, sxv), (sdims[0], sdims[2])))
+            (dsz,dsy,dsx), blockdims))
+        si.append(np.ravel_multi_index((szv,syv,sxv), sdims))
     kwargs = {'dsi': dsi,
               'si': si,
               'slice1d': np.zeros((subblocks, blockdims[1], blockdims[2]*blockdims[0]), dtype=dtype),

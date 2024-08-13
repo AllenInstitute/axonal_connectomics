@@ -107,7 +107,7 @@ def iterate_numpy_blocks_from_dataset(
             if chunk_tuple[0] == 0:
                 chunk_index = 0
                 deskew_kwargs["slice1d"][...] = 0
-                first_z,first_slice = psd.calculate_first_chunk(chunk_size=chunk_size,x_index=chunk_tuple[2],stride=deskew_kwargs["stride"])
+                first_z,first_slice = psd.calculate_first_chunk(chunk_size=chunk_size,x_index=chunk_tuple[1],stride=deskew_kwargs["stride"])
             if chunk_tuple[0] < first_z or chunk_tuple[0]*chunk_size[0] - first_slice >= dshape[0]:
                 arr = numpy.zeros(block_size,dtype=dataset.dtype)
             else:
