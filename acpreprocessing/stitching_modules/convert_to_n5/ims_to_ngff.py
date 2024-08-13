@@ -282,7 +282,7 @@ def write_ims_to_zarr(
     #     dataset = dataset.transpose((0,2,1))
     #     print("transposed shape: " + str(dataset.shape))
     
-    block_size = [16*sz for sz in chunk_size[2:]]
+    block_size = [8*sz for sz in chunk_size[2:]]
     
     if numchunks < 1:
         joined_shapes = dataset.shape
