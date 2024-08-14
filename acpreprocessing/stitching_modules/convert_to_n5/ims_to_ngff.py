@@ -120,11 +120,11 @@ def iterate_numpy_blocks_from_dataset(
                 else:
                     chunk_start[0] -= first_slice
                     chunk_end[0] -= first_slice
-                    if chunk_end[0] >= dshape[0]:
-                        chunk = numpy.zeros(chunk_size,dtype=dataset.dtype)
-                        chunk[:dshape[0]-chunk_start[0]] = dataset[chunk_start[0]:,chunk_start[1]:chunk_end[1],chunk_start[2]:chunk_end[2]]
-                    else:
-                        chunk = dataset[chunk_start[0]:chunk_end[0],chunk_start[1]:chunk_end[1],chunk_start[2]:chunk_end[2]]
+                    # if chunk_end[0] >= dshape[0]:
+                    #     chunk = numpy.zeros(chunk_size,dtype=dataset.dtype)
+                    #     chunk[:dshape[0]-chunk_start[0]] = dataset[chunk_start[0]:,chunk_start[1]:chunk_end[1],chunk_start[2]:chunk_end[2]]
+                    # else:
+                    chunk = dataset[chunk_start[0]:chunk_end[0],chunk_start[1]:chunk_end[1],chunk_start[2]:chunk_end[2]]
                 if any([sh<sz for sh,sz in zip(chunk.shape,chunk_size)]):
                     print(str(chunk_tuple) + " chunk is small: filling with zeros")
                     temp_chunk = numpy.zeros(chunk_size,dtype=chunk.dtype)
