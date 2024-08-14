@@ -125,12 +125,21 @@ def iterate_numpy_blocks_from_dataset(
                         chunk[:dshape[0]-chunk_start[0]] = dataset[chunk_start[0]:,chunk_start[1]:chunk_end[1],chunk_start[2]:chunk_end[2]]
                     else:
                         chunk = dataset[chunk_start[0]:chunk_end[0],chunk_start[1]:chunk_end[1],chunk_start[2]:chunk_end[2]]
+                if any([sh<sz for sh,sz in zip(chunk.shape,chunk_size)]):
+                    print(str(chunk_tuple) + " chunk is small: filling with zeros")
+                    temp_chunk = numpy.zeros(chunk_size,dtype=chunk.dtype)
+                    temp_chunk[:chunk.shape[0],:chunk.shape[1],:chunk.shape[2]] = chunk
+                    chunk = temp_chunk
                 if deskew_kwargs["transpose"]:
                     chunk = chunk.transpose((0,2,1))
-                arr = numpy.transpose(psd.deskew_block(
-                    chunk,
-                    chunk_index,
-                    **deskew_kwargs), (2, 1, 0))
+                arr = numpy.flip(
+                    numpy.transpose(
+                        psd.deskew_block(
+                            chunk,
+                            chunk_index,
+                            **deskew_kwargs), 
+                        (2, 1, 0)),
+                    axis=2)
             chunk_index += 1
             # arr = numpy.zeros(block_size,dtype=dataset.dtype)
             # if deskew_kwargs["deskew_method"] == "ps":
