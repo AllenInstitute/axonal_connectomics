@@ -84,33 +84,34 @@ def psdeskew_kwargs(skew_dims_zyx, deskew_stride=1, deskew_flip=False, deskew_tr
               }
     return kwargs
 
+# commented code no longer in use
+#
+# def calculate_skewed_indices(zi,yi,xi,s):
+#     # convert input block voxel indices into skewed data space
+#     # edge blocks may have negative or out-of-bounds skewed indices
+#     xs = s*zi + xi % s
+#     ys = yi
+#     zs = xi // s - zi
+#     return zs,ys,xs
 
-def calculate_skewed_indices(zi,yi,xi,s):
-    # convert input block voxel indices into skewed data space
-    # edge blocks may have negative or out-of-bounds skewed indices
-    xs = s*zi + xi % s
-    ys = yi
-    zs = xi // s - zi
-    return zs,ys,xs
 
-
-def get_deskewed_block(blockdims,dataset,start,end,stride):
-    # create output block and get flattened indices
-    blockdata = np.zeros(blockdims,dtype=dataset.dtype)
-    zb,yb,xb = np.meshgrid(*[range(d) for d in blockdims],indexing="ij")
-    fb = np.ravel_multi_index((zb,yb,xb),blockdims)
-    # get indices of voxel data for input dataset
-    sdims = dataset.shape
-    zi,yi,xi = np.meshgrid(*[range(s,e) for s,e in zip(start,end)],indexing="ij")
-    zs,ys,xs = calculate_skewed_indices(zi,yi,xi,stride)
-    fi = np.ravel_multi_index((zs,ys,xs),sdims,mode='clip').flatten()
-    # filter out-of-bounds voxels
-    r = (fi > 0) & (fi < np.prod(sdims)-1)
-    fb = fb[r]
-    fi = fi[r]
-    # assign input to output
-    blockdata[fb] = dataset[fi]
-    return blockdata
+# def get_deskewed_block(blockdims,dataset,start,end,stride):
+#     # create output block and get flattened indices
+#     blockdata = np.zeros(blockdims,dtype=dataset.dtype)
+#     zb,yb,xb = np.meshgrid(*[range(d) for d in blockdims],indexing="ij")
+#     fb = np.ravel_multi_index((zb,yb,xb),blockdims)
+#     # get indices of voxel data for input dataset
+#     sdims = dataset.shape
+#     zi,yi,xi = np.meshgrid(*[range(s,e) for s,e in zip(start,end)],indexing="ij")
+#     zs,ys,xs = calculate_skewed_indices(zi,yi,xi,stride)
+#     fi = np.ravel_multi_index((zs,ys,xs),sdims,mode='clip').flatten()
+#     # filter out-of-bounds voxels
+#     r = (fi > 0) & (fi < np.prod(sdims)-1)
+#     fb = fb[r]
+#     fi = fi[r]
+#     # assign input to output
+#     blockdata[fb] = dataset[fi]
+#     return blockdata
 
 
 def calculate_first_chunk(chunk_size,x_index,stride):
