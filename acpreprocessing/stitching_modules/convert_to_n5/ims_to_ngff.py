@@ -91,6 +91,11 @@ def iterate_numpy_blocks_from_dataset(
     #     # create output block and get flattened indices
     #     zb,yb,xb = numpy.meshgrid(*[range(d) for d in block_size],indexing="ij")
     #     fb = numpy.ravel_multi_index((zb,yb,xb),block_size)
+    if nblocks[1] == 1:
+        print("test condition: using test tuple")
+        test = True
+    else:
+        test = False
     dshape = dataset.shape
     if deskew_kwargs:
         chunk_size = (deskew_kwargs["chunklength"],block_size[1],block_size[2]*deskew_kwargs["stride"])
@@ -100,6 +105,8 @@ def iterate_numpy_blocks_from_dataset(
         print("chunk size: " + str(chunk_size))
     for i in range(numpy.prod(nblocks)):#,*args,**kwargs):
         chunk_tuple = numpy.unravel_index(i,tuple(nblocks),order='F')
+        if test:
+            chunk_tuple[1] = 11
         # deskew level 0 data blocks
         if deskew_kwargs:
             if deskew_kwargs["transpose"]:
