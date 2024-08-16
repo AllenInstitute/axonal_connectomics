@@ -142,14 +142,6 @@ def iterate_numpy_blocks_from_dataset(
                         (2, 1, 0)),
                     axis=2)
             chunk_index += 1
-            # arr = numpy.zeros(block_size,dtype=dataset.dtype)
-            # if deskew_kwargs["deskew_method"] == "ps":
-            #     stride = deskew_kwargs["deskew_stride"]
-            #     arr = psd.get_deskewed_block(blockdims=block_size,
-            #                                  dataset=dataset,
-            #                                  start=block_start,
-            #                                  end=block_end,
-            #                                  stride=stride)
         else:
             if chunk_tuple[0] == 0:
                 print(str(chunk_tuple))
@@ -294,6 +286,7 @@ def write_ims_to_zarr(
     #     print("transposed shape: " + str(dataset.shape))
     
     block_size = [8*sz for sz in chunk_size[2:]]
+    print("deskewed block size: " + str(block_size))
     
     if numchunks < 1:
         joined_shapes = dataset.shape

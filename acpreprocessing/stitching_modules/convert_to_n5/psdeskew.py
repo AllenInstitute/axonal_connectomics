@@ -41,7 +41,7 @@ def psdeskew_kwargs(skew_dims_zyx, deskew_stride=1, deskew_flip=False, deskew_tr
     stride = deskew_stride
     ydim = int(sdims[1]*crop_factor)
     blockdims = (int(sdims[2]/stride), ydim, stride*sdims[0])
-    subblocks = int(np.ceil((sdims[2]+stride*sdims[0])/(stride*sdims[0])))
+    subblocks = 2*int(np.ceil((sdims[2]+stride*sdims[0])/(stride*sdims[0])))
     # print(subblocks)
     blockx = sdims[0]
     dsi = []
@@ -51,7 +51,7 @@ def psdeskew_kwargs(skew_dims_zyx, deskew_stride=1, deskew_flip=False, deskew_tr
         szv = []
         for sz in range(blockx):
             sxstart = i_block*stride*blockx-stride*sz
-            sxend = (i_block+1)*stride*blockx-stride*sz
+            sxend = sxstart + stride*blockx #(i_block+1)*stride*blockx-stride*sz
             if sxstart < 0:
                 sxstart = 0
             if sxend > sdims[2]:
