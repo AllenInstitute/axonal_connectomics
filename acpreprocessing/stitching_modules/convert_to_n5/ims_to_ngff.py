@@ -106,7 +106,7 @@ def iterate_numpy_blocks_from_dataset(
     for i in range(numpy.prod(nblocks)):#,*args,**kwargs):
         chunk_tuple = numpy.unravel_index(i,tuple(nblocks),order='F')
         if test:
-            chunk_tuple[1] = 11
+            chunk_tuple = (chunk_tuple[0], 11, chunk_tuple[2])
         # deskew level 0 data blocks
         if deskew_kwargs:
             if deskew_kwargs["transpose"]:
