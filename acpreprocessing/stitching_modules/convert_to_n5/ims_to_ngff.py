@@ -97,6 +97,7 @@ def iterate_numpy_blocks_from_dataset(
         if deskew_kwargs["transpose"]:
             chunk_size = (chunk_size[0],chunk_size[2],chunk_size[1])
             dshape = (dshape[0],dshape[2],dshape[1])
+        print("chunk size: " + str(chunk_size))
     for i in range(numpy.prod(nblocks)):#,*args,**kwargs):
         chunk_tuple = numpy.unravel_index(i,tuple(nblocks),order='F')
         # deskew level 0 data blocks
@@ -126,7 +127,7 @@ def iterate_numpy_blocks_from_dataset(
                     # else:
                     chunk = dataset[chunk_start[0]:chunk_end[0],chunk_start[1]:chunk_end[1],chunk_start[2]:chunk_end[2]]
                 if any([sh<sz for sh,sz in zip(chunk.shape,chunk_size)]):
-                    print(str(chunk_tuple) + " chunk is small: filling with zeros")
+                    print(str(chunk.shape) + " is small for" + str(chunk_size) + ": filling with zeros")
                     temp_chunk = numpy.zeros(chunk_size,dtype=chunk.dtype)
                     temp_chunk[:chunk.shape[0],:chunk.shape[1],:chunk.shape[2]] = chunk
                     chunk = temp_chunk
@@ -155,8 +156,9 @@ def iterate_numpy_blocks_from_dataset(
             block_start = [chunk_tuple[k]*block_size[k] for k in range(3)]
             block_end = [block_start[k] + block_size[k] for k in range(3)]
             arr = dataset[block_start[0]:block_end[0],block_start[1]:block_end[1],block_start[2]:block_end[2]]
-        if pad:
-            if any([arr.shape[k] != block_size[k] for k in range(3)]):
+        if any([arr.shape[k] != block_size[k] for k in range(3)]):
+            print(str(arr.shape) + "is small for " + str(block_size))
+            if pad:
                 newarr = numpy.zeros(block_size,
                                       dtype=arr.dtype)
                 newarr[:arr.shape[0], :arr.shape[1], :arr.shape[2]] = arr[:, :, :]

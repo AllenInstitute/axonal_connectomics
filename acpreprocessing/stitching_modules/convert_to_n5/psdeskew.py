@@ -166,7 +166,7 @@ def deskew_block(blockData, n, dsi, si, slice1d, blockdims, subblocks, flip, tra
         blockData = blockData[:, y0:y1, :]
     #print('deskewing block ' + str(n) + ' with shape ' + str(blockData.shape))
     if blockData.shape[0] < chunklength:
-        #print('block is short, filling with zeros')
+        print("deskew block is short, filling with zeros, this should never happen")
         blockData = np.concatenate((blockData, np.zeros(
             (int(chunklength-blockData.shape[0]), blockData.shape[1], blockData.shape[2]))))
     order = (np.arange(subb)+n) % subb
