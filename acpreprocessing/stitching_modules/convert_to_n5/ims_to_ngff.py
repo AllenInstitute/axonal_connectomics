@@ -242,7 +242,7 @@ def iterate_mip_levels_from_dataset(
 
 def write_ims_to_zarr(
         ims_fn, output_n5, group_names, group_attributes=None, max_mip=0,
-        mip_dsfactor=(2, 2, 2), chunk_size=(1, 1, 64, 64, 64),
+        mip_dsfactor=(2, 2, 2), chunk_size=(1, 1, 32, 32, 32),
         concurrency=10, slice_concurrency=1,
         compression="raw", dtype="uint16", lvl_to_mip_kwargs=None,
         interleaved_channels=1, channel=0, deskew_options=None, numchunks=0, **kwargs):
@@ -292,7 +292,7 @@ def write_ims_to_zarr(
     #     dataset = dataset.transpose((0,2,1))
     #     print("transposed shape: " + str(dataset.shape))
     
-    block_size = [m*sz for m,sz in zip([4,4,4],chunk_size[2:])]
+    block_size = [m*sz for m,sz in zip([32,32,32],chunk_size[2:])]
     print("deskewed block size: " + str(block_size))
     
     if numchunks < 1:
@@ -429,7 +429,7 @@ class IMSToZarrInputParameters(argschema.ArgSchema,
         argschema.fields.Int(),
         argschema.fields.Int(),
         argschema.fields.Int(),
-        argschema.fields.Int()), required=False, default=(1, 1, 64, 64, 64))
+        argschema.fields.Int()), required=False, default=(1, 1, 32, 32, 32)) # default=(1, 1, 64, 64, 64)
 
 
 
