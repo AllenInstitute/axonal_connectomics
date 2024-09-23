@@ -428,7 +428,7 @@ def write_ims_to_zarr(
             #             write_mips, mip_ds, mips))
             #         mips = []
             for miparr in iterate_mip_levels_from_dataset(
-                    dataset, max_mip, nblocks, block_size, mip_dsfactor,
+                    dataset, max_mip, max_mip, nblocks, block_size, mip_dsfactor,
                     lvl_to_mip_kwargs=lvl_to_mip_kwargs,
                     interleaved_channels=interleaved_channels,
                     channel=channel, deskew_kwargs=deskew_kwargs):
