@@ -250,7 +250,7 @@ def iterate_mip_levels_from_dataset(
                         method=downsample_method, **mip_kwargs))
                 # end_index = start_index + temp_arr.shape[0]
                 # yield MIPArray(lvl, temp_arr, start_index, end_index)
-                chunk_start = tuple(start_index, int(ma.start[1]/downsample_factor[1]), int(ma.start[2]/downsample_factor[2]))#tuple(int(ma.start[k]/downsample_factor[k]) for k in range(3))
+                chunk_start = tuple((start_index, int(ma.start[1]/downsample_factor[1]), int(ma.start[2]/downsample_factor[2])))#tuple(int(ma.start[k]/downsample_factor[k]) for k in range(3))
                 chunk_end = tuple(chunk_start[k] + temp_arr.shape[k] for k in range(3))
                 yield MIPArray(lvl, temp_arr, chunk_start, chunk_end)
                 start_index += temp_arr.shape[0]
