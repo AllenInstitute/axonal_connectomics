@@ -207,7 +207,11 @@ def iterate_mip_levels_from_dataset(
                           else lvl_to_mip_kwargs)
     mip_kwargs = lvl_to_mip_kwargs.get(lvl, {})
     block_index = 0
+    start_index = 0
     if lvl > 0:
+        num_chunks = downsample_factor[0]
+        
+        i = 0
         for ma in iterate_mip_levels_from_dataset(
                 dataset, lvl-1, maxlvl, nblocks, block_size,
                 downsample_factor, downsample_method,
@@ -220,12 +224,46 @@ def iterate_mip_levels_from_dataset(
             if ma.lvl != lvl-1:
                 continue
             
-            temp_arr = (downsample_array(
-                    chunk, downsample_factor, dtype=chunk.dtype,
-                    method=downsample_method, **mip_kwargs))
-            chunk_start = tuple(int(ma.start[k]/downsample_factor[k]) for k in range(3))
-            chunk_end = tuple(chunk_start[k] + temp_arr.shape[k] for k in range(3))
-            yield MIPArray(lvl, temp_arr, chunk_start, chunk_end)
+            try:
+                temp_lminus1_arr
+            except NameError:
+                temp_lminus1_arr = numpy.empty(
+                    (num_chunks*chunk.shape[0], *chunk.shape[1:]),
+                    dtype=chunk.dtype)
+            
+            # fill in temporary block according to index
+            chunk_size = chunk.shape[0]
+            block_offset = i*block_size
+            
+            temp_lminus1_arr[
+                block_offset:block_offset+chunk_size, :, :] = chunk[:, :, :]
+            
+            # copy op only for uneven final chunk
+            if chunk_size != block_size:
+                temp_lminus1_arr = temp_lminus1_arr[
+                    :block_offset+chunk_size, :, :]
+            
+            if i == num_chunks - 1:
+                temp_arr = (
+                    downsample_array(
+                        temp_lminus1_arr, downsample_factor, dtype=chunk.dtype,
+                        method=downsample_method, **mip_kwargs))
+                # end_index = start_index + temp_arr.shape[0]
+                # yield MIPArray(lvl, temp_arr, start_index, end_index)
+                chunk_start = tuple(start_index, int(ma.start[1]/downsample_factor[1]), int(ma.start[2]/downsample_factor[2]))#tuple(int(ma.start[k]/downsample_factor[k]) for k in range(3))
+                chunk_end = tuple(chunk_start[k] + temp_arr.shape[k] for k in range(3))
+                yield MIPArray(lvl, temp_arr, chunk_start, chunk_end)
+                start_index += temp_arr.shape[0]
+                i = 0
+            else:
+                i += 1
+            
+            # temp_arr = (downsample_array(
+            #         chunk, downsample_factor, dtype=chunk.dtype,
+            #         method=downsample_method, **mip_kwargs))
+            # chunk_start = tuple(int(ma.start[k]/downsample_factor[k]) for k in range(3))
+            # chunk_end = tuple(chunk_start[k] + temp_arr.shape[k] for k in range(3))
+            # yield MIPArray(lvl, temp_arr, chunk_start, chunk_end)
     else:
         # get level 0 chunks
         # block_size is the number of slices to read from tiffs
@@ -242,7 +280,7 @@ def iterate_mip_levels_from_dataset(
 
 def write_ims_to_zarr(
         ims_fn, output_n5, group_names, group_attributes=None, max_mip=0,
-        mip_dsfactor=(2, 2, 2), chunk_size=(1, 1, 32, 32, 32),
+        mip_dsfactor=(2, 2, 2), chunk_size=(1, 1, 64, 64, 64),
         concurrency=10, slice_concurrency=1,
         compression="raw", dtype="uint16", lvl_to_mip_kwargs=None,
         interleaved_channels=1, channel=0, deskew_options=None, numchunks=0, **kwargs):
@@ -292,7 +330,7 @@ def write_ims_to_zarr(
     #     dataset = dataset.transpose((0,2,1))
     #     print("transposed shape: " + str(dataset.shape))
     
-    block_size = [m*sz for m,sz in zip([32,32,32],chunk_size[2:])]
+    block_size = [m*sz for m,sz in zip([1,2**max_mip,2**max_mip],chunk_size[2:])]
     print("deskewed block size: " + str(block_size))
     
     if numchunks < 1:
@@ -378,20 +416,25 @@ def write_ims_to_zarr(
 
         with concurrent.futures.ThreadPoolExecutor(max_workers=workers) as e:
             futs = []
-            mips = []
+            # mips = []
+            # for miparr in iterate_mip_levels_from_dataset(
+            #         dataset, max_mip, max_mip, nblocks, block_size, mip_dsfactor,
+            #         lvl_to_mip_kwargs=lvl_to_mip_kwargs,
+            #         interleaved_channels=interleaved_channels,
+            #         channel=channel, deskew_kwargs=deskew_kwargs):
+            #     mips.append(miparr)
+            #     if miparr.lvl == max_mip:
+            #         futs.append(e.submit(
+            #             write_mips, mip_ds, mips))
+            #         mips = []
             for miparr in iterate_mip_levels_from_dataset(
-                    dataset, max_mip, max_mip, nblocks, block_size, mip_dsfactor,
+                    dataset, max_mip, nblocks, block_size, mip_dsfactor,
                     lvl_to_mip_kwargs=lvl_to_mip_kwargs,
                     interleaved_channels=interleaved_channels,
                     channel=channel, deskew_kwargs=deskew_kwargs):
-                mips.append(miparr)
-                if miparr.lvl == max_mip:
-                    # futs.append(e.submit(
-                    #     dswrite_block, mip_ds[miparr.lvl],
-                    #     miparr.start, miparr.end, miparr.array))
-                    futs.append(e.submit(
-                        write_mips, mip_ds, mips))
-                    mips = []
+                futs.append(e.submit(
+                    dswrite_block, mip_ds[miparr.lvl],
+                    miparr.start, miparr.end, miparr.array))
             for fut in concurrent.futures.as_completed(futs):
                 _ = fut.result()
     print("conversion complete, closing file")
@@ -429,7 +472,7 @@ class IMSToZarrInputParameters(argschema.ArgSchema,
         argschema.fields.Int(),
         argschema.fields.Int(),
         argschema.fields.Int(),
-        argschema.fields.Int()), required=False, default=(1, 1, 32, 32, 32)) # default=(1, 1, 64, 64, 64)
+        argschema.fields.Int()), required=False, default=(1, 1, 64, 64, 64))
 
 
 
