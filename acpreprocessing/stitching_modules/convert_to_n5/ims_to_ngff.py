@@ -233,13 +233,13 @@ def iterate_mip_levels_from_dataset(
             
             # fill in temporary block according to index
             chunk_size = chunk.shape[0]
-            block_offset = i*block_size
+            block_offset = i*block_size[0]
             
             temp_lminus1_arr[
                 block_offset:block_offset+chunk_size, :, :] = chunk[:, :, :]
             
             # copy op only for uneven final chunk
-            if chunk_size != block_size:
+            if chunk_size != block_size[0]:
                 temp_lminus1_arr = temp_lminus1_arr[
                     :block_offset+chunk_size, :, :]
             
