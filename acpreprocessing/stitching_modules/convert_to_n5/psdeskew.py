@@ -42,7 +42,7 @@ def psdeskew_kwargs(skew_dims_zyx, deskew_stride=1, deskew_flip=False, deskew_tr
     ydim = int(sdims[1]*crop_factor)
     blockdims = (int(sdims[2]/stride), ydim, stride*sdims[0])
     subblocks = int(np.ceil((sdims[2]+stride*sdims[0])/(stride*sdims[0])))
-    # print(subblocks)
+    print("number of subblocks = " + str(subblocks))
     blockx = sdims[0]
     dsi = []
     si = []
