@@ -3,13 +3,13 @@
 import concurrent.futures
 import dataclasses
 #import itertools
-import math
+# import math
 #import pathlib
 
-import imageio
+# import imageio
 #from natsort import natsorted
 import numpy
-import skimage
+# import skimage
 
 import h5py
 import hdf5plugin
@@ -64,11 +64,11 @@ def dswrite_block(ds, start, end, arr, silent_overflow=True):
         ds[start[0]:end[0], start[1]:end[1], start[2]:end[2]] = arr[:(end[0] - start[0]), :(end[1] - start[1]), :(end[2] - start[2])]
 
 
-def write_mips(zgrp,miparrs):
-    for miparr in miparrs:
-        dswrite_block(ds=zgrp[miparr.lvl],start=miparr.start,end=miparr.end,arr=miparr.array)
+# def write_mips(zgrp,miparrs):
+#     for miparr in miparrs:
+#         dswrite_block(ds=zgrp[miparr.lvl],start=miparr.start,end=miparr.end,arr=miparr.array)
 
-# HERE : NEED TO UNTANGLE MISMATCH BETWEEN BLOCK (deskewed) and CHUNK (skewed) size
+
 def iterate_numpy_blocks_from_dataset(
         dataset, nblocks, block_size=None, pad=True, deskew_kwargs={}, *args, **kwargs):
     """iterate over a contiguous hdf5 daataset as chunks of numpy arrays
@@ -87,15 +87,7 @@ def iterate_numpy_blocks_from_dataset(
     arr : numpy.ndarray
         3D numpy array representing a consecutive chunk of 2D arrays
     """
-    # if deskew_kwargs and deskew_kwargs["deskew_method"] == "ps":
-    #     # create output block and get flattened indices
-    #     zb,yb,xb = numpy.meshgrid(*[range(d) for d in block_size],indexing="ij")
-    #     fb = numpy.ravel_multi_index((zb,yb,xb),block_size)
-    if nblocks[1] == 1:
-        print("test condition: using test tuple")
-        test = True
-    else:
-        test = False
+    
     dshape = dataset.shape
     if deskew_kwargs:
         chunk_size = (deskew_kwargs["chunklength"],block_size[1],block_size[2]*deskew_kwargs["stride"])
@@ -105,13 +97,12 @@ def iterate_numpy_blocks_from_dataset(
         print("chunk size: " + str(chunk_size))
     for i in range(numpy.prod(nblocks)):#,*args,**kwargs):
         chunk_tuple = numpy.unravel_index(i,tuple(nblocks),order='F')
-        # if test:
-        #     chunk_tuple = (chunk_tuple[0], 11, chunk_tuple[2])
         # deskew level 0 data blocks
         if deskew_kwargs:
             if deskew_kwargs["transpose"]:
                 chunk_tuple = (chunk_tuple[0],chunk_tuple[2],chunk_tuple[1])
-            print(str(chunk_tuple))
+            if chunk_tuple[0] == 0:
+                print(str(chunk_tuple))
             if chunk_tuple[0] == 0:
                 chunk_index = 0
                 deskew_kwargs["slice1d"][...] = 0
