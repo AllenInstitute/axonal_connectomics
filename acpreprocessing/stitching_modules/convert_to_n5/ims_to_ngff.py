@@ -330,7 +330,7 @@ def write_ims_to_zarr(
     #     dataset = dataset.transpose((0,2,1))
     #     print("transposed shape: " + str(dataset.shape))
     
-    block_size = [m*sz for m,sz in zip([1,2**max_mip,2**max_mip],chunk_size[2:])]
+    block_size = [128,2048,512] #[m*sz for m,sz in zip([2,2**max_mip,8],chunk_size[2:])]
     print("deskewed block size: " + str(block_size))
     
     if numchunks < 1:
