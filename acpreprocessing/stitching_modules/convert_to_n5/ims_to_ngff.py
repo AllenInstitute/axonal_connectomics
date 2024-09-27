@@ -11,8 +11,9 @@ import dataclasses
 import numpy
 # import skimage
 
+import hdf5plugin # this needs to be imported
 import h5py
-import hdf5plugin
+from imaris_ims_file_reader.ims import ims
 import zarr
 from numcodecs import Blosc
 import argschema
@@ -315,9 +316,11 @@ def write_ims_to_zarr(
     group_attributes = ([] if group_attributes is None else group_attributes)
     deskew_options = ({} if deskew_options is None else deskew_options)
     
-    f = h5py.File(ims_fn, 'r', rdcc_nbytes=1024**3)
-    dataset = f['DataSet']['ResolutionLevel 0']['TimePoint 0']['Channel 0']['Data']
-    ims_chunk_size = dataset.chunks
+    #f = h5py.File(ims_fn, 'r', rdcc_nbytes=512*1024**2)
+    #dataset = f['DataSet']['ResolutionLevel 0']['TimePoint 0']['Channel 0']['Data']
+    store = ims(ims_fn,ResolutionLevelLock=0,aszarr=True)
+    dataset = zarr.open(store,mode="r")
+    ims_chunk_size = store.chunks
     print("ims chunks: " + str(ims_chunk_size))
     # if deskew_options and deskew_options["deskew_transpose"]:
     #     dataset = dataset.transpose((0,2,1))
