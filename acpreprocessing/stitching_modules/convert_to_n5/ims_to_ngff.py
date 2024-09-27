@@ -317,12 +317,13 @@ def write_ims_to_zarr(
     
     f = h5py.File(ims_fn, 'r')
     dataset = f['DataSet']['ResolutionLevel 0']['TimePoint 0']['Channel 0']['Data']
-    print("ims chunks: " + str(dataset.chunks))
+    ims_chunk_size = dataset.chunks
+    print("ims chunks: " + str(ims_chunk_size))
     # if deskew_options and deskew_options["deskew_transpose"]:
     #     dataset = dataset.transpose((0,2,1))
     #     print("transposed shape: " + str(dataset.shape))
     
-    block_size = [128,2048,512] #[m*sz for m,sz in zip([2,2**max_mip,8],chunk_size[2:])]
+    block_size = [ims_chunk_size[0]*2,ims_chunk_size[1]*32,ims_chunk_size[2]*8] #[128,2048,512] #[m*sz for m,sz in zip([2,2**max_mip,8],chunk_size[2:])]
     print("deskewed block size: " + str(block_size))
     
     if numchunks < 1:
