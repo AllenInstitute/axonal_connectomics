@@ -116,7 +116,7 @@ def iterate_numpy_blocks_from_dataset(
                 if chunk_start[0] < first_slice:
                     chunk_end[0] -= first_slice - chunk_start[0]
                     chunk = numpy.zeros(chunk_size,dtype=dataset.dtype)
-                    chunk[first_slice-chunk_start[0]:] = dataset[chunk_start[0]:chunk_end[0],chunk_start[1]:chunk_end[1],chunk_start[2]:chunk_end[2]]
+                    chunk[first_slice-chunk_start[0]:] = dataset[0,0,chunk_start[0]:chunk_end[0],chunk_start[1]:chunk_end[1],chunk_start[2]:chunk_end[2]]
                 else:
                     chunk_start[0] -= first_slice
                     chunk_end[0] -= first_slice
@@ -124,7 +124,7 @@ def iterate_numpy_blocks_from_dataset(
                     #     chunk = numpy.zeros(chunk_size,dtype=dataset.dtype)
                     #     chunk[:dshape[0]-chunk_start[0]] = dataset[chunk_start[0]:,chunk_start[1]:chunk_end[1],chunk_start[2]:chunk_end[2]]
                     # else:
-                    chunk = dataset[chunk_start[0]:chunk_end[0],chunk_start[1]:chunk_end[1],chunk_start[2]:chunk_end[2]]
+                    chunk = dataset[0,0,chunk_start[0]:chunk_end[0],chunk_start[1]:chunk_end[1],chunk_start[2]:chunk_end[2]]
                 if any([sh<sz for sh,sz in zip(chunk.shape,chunk_size)]):
                     print(str(chunk.shape) + " is small for" + str(chunk_size) + ": filling with zeros")
                     temp_chunk = numpy.zeros(chunk_size,dtype=chunk.dtype)
@@ -146,7 +146,7 @@ def iterate_numpy_blocks_from_dataset(
                 print(str(chunk_tuple))
             block_start = [chunk_tuple[k]*block_size[k] for k in range(3)]
             block_end = [block_start[k] + block_size[k] for k in range(3)]
-            arr = dataset[block_start[0]:block_end[0],block_start[1]:block_end[1],block_start[2]:block_end[2]]
+            arr = dataset[0,0,block_start[0]:block_end[0],block_start[1]:block_end[1],block_start[2]:block_end[2]]
         if any([arr.shape[k] != block_size[k] for k in range(3)]):
             print(str(arr.shape) + "is small for " + str(block_size))
             if pad:
@@ -330,16 +330,16 @@ def write_ims_to_zarr(
     print("deskewed block size: " + str(block_size))
     
     if numchunks < 1:
-        joined_shapes = dataset.shape
+        joined_shapes = dataset.shape[2:]
         if deskew_options and deskew_options["deskew_transpose"]:
             # input dataset must be transposed
             joined_shapes = (joined_shapes[0],joined_shapes[2],joined_shapes[1])
     else:
         if deskew_options and deskew_options["deskew_transpose"]:
             # input dataset must be transposed
-            joined_shapes = (dataset.shape[0],numchunks*block_size[1],dataset.shape[1])
+            joined_shapes = (dataset.shape[2],numchunks*block_size[1],dataset.shape[3])
         else:
-            joined_shapes = (dataset.shape[0],numchunks*block_size[1],dataset.shape[2])
+            joined_shapes = (dataset.shape[2],numchunks*block_size[1],dataset.shape[4])
     print("ims_to_ngff dataset shape:" + str(joined_shapes))
 
     if deskew_options and deskew_options["deskew_method"] == "ps":
@@ -434,7 +434,7 @@ def write_ims_to_zarr(
             for fut in concurrent.futures.as_completed(futs):
                 _ = fut.result()
     print("conversion complete, closing file")
-    f.close()
+    #f.close()
 
 
 def ims_to_ngff_group(ims_fn, output, *args, **kwargs):
