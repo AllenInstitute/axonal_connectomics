@@ -88,6 +88,11 @@ def iterate_numpy_blocks_from_dataset(
         3D numpy array representing a consecutive chunk of 2D arrays
     """
     
+    if nblocks[1] == 1:
+        print("test condition: using test tuple")
+        test = True
+    else:
+        test = False
     dshape = dataset.shape[2:]
     if deskew_kwargs:
         chunk_size = (deskew_kwargs["chunklength"],block_size[1],block_size[2]*deskew_kwargs["stride"])
@@ -97,6 +102,8 @@ def iterate_numpy_blocks_from_dataset(
         print("chunk size: " + str(chunk_size))
     for i in range(numpy.prod(nblocks)):#,*args,**kwargs):
         chunk_tuple = numpy.unravel_index(i,tuple(nblocks),order='F')
+        if test:
+            chunk_tuple = (chunk_tuple[0], 6, chunk_tuple[2])
         # deskew level 0 data blocks
         if deskew_kwargs:
             if deskew_kwargs["transpose"]:
