@@ -64,9 +64,9 @@ def dswrite_block(ds, start, end, arr, silent_overflow=True):
         ds[start[0]:end[0], start[1]:end[1], start[2]:end[2]] = arr[:(end[0] - start[0]), :(end[1] - start[1]), :(end[2] - start[2])]
 
 
-# def write_mips(zgrp,miparrs):
-#     for miparr in miparrs:
-#         dswrite_block(ds=zgrp[miparr.lvl],start=miparr.start,end=miparr.end,arr=miparr.array)
+def write_mips(zgrp,miparrs):
+    for miparr in miparrs:
+        dswrite_block(ds=zgrp[miparr.lvl],start=miparr.start,end=miparr.end,arr=miparr.array)
 
 
 def iterate_numpy_blocks_from_dataset(
@@ -164,6 +164,75 @@ def iterate_numpy_blocks_from_dataset(
 
 
 def iterate_mip_levels_from_dataset(
+        dataset, lvl, maxlvl, nblocks, block_size, downsample_factor,
+        downsample_method=None, lvl_to_mip_kwargs=None,
+        interleaved_channels=1, channel=0, deskew_kwargs={}):
+    """recursively generate MIPmap levels from an iterator of blocks
+
+    Parameters
+    ----------
+    dataset : hdf5 dataset
+        imageio-compatible name inputs to be opened as multi-images
+    lvl : int
+        integer mip level to generate
+    block_size : int
+        number of 2D arrays in chunk to process for a chunk at lvl
+    slice_length : int
+        number of 2D arrays to gather from tiff stacks
+    downsample_factor : tuple of int
+        integer downsampling factor for MIP levels
+    downsample_method : str, optional
+        downsampling method for
+        acpreprocessing.utils.convert.downsample_stack_volume
+    lvl_to_mip_kwargs :  dict, optional
+        mapping of MIP level to kwargs used in MIPmap generation
+    interleaved_channels : int
+        number of channels interleaved in the tiff files (default 1)
+    channel : int, optional
+        channel from which interleaved data should be read (default 0)
+    deskew_kwargs : dict, optional
+        parameters for pixel shifting deskew
+
+    Yields
+    ------
+    ma : acpreprocessing.stitching_modules.convert_to_n5.tiff_to_n5.MipArray
+        object describing chunked array, MIP level of origin, and chunk indices
+    """
+    lvl_to_mip_kwargs = ({} if lvl_to_mip_kwargs is None
+                          else lvl_to_mip_kwargs)
+    mip_kwargs = lvl_to_mip_kwargs.get(lvl, {})
+    block_index = 0
+    if lvl > 0:
+        for ma in iterate_mip_levels_from_dataset(
+                dataset, lvl-1, maxlvl, nblocks, block_size,
+                downsample_factor, downsample_method,
+                lvl_to_mip_kwargs, interleaved_channels=interleaved_channels,
+                channel=channel, deskew_kwargs=deskew_kwargs):
+            chunk = ma.array
+            # throw array up for further processing
+            yield ma
+            # ignore if not parent resolution
+            if ma.lvl != lvl-1:
+                continue
+            
+            temp_arr = (downsample_array(
+                    chunk, downsample_factor, dtype=chunk.dtype,
+                    method=downsample_method, **mip_kwargs))
+            chunk_start = tuple(int(ma.start[k]/downsample_factor[k]) for k in range(3))
+            chunk_end = tuple(chunk_start[k] + temp_arr.shape[k] for k in range(3))
+            yield MIPArray(lvl, temp_arr, chunk_start, chunk_end)
+    else:
+        # get level 0 chunks
+        # block_size is the number of slices to read from tiffs
+        for block in iterate_numpy_blocks_from_dataset(
+                dataset, nblocks, block_size=block_size, pad=False,
+                deskew_kwargs=deskew_kwargs,
+                channel=channel):
+            block_tuple = numpy.unravel_index(block_index,nblocks,order='F')
+            block_start = tuple(block_tuple[k]*block_size[k] for k in range(3))
+            block_end = tuple(block_start[k] + block.shape[k] for k in range(3))
+            yield MIPArray(lvl, block, block_start, block_end)
+            block_index += 1
         dataset, lvl, maxlvl, nblocks, block_size, downsample_factor,
         downsample_method=None, lvl_to_mip_kwargs=None,
         interleaved_channels=1, channel=0, deskew_kwargs={}):
@@ -327,7 +396,7 @@ def write_ims_to_zarr(
     #     dataset = dataset.transpose((0,2,1))
     #     print("transposed shape: " + str(dataset.shape))
     
-    block_size = [256,2048,512] #[ims_chunk_size[0]*2,ims_chunk_size[1]*32,ims_chunk_size[2]*8] #[128,2048,512] #[m*sz for m,sz in zip([2,2**max_mip,8],chunk_size[2:])]
+    block_size = [512,1024,512] #[ims_chunk_size[0]*2,ims_chunk_size[1]*32,ims_chunk_size[2]*8] #[128,2048,512] #[m*sz for m,sz in zip([2,2**max_mip,8],chunk_size[2:])]
     print("deskewed block size: " + str(block_size))
     
     if numchunks < 1:
@@ -413,25 +482,25 @@ def write_ims_to_zarr(
 
         with concurrent.futures.ThreadPoolExecutor(max_workers=workers) as e:
             futs = []
-            # mips = []
-            # for miparr in iterate_mip_levels_from_dataset(
-            #         dataset, max_mip, max_mip, nblocks, block_size, mip_dsfactor,
-            #         lvl_to_mip_kwargs=lvl_to_mip_kwargs,
-            #         interleaved_channels=interleaved_channels,
-            #         channel=channel, deskew_kwargs=deskew_kwargs):
-            #     mips.append(miparr)
-            #     if miparr.lvl == max_mip:
-            #         futs.append(e.submit(
-            #             write_mips, mip_ds, mips))
-            #         mips = []
+            mips = []
             for miparr in iterate_mip_levels_from_dataset(
                     dataset, max_mip, max_mip, nblocks, block_size, mip_dsfactor,
                     lvl_to_mip_kwargs=lvl_to_mip_kwargs,
                     interleaved_channels=interleaved_channels,
                     channel=channel, deskew_kwargs=deskew_kwargs):
-                futs.append(e.submit(
-                    dswrite_block, mip_ds[miparr.lvl],
-                    miparr.start, miparr.end, miparr.array))
+                mips.append(miparr)
+                if miparr.lvl == max_mip:
+                    futs.append(e.submit(
+                        write_mips, mip_ds, mips))
+                    mips = []
+            # for miparr in iterate_mip_levels_from_dataset(
+            #         dataset, max_mip, max_mip, nblocks, block_size, mip_dsfactor,
+            #         lvl_to_mip_kwargs=lvl_to_mip_kwargs,
+            #         interleaved_channels=interleaved_channels,
+            #         channel=channel, deskew_kwargs=deskew_kwargs):
+            #     futs.append(e.submit(
+            #         dswrite_block, mip_ds[miparr.lvl],
+            #         miparr.start, miparr.end, miparr.array))
             for fut in concurrent.futures.as_completed(futs):
                 _ = fut.result()
     print("conversion complete, closing file")
