@@ -88,7 +88,7 @@ def iterate_numpy_blocks_from_dataset(
         3D numpy array representing a consecutive chunk of 2D arrays
     """
     
-    dshape = dataset.shape
+    dshape = dataset.shape[2:]
     if deskew_kwargs:
         chunk_size = (deskew_kwargs["chunklength"],block_size[1],block_size[2]*deskew_kwargs["stride"])
         if deskew_kwargs["transpose"]:
