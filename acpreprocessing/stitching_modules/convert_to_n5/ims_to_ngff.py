@@ -101,19 +101,19 @@ def iterate_numpy_blocks_from_dataset(
         if deskew_kwargs:
             if deskew_kwargs["transpose"]:
                 chunk_tuple = (chunk_tuple[0],chunk_tuple[2],chunk_tuple[1])
-            if chunk_tuple[0] == 0:
-                print(str(chunk_tuple))
+            print(str(chunk_tuple))
             if chunk_tuple[0] == 0:
                 chunk_index = 0
                 deskew_kwargs["slice1d"][...] = 0
                 first_z,first_slice = psd.calculate_first_chunk(chunk_size=chunk_size,x_index=(nblocks[2] - chunk_tuple[1] - 1),stride=deskew_kwargs["stride"])
+                print(str(first_z) + "," + str(first_slice))
             if chunk_tuple[0] < first_z or chunk_tuple[0]*chunk_size[0] - first_slice >= dshape[0]:
                 arr = numpy.zeros(block_size,dtype=dataset.dtype)
             else:
                 chunk_start = numpy.array([t*s for t,s in zip(chunk_tuple,chunk_size)])
                 chunk_end = chunk_start + numpy.array(chunk_size)
                 if chunk_start[0] < first_slice:
-                    chunk_end[0] -= first_slice - chunk_start[0]
+                    chunk_end[0] -= (first_slice - chunk_start[0])
                     chunk = numpy.zeros(chunk_size,dtype=dataset.dtype)
                     zdata = numpy.squeeze(numpy.asarray(dataset[0,0,chunk_start[0]:chunk_end[0],chunk_start[1]:chunk_end[1],chunk_start[2]:chunk_end[2]]))
                     print("data dimension is " + str(zdata.shape) + " max is " + str(numpy.max(zdata)))
