@@ -382,7 +382,6 @@ def write_ims_to_zarr(
                 chunks=chunk_size,
                 shape=(1, 1, mip_3dshape[0], mip_3dshape[1], mip_3dshape[2]),
                 compression=compression,
-                synchronizer=zarr.ThreadSynchronizer(),
                 dtype=dtype
             )
             dsfactors = [int(i)**mip_lvl for i in mip_dsfactor]
