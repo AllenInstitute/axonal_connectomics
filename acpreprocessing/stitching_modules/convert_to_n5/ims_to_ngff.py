@@ -237,7 +237,7 @@ def iterate_mip_levels_from_dataset(
         # get level 0 chunks
         # block_size is the number of slices to read from tiffs
         for block in iterate_numpy_blocks_from_dataset(
-                dataset, nblocks,num_slice=num_slice,chunknum=chunknum, block_size=block_size, pad=False,
+                dataset, nblocks,numslice=num_slice,chunknum=chunknum, block_size=block_size, pad=False,
                 deskew_kwargs=deskew_kwargs,
                 channel=channel):
             block_tuple = numpy.unravel_index(block_index,nblocks,order='F')
@@ -249,10 +249,10 @@ def iterate_mip_levels_from_dataset(
 
 def write_ims_to_zarr(
         ims_fn, output_n5, group_names, group_attributes=None, max_mip=0,
-        mip_dsfactor=(2, 2, 2), chunk_size=(1, 1, 64, 64, 64),
+        mip_dsfactor=(2, 2, 2), chunk_size=(1, 1, 64, 64, 64), numchunks=0,
         concurrency=10, slice_concurrency=1,
         compression="raw", dtype="uint16", lvl_to_mip_kwargs=None,
-        interleaved_channels=1, channel=0, deskew_options=None, numchunks=0, chunknum=-1, **kwargs):
+        interleaved_channels=1, channel=0, deskew_options=None, chunknum=-1, **kwargs):
     """write a stack represented by an iterator of multi-image files as a zarr
     volume with ome-ngff metadata
 
@@ -472,10 +472,10 @@ class IMSToZarr(argschema.ArgSchemaParser):
             self.args["max_mip"],
             self.args["mip_dsfactor"],
             self.args["chunk_size"],
+            self.args["num_chunks"],
             concurrency=self.args["concurrency"],
             compression=self.args["compression"],
             #lvl_to_mip_kwargs=self.args["lvl_to_mip_kwargs"],
-            numchunks = self.args["num_chunks"],
             chunknum = self.args["chunk_num"],
             deskew_options=deskew_options)
 
