@@ -89,7 +89,7 @@ def iterate_numpy_blocks_from_dataset(
     """
     
     if numslice == 1:
-        print("1 slice: using chunk x = " + str(chunknum))
+        print("*****1 slice: using chunk x = " + str(chunknum) + "***")
         nchunks = (nblocks[0],nblocks[1],1)
         test = True
     else:
@@ -237,7 +237,7 @@ def iterate_mip_levels_from_dataset(
         # get level 0 chunks
         # block_size is the number of slices to read from tiffs
         for block in iterate_numpy_blocks_from_dataset(
-                dataset, nblocks,numslice=num_slice,chunknum=chunknum, block_size=block_size, pad=False,
+                dataset, nblocks,numslice = num_slice, chunknum=chunknum, block_size=block_size, pad=False,
                 deskew_kwargs=deskew_kwargs,
                 channel=channel):
             block_tuple = numpy.unravel_index(block_index,nblocks,order='F')
