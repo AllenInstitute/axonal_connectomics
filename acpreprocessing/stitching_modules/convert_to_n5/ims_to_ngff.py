@@ -70,7 +70,7 @@ def write_mips(zgrp,miparrs):
 
 
 def iterate_numpy_blocks_from_dataset(
-        dataset, nblocks, block_size=None, pad=True, deskew_kwargs={}, *args, **kwargs):
+        dataset, nblocks, chunknum=-1, block_size=None, pad=True, deskew_kwargs={}, *args, **kwargs):
     """iterate over a contiguous hdf5 daataset as chunks of numpy arrays
 
     Parameters
@@ -88,8 +88,8 @@ def iterate_numpy_blocks_from_dataset(
         3D numpy array representing a consecutive chunk of 2D arrays
     """
     
-    if nblocks[1] == 1:
-        print("test condition: using test tuple")
+    if nblocks[2] == 1:
+        print("1 chunk: using chunk_num = " + str(chunknum))
         test = True
     else:
         test = False
@@ -103,7 +103,7 @@ def iterate_numpy_blocks_from_dataset(
     for i in range(numpy.prod(nblocks)):#,*args,**kwargs):
         chunk_tuple = numpy.unravel_index(i,tuple(nblocks),order='F')
         if test:
-            chunk_tuple = (chunk_tuple[0], 6, chunk_tuple[2])
+            chunk_tuple = (chunk_tuple[0], chunk_tuple[1], chunknum)
         # deskew level 0 data blocks
         if deskew_kwargs:
             if deskew_kwargs["transpose"]:
@@ -173,7 +173,7 @@ def iterate_numpy_blocks_from_dataset(
 
 def iterate_mip_levels_from_dataset(
         dataset, lvl, maxlvl, nblocks, block_size, downsample_factor,
-        downsample_method=None, lvl_to_mip_kwargs=None,
+        chunknum=-1,downsample_method=None, lvl_to_mip_kwargs=None,
         interleaved_channels=1, channel=0, deskew_kwargs={}):
     """recursively generate MIPmap levels from an iterator of blocks
 
@@ -233,7 +233,7 @@ def iterate_mip_levels_from_dataset(
         # get level 0 chunks
         # block_size is the number of slices to read from tiffs
         for block in iterate_numpy_blocks_from_dataset(
-                dataset, nblocks, block_size=block_size, pad=False,
+                dataset, nblocks, chunknum=chunknum, block_size=block_size, pad=False,
                 deskew_kwargs=deskew_kwargs,
                 channel=channel):
             block_tuple = numpy.unravel_index(block_index,nblocks,order='F')
@@ -248,7 +248,7 @@ def write_ims_to_zarr(
         mip_dsfactor=(2, 2, 2), chunk_size=(1, 1, 64, 64, 64),
         concurrency=10, slice_concurrency=1,
         compression="raw", dtype="uint16", lvl_to_mip_kwargs=None,
-        interleaved_channels=1, channel=0, deskew_options=None, numchunks=0, **kwargs):
+        interleaved_channels=1, channel=0, deskew_options=None, numchunks=0, chunknum=-1, **kwargs):
     """write a stack represented by an iterator of multi-image files as a zarr
     volume with ome-ngff metadata
 
@@ -299,7 +299,7 @@ def write_ims_to_zarr(
     #     dataset = dataset.transpose((0,2,1))
     #     print("transposed shape: " + str(dataset.shape))
     
-    block_size = [512,1024,512] #[ims_chunk_size[0]*2,ims_chunk_size[1]*32,ims_chunk_size[2]*8] #[128,2048,512] #[m*sz for m,sz in zip([2,2**max_mip,8],chunk_size[2:])]
+    block_size = [256,512,512] #[ims_chunk_size[0]*2,ims_chunk_size[1]*32,ims_chunk_size[2]*8] #[128,2048,512] #[m*sz for m,sz in zip([2,2**max_mip,8],chunk_size[2:])]
     print("deskewed block size: " + str(block_size))
     
     if numchunks < 1:
@@ -310,9 +310,9 @@ def write_ims_to_zarr(
     else:
         if deskew_options and deskew_options["deskew_transpose"]:
             # input dataset must be transposed
-            joined_shapes = (dataset.shape[2],numchunks*block_size[1],dataset.shape[3])
+            joined_shapes = (dataset.shape[2],dataset.shape[4],numchunks*block_size[2])#(dataset.shape[2],numchunks*block_size[1],dataset.shape[3])
         else:
-            joined_shapes = (dataset.shape[2],numchunks*block_size[1],dataset.shape[4])
+            joined_shapes = (dataset.shape[2],dataset.shape[3],numchunks*block_size[2])#(dataset.shape[2],numchunks*block_size[1],dataset.shape[4])
     print("ims_to_ngff dataset shape:" + str(joined_shapes))
 
     if deskew_options and deskew_options["deskew_method"] == "ps":
@@ -388,6 +388,7 @@ def write_ims_to_zarr(
             mips = []
             for miparr in iterate_mip_levels_from_dataset(
                     dataset, max_mip, max_mip, nblocks, block_size, mip_dsfactor,
+                    chunknum=chunknum,
                     lvl_to_mip_kwargs=lvl_to_mip_kwargs,
                     interleaved_channels=interleaved_channels,
                     channel=channel, deskew_kwargs=deskew_kwargs):
@@ -432,6 +433,7 @@ class IMSToNGFFParameters(NGFFGroupGenerationParameters):
     interleaved_channels = argschema.fields.Int(required=False, default=1)
     channel = argschema.fields.Int(required=False, default=0)
     num_chunks = argschema.fields.Int(required=False, default=0)
+    chunk_num = argschema.fields.Int(required=False, default=-1)
 
 
 class IMSToZarrInputParameters(argschema.ArgSchema,
@@ -462,6 +464,7 @@ class IMSToZarr(argschema.ArgSchemaParser):
             compression=self.args["compression"],
             #lvl_to_mip_kwargs=self.args["lvl_to_mip_kwargs"],
             numchunks = self.args["num_chunks"],
+            chunknum = self.args["chunk_num"],
             deskew_options=deskew_options)
 
 
