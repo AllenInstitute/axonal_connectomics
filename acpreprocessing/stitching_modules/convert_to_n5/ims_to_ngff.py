@@ -376,14 +376,17 @@ def write_ims_to_zarr(
         # shuffle=Blosc.BITSHUFFLE)
         compression = Blosc(cname='zstd', clevel=1)
         for mip_lvl in range(max_mip + 1):
-            mip_3dshape = mip_level_shape(mip_lvl, joined_shapes)
-            ds_lvl = g.create_dataset(
-                f"{mip_lvl}",
-                chunks=chunk_size,
-                shape=(1, 1, mip_3dshape[0], mip_3dshape[1], mip_3dshape[2]),
-                compression=compression,
-                dtype=dtype
-            )
+            if not mip_lvl in g:
+                mip_3dshape = mip_level_shape(mip_lvl, joined_shapes)
+                ds_lvl = g.create_dataset(
+                    f"{mip_lvl}",
+                    chunks=chunk_size,
+                    shape=(1, 1, mip_3dshape[0], mip_3dshape[1], mip_3dshape[2]),
+                    compression=compression,
+                    dtype=dtype
+                )
+            else:
+                ds_lvl = g[mip_lvl]
             dsfactors = [int(i)**mip_lvl for i in mip_dsfactor]
             mip_ds[mip_lvl] = ds_lvl
             scales.append(dsfactors)
