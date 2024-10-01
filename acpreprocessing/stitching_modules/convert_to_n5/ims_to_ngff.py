@@ -340,10 +340,15 @@ def write_ims_to_zarr(
         # create groups with attributes according to omezarr spec
         if len(group_names) == 1:
             group_name = group_names[0]
-            try:
-                g = f.create_group(f"{group_name}")
-            except KeyError:
+            if group_name in f:
                 g = f[f"{group_name}"]
+            else:
+                g = f.create_group(f"{group_name}")
+            # try:
+            #     g = f.create_group(f"{group_name}")
+            # except KeyError:
+            #     g = f[f"{group_name}"]
+                
             if group_attributes:
                 try:
                     attributes = group_attributes[0]
