@@ -90,7 +90,7 @@ def iterate_numpy_blocks_from_dataset(
     
     if numslice == 1:
         print("*****1 slice: using chunk x = " + str(chunknum) + "***")
-        nchunks = (nblocks[0],nblocks[1],1)
+        nchunks = nblocks #(nblocks[0],nblocks[1],1)
         test = True
     else:
         nchunks = nblocks
@@ -114,7 +114,11 @@ def iterate_numpy_blocks_from_dataset(
             if chunk_tuple[0] == 0:
                 chunk_index = 0
                 deskew_kwargs["slice1d"][...] = 0
-                first_z,first_slice = psd.calculate_first_chunk(chunk_size=chunk_size,x_index=(nblocks[2] - chunk_tuple[1] - 1),stride=deskew_kwargs["stride"])
+                if test:
+                    first_z = 0
+                    first_slice = 0
+                else:
+                    first_z,first_slice = psd.calculate_first_chunk(chunk_size=chunk_size,x_index=(nblocks[2] - chunk_tuple[1] - 1),stride=deskew_kwargs["stride"])
                 print(str(first_z) + "," + str(first_slice))
             if chunk_tuple[0] < first_z or chunk_tuple[0]*chunk_size[0] - first_slice >= dshape[0]:
                 arr = numpy.zeros(block_size,dtype=dataset.dtype)
@@ -212,8 +216,8 @@ def iterate_mip_levels_from_dataset(
                           else lvl_to_mip_kwargs)
     mip_kwargs = lvl_to_mip_kwargs.get(lvl, {})
     block_index = 0
-    if num_slice == 1:
-        block_index = nblocks[0]*nblocks[1]*chunknum
+    # if num_slice == 1:
+    #     block_index = nblocks[0]*nblocks[1]*chunknum
     if lvl > 0:
         for ma in iterate_mip_levels_from_dataset(
                 dataset, lvl-1, maxlvl, nblocks, block_size,
@@ -306,17 +310,17 @@ def write_ims_to_zarr(
     block_size = [512,512,512] #[ims_chunk_size[0]*2,ims_chunk_size[1]*32,ims_chunk_size[2]*8] #[128,2048,512] #[m*sz for m,sz in zip([2,2**max_mip,8],chunk_size[2:])]
     print("deskewed block size: " + str(block_size))
     
-    # if numchunks < 1:
-    joined_shapes = dataset.shape[2:]
-    if deskew_options and deskew_options["deskew_transpose"]:
-        # input dataset must be transposed
-        joined_shapes = (joined_shapes[0],joined_shapes[2],joined_shapes[1])
-    # else:
-    #     if deskew_options and deskew_options["deskew_transpose"]:
-    #         # input dataset must be transposed
-    #         joined_shapes = (dataset.shape[2],dataset.shape[4],numchunks*block_size[2])#(dataset.shape[2],numchunks*block_size[1],dataset.shape[3])
-    #     else:
-    #         joined_shapes = (dataset.shape[2],dataset.shape[3],numchunks*block_size[2])#(dataset.shape[2],numchunks*block_size[1],dataset.shape[4])
+    if numchunks < 1:
+        joined_shapes = dataset.shape[2:]
+        if deskew_options and deskew_options["deskew_transpose"]:
+            # input dataset must be transposed
+            joined_shapes = (joined_shapes[0],joined_shapes[2],joined_shapes[1])
+    else:
+        if deskew_options and deskew_options["deskew_transpose"]:
+            # input dataset must be transposed
+            joined_shapes = (dataset.shape[2],dataset.shape[4],numchunks*block_size[2])
+        else:
+            joined_shapes = (dataset.shape[2],dataset.shape[3],numchunks*block_size[2])
     print("ims_to_ngff dataset shape:" + str(joined_shapes))
 
     if deskew_options and deskew_options["deskew_method"] == "ps":
