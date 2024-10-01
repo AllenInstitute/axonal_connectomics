@@ -213,7 +213,7 @@ def iterate_mip_levels_from_dataset(
     if lvl > 0:
         for ma in iterate_mip_levels_from_dataset(
                 dataset, lvl-1, maxlvl, nblocks, block_size,
-                downsample_factor, downsample_method,
+                downsample_factor, chunknum, downsample_method,
                 lvl_to_mip_kwargs, interleaved_channels=interleaved_channels,
                 channel=channel, deskew_kwargs=deskew_kwargs):
             chunk = ma.array
