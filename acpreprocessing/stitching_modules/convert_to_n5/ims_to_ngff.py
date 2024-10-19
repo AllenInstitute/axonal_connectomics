@@ -106,7 +106,7 @@ def iterate_numpy_blocks_from_dataset(
         print("chunk size: " + str(chunk_size))
     for i in range(numpy.prod(nchunks)):#,*args,**kwargs):
         chunk_tuple = numpy.unravel_index(i,tuple(nchunks),order='F')
-        chunk_is_ok = chunk_tuple[2] > chunknum
+        chunk_is_ok = chunk_tuple[2] >= chunknum
         if chunk_is_ok:
             if test:
                 chunk_tuple = (chunk_tuple[0], chunk_tuple[1], chunknum)
