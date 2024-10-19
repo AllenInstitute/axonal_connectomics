@@ -70,7 +70,7 @@ def write_mips(zgrp,miparrs):
 
 
 def iterate_numpy_blocks_from_dataset(
-        dataset, nblocks, numslice=0, chunknum=-1, block_size=None, pad=True, deskew_kwargs={}, *args, **kwargs):
+        dataset, nblocks, chunknum=-1, block_size=None, pad=True, deskew_kwargs={}, *args, **kwargs):
     """iterate over a contiguous hdf5 daataset as chunks of numpy arrays
 
     Parameters
@@ -88,13 +88,15 @@ def iterate_numpy_blocks_from_dataset(
         3D numpy array representing a consecutive chunk of 2D arrays
     """
     
-    if numslice == 1:
-        print("*****1 slice: using chunk x = " + str(chunknum) + "***")
-        nchunks = nblocks #(nblocks[0],nblocks[1],1)
-        test = True
-    else:
-        nchunks = nblocks
-        test = False
+    # if numslice == 1:
+    #     print("*****1 slice: using chunk x = " + str(chunknum) + "***")
+    #     nchunks = nblocks #(nblocks[0],nblocks[1],1)
+    #     test = True
+    # else:
+    #     nchunks = nblocks
+    #     test = False
+    nchunks = nblocks
+    test = False
     dshape = dataset.shape[2:]
     if deskew_kwargs:
         chunk_size = (deskew_kwargs["chunklength"],block_size[1],block_size[2]*deskew_kwargs["stride"])
@@ -104,82 +106,86 @@ def iterate_numpy_blocks_from_dataset(
         print("chunk size: " + str(chunk_size))
     for i in range(numpy.prod(nchunks)):#,*args,**kwargs):
         chunk_tuple = numpy.unravel_index(i,tuple(nchunks),order='F')
-        if test:
-            chunk_tuple = (chunk_tuple[0], chunk_tuple[1], chunknum)
-        # deskew level 0 data blocks
-        if deskew_kwargs:
-            if deskew_kwargs["transpose"]:
-                chunk_tuple = (chunk_tuple[0],chunk_tuple[2],chunk_tuple[1])
-            print(str(chunk_tuple))
-            if chunk_tuple[0] == 0:
-                chunk_index = 0
-                deskew_kwargs["slice1d"][...] = 0
-                if test:
-                    first_z = 0
-                    first_slice = 0
-                else:
-                    first_z,first_slice = psd.calculate_first_chunk(chunk_size=chunk_size,x_index=(nblocks[2] - chunk_tuple[1] - 1),stride=deskew_kwargs["stride"])
-                print(str(first_z) + "," + str(first_slice))
-            if chunk_tuple[0] < first_z or chunk_tuple[0]*chunk_size[0] - first_slice >= dshape[0]:
-                arr = numpy.zeros(block_size,dtype=dataset.dtype)
-            else:
-                chunk_start = numpy.array([t*s for t,s in zip(chunk_tuple,chunk_size)])
-                chunk_end = chunk_start + numpy.array(chunk_size)
-                if chunk_start[0] < first_slice:
-                    chunk_end[0] = chunk_size[0] - (first_slice - chunk_start[0])
-                    chunk = numpy.zeros(chunk_size,dtype=dataset.dtype)
-                    zdata = numpy.squeeze(numpy.asarray(dataset[0,0,:chunk_end[0],chunk_start[1]:chunk_end[1],chunk_start[2]:chunk_end[2]]))
-                    print("data dimension is " + str(zdata.shape) + " max is " + str(numpy.max(zdata)))
-                    chunk[first_slice-chunk_start[0]:] = zdata
-                else:
-                    chunk_start[0] -= first_slice
-                    chunk_end[0] -= first_slice
-                    # if chunk_end[0] >= dshape[0]:
-                    #     chunk = numpy.zeros(chunk_size,dtype=dataset.dtype)
-                    #     chunk[:dshape[0]-chunk_start[0]] = dataset[chunk_start[0]:,chunk_start[1]:chunk_end[1],chunk_start[2]:chunk_end[2]]
-                    # else:
-                    print(str(chunk_start[0]))
-                    zdata = numpy.squeeze(numpy.asarray(dataset[0,0,chunk_start[0]:chunk_end[0],chunk_start[1]:chunk_end[1],chunk_start[2]:chunk_end[2]]))
-                    print("data dimension is " + str(zdata.shape) + " max is " + str(numpy.max(zdata)))
-                    chunk = zdata
-                if any([sh<sz for sh,sz in zip(chunk.shape,chunk_size)]):
-                    print(str(chunk.shape) + " is small for" + str(chunk_size) + ": filling with zeros")
-                    temp_chunk = numpy.zeros(chunk_size,dtype=chunk.dtype)
-                    temp_chunk[:chunk.shape[0],:chunk.shape[1],:chunk.shape[2]] = chunk
-                    chunk = temp_chunk
+        chunk_is_ok = chunk_tuple[2] > chunknum
+        if chunk_is_ok:
+            if test:
+                chunk_tuple = (chunk_tuple[0], chunk_tuple[1], chunknum)
+            # deskew level 0 data blocks
+            if deskew_kwargs:
                 if deskew_kwargs["transpose"]:
-                    chunk = chunk.transpose((0,2,1))
-                arr = numpy.flip(
-                    numpy.transpose(
-                        psd.deskew_block(
-                            chunk,
-                            chunk_index,
-                            **deskew_kwargs), 
-                        (2, 1, 0)),
-                    axis=2)
-            chunk_index += 1
-        else:
-            if chunk_tuple[0] == 0:
+                    chunk_tuple = (chunk_tuple[0],chunk_tuple[2],chunk_tuple[1])
                 print(str(chunk_tuple))
-            block_start = [chunk_tuple[k]*block_size[k] for k in range(3)]
-            block_end = [block_start[k] + block_size[k] for k in range(3)]
-            arr = numpy.squeeze(numpy.asarray(dataset[0,0,block_start[0]:block_end[0],block_start[1]:block_end[1],block_start[2]:block_end[2]]))
-        if any([arr.shape[k] != block_size[k] for k in range(3)]):
-            print(str(arr.shape) + "is small for " + str(block_size))
-            if pad:
-                newarr = numpy.zeros(block_size,
-                                      dtype=arr.dtype)
-                newarr[:arr.shape[0], :arr.shape[1], :arr.shape[2]] = arr[:, :, :]
-                yield newarr
+                if chunk_tuple[0] == 0:
+                    chunk_index = 0
+                    deskew_kwargs["slice1d"][...] = 0
+                    if test:
+                        first_z = 0
+                        first_slice = 0
+                    else:
+                        first_z,first_slice = psd.calculate_first_chunk(chunk_size=chunk_size,x_index=(nblocks[2] - chunk_tuple[1] - 1),stride=deskew_kwargs["stride"])
+                    print(str(first_z) + "," + str(first_slice))
+                if chunk_tuple[0] < first_z or chunk_tuple[0]*chunk_size[0] - first_slice >= dshape[0]:
+                    arr = numpy.zeros(block_size,dtype=dataset.dtype)
+                else:
+                    chunk_start = numpy.array([t*s for t,s in zip(chunk_tuple,chunk_size)])
+                    chunk_end = chunk_start + numpy.array(chunk_size)
+                    if chunk_start[0] < first_slice:
+                        chunk_end[0] = chunk_size[0] - (first_slice - chunk_start[0])
+                        chunk = numpy.zeros(chunk_size,dtype=dataset.dtype)
+                        zdata = numpy.squeeze(numpy.asarray(dataset[0,0,:chunk_end[0],chunk_start[1]:chunk_end[1],chunk_start[2]:chunk_end[2]]))
+                        print("data dimension is " + str(zdata.shape) + " max is " + str(numpy.max(zdata)))
+                        chunk[first_slice-chunk_start[0]:] = zdata
+                    else:
+                        chunk_start[0] -= first_slice
+                        chunk_end[0] -= first_slice
+                        # if chunk_end[0] >= dshape[0]:
+                        #     chunk = numpy.zeros(chunk_size,dtype=dataset.dtype)
+                        #     chunk[:dshape[0]-chunk_start[0]] = dataset[chunk_start[0]:,chunk_start[1]:chunk_end[1],chunk_start[2]:chunk_end[2]]
+                        # else:
+                        print(str(chunk_start[0]))
+                        zdata = numpy.squeeze(numpy.asarray(dataset[0,0,chunk_start[0]:chunk_end[0],chunk_start[1]:chunk_end[1],chunk_start[2]:chunk_end[2]]))
+                        print("data dimension is " + str(zdata.shape) + " max is " + str(numpy.max(zdata)))
+                        chunk = zdata
+                    if any([sh<sz for sh,sz in zip(chunk.shape,chunk_size)]):
+                        print(str(chunk.shape) + " is small for" + str(chunk_size) + ": filling with zeros")
+                        temp_chunk = numpy.zeros(chunk_size,dtype=chunk.dtype)
+                        temp_chunk[:chunk.shape[0],:chunk.shape[1],:chunk.shape[2]] = chunk
+                        chunk = temp_chunk
+                    if deskew_kwargs["transpose"]:
+                        chunk = chunk.transpose((0,2,1))
+                    arr = numpy.flip(
+                        numpy.transpose(
+                            psd.deskew_block(
+                                chunk,
+                                chunk_index,
+                                **deskew_kwargs), 
+                            (2, 1, 0)),
+                        axis=2)
+                chunk_index += 1
             else:
-                yield arr
+                if chunk_tuple[0] == 0:
+                    print(str(chunk_tuple))
+                block_start = [chunk_tuple[k]*block_size[k] for k in range(3)]
+                block_end = [block_start[k] + block_size[k] for k in range(3)]
+                arr = numpy.squeeze(numpy.asarray(dataset[0,0,block_start[0]:block_end[0],block_start[1]:block_end[1],block_start[2]:block_end[2]]))
+            if any([arr.shape[k] != block_size[k] for k in range(3)]):
+                print(str(arr.shape) + "is small for " + str(block_size))
+                if pad:
+                    newarr = numpy.zeros(block_size,
+                                          dtype=arr.dtype)
+                    newarr[:arr.shape[0], :arr.shape[1], :arr.shape[2]] = arr[:, :, :]
+                    yield i,newarr
+                else:
+                    yield i,arr
+            else:
+                yield i,arr
         else:
-            yield arr
+            yield i,None
 
 
 def iterate_mip_levels_from_dataset(
         dataset, lvl, maxlvl, nblocks, block_size, downsample_factor,
-        num_slice=0,chunknum=-1,downsample_method=None, lvl_to_mip_kwargs=None,
+        chunknum=-1,downsample_method=None, lvl_to_mip_kwargs=None,
         interleaved_channels=1, channel=0, deskew_kwargs={}):
     """recursively generate MIPmap levels from an iterator of blocks
 
@@ -215,13 +221,13 @@ def iterate_mip_levels_from_dataset(
     lvl_to_mip_kwargs = ({} if lvl_to_mip_kwargs is None
                           else lvl_to_mip_kwargs)
     mip_kwargs = lvl_to_mip_kwargs.get(lvl, {})
-    block_index = 0
+    # block_index = 0
     # if num_slice == 1:
     #     block_index = nblocks[0]*nblocks[1]*chunknum
     if lvl > 0:
         for ma in iterate_mip_levels_from_dataset(
                 dataset, lvl-1, maxlvl, nblocks, block_size,
-                downsample_factor,num_slice,chunknum, downsample_method,
+                downsample_factor, chunknum, downsample_method,
                 lvl_to_mip_kwargs, interleaved_channels=interleaved_channels,
                 channel=channel, deskew_kwargs=deskew_kwargs):
             chunk = ma.array
@@ -240,15 +246,15 @@ def iterate_mip_levels_from_dataset(
     else:
         # get level 0 chunks
         # block_size is the number of slices to read from tiffs
-        for block in iterate_numpy_blocks_from_dataset(
-                dataset, nblocks,numslice = num_slice, chunknum=chunknum, block_size=block_size, pad=False,
+        for block_index,block in iterate_numpy_blocks_from_dataset(
+                dataset, nblocks, chunknum=chunknum, block_size=block_size, pad=False,
                 deskew_kwargs=deskew_kwargs,
                 channel=channel):
             block_tuple = numpy.unravel_index(block_index,nblocks,order='F')
             block_start = tuple(block_tuple[k]*block_size[k] for k in range(3))
             block_end = tuple(block_start[k] + block.shape[k] for k in range(3))
             yield MIPArray(lvl, block, block_start, block_end)
-            block_index += 1
+            # block_index += 1
 
 
 def write_ims_to_zarr(
@@ -404,7 +410,7 @@ def write_ims_to_zarr(
             mips = []
             for miparr in iterate_mip_levels_from_dataset(
                     dataset, max_mip, max_mip, nblocks, block_size, mip_dsfactor,
-                    num_slice=numchunks,chunknum=chunknum,
+                    chunknum=chunknum,
                     lvl_to_mip_kwargs=lvl_to_mip_kwargs,
                     interleaved_channels=interleaved_channels,
                     channel=channel, deskew_kwargs=deskew_kwargs):
