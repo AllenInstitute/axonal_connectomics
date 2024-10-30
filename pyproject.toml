@@ -1,12 +1,13 @@
 [project]
 name = "acpreprocessing"
+description='Axonal connectomics processing'
 requires-python = ">3.8,<3.12"
 dynamic = ["version"] 
 dependencies = [
     "pillow",
     "tifffile==2020.7.4",
     "scikit-image",
-    "numpy",
+    "numpy==1.26.0",
     "imageio",
     # "imageio<2.21",
     "matplotlib",
@@ -15,6 +16,7 @@ dependencies = [
     "requests",
     "cloud-volume>=8.5.5",
     "zarr",
+    "h5py"
 ]
 
 [project.optional-dependencies]
@@ -51,7 +53,7 @@ acpreprocessing = { path = ".", editable = true }
 
 # conda-enabled features
 [tool.pixi.feature.pixi-base.dependencies]
-numpy = "*"
+numpy = "1.26.0"
 imageio = "*"
 matplotlib = "*"
 
@@ -80,6 +82,7 @@ py311-conda-test = ["py311", "pixi-base", "test"]
 py311-conda-lab = ["py311", "pixi-base", "conda-lab"]
 py311-conda-scalene = ["py311", "pixi-base", "scalene"]
 py311-conda-scalene-lab = ["py311", "pixi-base", "scalene", "conda-lab"]
+
 
 [tool.coverage.run]
 omit = ["test/*",]
