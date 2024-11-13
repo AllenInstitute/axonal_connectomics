@@ -1,11 +1,13 @@
 pillow
 tifffile==2020.7.4
 scikit-image
-numpy
-imageio<2.21
+numpy==1.26.0
+imageio
+# "imageio<2.21",
 matplotlib
 argschema
 natsort
 requests
 cloud-volume>=8.5.5
 zarr
+h5py

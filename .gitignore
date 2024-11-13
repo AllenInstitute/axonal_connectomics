@@ -101,6 +101,10 @@ venv.bak/
 # mkdocs documentation
 /site
 
+#Pixi
+pixi.lock
+.pixi/
+
 # mypy
 .mypy_cache/
 

@@ -2,22 +2,11 @@
 name = "acpreprocessing"
 description='Axonal connectomics processing'
 requires-python = ">3.8,<3.12"
-dynamic = ["version"] 
-dependencies = [
-    "pillow",
-    "tifffile==2020.7.4",
-    "scikit-image",
-    "numpy==1.26.0",
-    "imageio",
-    # "imageio<2.21",
-    "matplotlib",
-    "argschema",
-    "natsort",
-    "requests",
-    "cloud-volume>=8.5.5",
-    "zarr",
-    "h5py"
-]
+version = "0.0.1"
+dynamic = ["dependencies"] 
+
+[tool.setuptools.dynamic]
+dependencies = { file = ["requirements.txt"] }
 
 [project.optional-dependencies]
 test = [
