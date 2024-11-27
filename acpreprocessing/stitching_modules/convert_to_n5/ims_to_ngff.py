@@ -432,7 +432,7 @@ def write_ims_to_zarr(
 
 def calculate_blocks(block_size,deskew_options,**kwargs):
     if deskew_options:
-        stride = deskew_options["stride"]
+        stride = deskew_options["deskew_stride"]
     else:
         stride = 1
     return int(numpy.ceil(10640/(block_size[2]*stride)))
