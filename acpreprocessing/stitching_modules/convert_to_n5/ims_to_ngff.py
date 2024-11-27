@@ -251,7 +251,7 @@ def iterate_mip_levels_from_dataset(
             if not block is None:
                 block_tuple = numpy.unravel_index(block_index,nblocks,order='F')
                 if not deskew_kwargs["flip"]:
-                    block_tuple[2] = nblocks[2] - block_tuple[2] - 1
+                    block_tuple = (block_tuple[0],block_tuple[1],nblocks[2] - block_tuple[2] - 1)
                 block_start = tuple(block_tuple[k]*block_size[k] for k in range(3))
                 block_end = tuple(block_start[k] + block.shape[k] for k in range(3))
                 yield MIPArray(lvl, block, block_start, block_end)
