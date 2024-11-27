@@ -260,8 +260,8 @@ def iterate_mip_levels_from_dataset(
 
 def write_ims_to_zarr(
         ims_fn, output_n5, group_names, group_attributes=None, max_mip=0,
-        mip_dsfactor=(2, 2, 2), chunk_size=(1, 1, 64, 64, 64), numchunks=0,
-        concurrency=10, slice_concurrency=1,
+        mip_dsfactor=(2, 2, 2), chunk_size=(1, 1, 64, 64, 64),
+        concurrency=10, slice_concurrency=1, block_size=(512,512,512),
         compression="raw", dtype="uint16", lvl_to_mip_kwargs=None,
         interleaved_channels=1, channel=0, deskew_options=None, chunknum=-1, **kwargs):
     """write a stack represented by an iterator of multi-image files as a zarr
@@ -311,20 +311,19 @@ def write_ims_to_zarr(
     ims_chunk_size = store.chunks
     print("ims chunks: " + str(ims_chunk_size))
     
-    block_size = [512,512,512] #[ims_chunk_size[0]*2,ims_chunk_size[1]*32,ims_chunk_size[2]*8] #[128,2048,512] #[m*sz for m,sz in zip([2,2**max_mip,8],chunk_size[2:])]
+    # block_size = [512,512,512] #[ims_chunk_size[0]*2,ims_chunk_size[1]*32,ims_chunk_size[2]*8] #[128,2048,512] #[m*sz for m,sz in zip([2,2**max_mip,8],chunk_size[2:])]
     print("deskewed block size: " + str(block_size))
     
     joined_shapes = dataset.shape[2:]
-    if numchunks < 1:
-        if deskew_options and deskew_options["deskew_transpose"]:
-            # input dataset must be transposed
-            joined_shapes = (joined_shapes[0],joined_shapes[2],joined_shapes[1])
-    else:
-        if deskew_options and deskew_options["deskew_transpose"]:
-            # input dataset must be transposed
-            joined_shapes = (dataset.shape[2],dataset.shape[4],numchunks*block_size[2])
-        else:
-            joined_shapes = (dataset.shape[2],dataset.shape[3],numchunks*block_size[2])
+    if deskew_options and deskew_options["deskew_transpose"]:
+        # input dataset must be transposed
+        joined_shapes = (joined_shapes[0],joined_shapes[2],joined_shapes[1])
+    # else:
+    #     if deskew_options and deskew_options["deskew_transpose"]:
+    #         # input dataset must be transposed
+    #         joined_shapes = (dataset.shape[2],dataset.shape[4],numchunks*block_size[2])
+    #     else:
+    #         joined_shapes = (dataset.shape[2],dataset.shape[3],numchunks*block_size[2])
     print("ims_to_ngff dataset shape:" + str(joined_shapes))
 
     if deskew_options and deskew_options["deskew_method"] == "ps":
@@ -431,7 +430,15 @@ def write_ims_to_zarr(
     #f.close()
 
 
-def ims_to_ngff_group(ims_fn, output, *args, **kwargs):
+def calculate_blocks(block_size,deskew_options,**kwargs):
+    if deskew_options:
+        stride = deskew_options["stride"]
+    else:
+        stride = 1
+    return int(numpy.ceil(10640/(block_size[2]*stride)))
+
+
+def ims_to_ngff_group(ims_fn, output, *args, block_cc=1, chunknum=-1, **kwargs):
     """convert directory of natsort-consecutive multitiffs to an n5 or zarr pyramid
 
     Parameters
@@ -442,7 +449,16 @@ def ims_to_ngff_group(ims_fn, output, *args, **kwargs):
 
     if output == 'zarr':
         print('converting to zarr')
-        return write_ims_to_zarr(ims_fn, *args, **kwargs)
+        if chunknum > -1:
+            return write_ims_to_zarr(ims_fn, *args, slice_concurrency=1, chunknum=chunknum, **kwargs)
+        else:
+            numblocks = calculate_blocks(**kwargs)
+            with concurrent.futures.ProcessPoolExecutor(max_workers=block_cc) as e:
+                futs = []
+                for n in range(numblocks):
+                    futs.append(e.submit(write_ims_to_zarr,ims_fn,*args,slice_concurrency=block_cc, chunknum=n, **kwargs))
+                for fut in concurrent.futures.as_completed(futs):
+                    _ = fut.result()
     else:
         print('unknown output format: ' + output)
 
@@ -452,8 +468,12 @@ class IMSToNGFFParameters(NGFFGroupGenerationParameters):
     input_file = argschema.fields.Str(required=True)
     interleaved_channels = argschema.fields.Int(required=False, default=1)
     channel = argschema.fields.Int(required=False, default=0)
-    num_chunks = argschema.fields.Int(required=False, default=0)
     chunk_num = argschema.fields.Int(required=False, default=-1)
+    block_concurrency = argschema.fields.Int(required=False, default=1)
+    block_size = argschema.fields.Tuple((
+        argschema.fields.Int(),
+        argschema.fields.Int(),
+        argschema.fields.Int()), required=False, default=(512,512,512))
 
 
 class IMSToZarrInputParameters(argschema.ArgSchema,
@@ -480,11 +500,12 @@ class IMSToZarr(argschema.ArgSchemaParser):
             self.args["max_mip"],
             self.args["mip_dsfactor"],
             self.args["chunk_size"],
-            self.args["num_chunks"],
             concurrency=self.args["concurrency"],
             compression=self.args["compression"],
             #lvl_to_mip_kwargs=self.args["lvl_to_mip_kwargs"],
             chunknum = self.args["chunk_num"],
+            block_cc = self.args["block_concurrency"],
+            block_size = self.args["block_size"],
             deskew_options=deskew_options)
 
 
