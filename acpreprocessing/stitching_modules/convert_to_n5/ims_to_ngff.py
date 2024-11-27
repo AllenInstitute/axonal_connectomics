@@ -120,7 +120,7 @@ def iterate_numpy_blocks_from_dataset(
                         first_z = 0
                         first_slice = 0
                     else:
-                        if deskew_kwargs["flip"]:
+                        if not deskew_kwargs["flip"]:
                             x_index = chunk_tuple[1]
                         else:
                             x_index = nblocks[2] - chunk_tuple[1] - 1
@@ -250,7 +250,7 @@ def iterate_mip_levels_from_dataset(
                 channel=channel):
             if not block is None:
                 block_tuple = numpy.unravel_index(block_index,nblocks,order='F')
-                if deskew_kwargs["flip"]:
+                if not deskew_kwargs["flip"]:
                     block_tuple[2] = nblocks[2] - block_tuple[2] - 1
                 block_start = tuple(block_tuple[k]*block_size[k] for k in range(3))
                 block_end = tuple(block_start[k] + block.shape[k] for k in range(3))
