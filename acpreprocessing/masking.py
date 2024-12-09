@@ -13,7 +13,10 @@ def resample_dim(shape, zfactor=(2,2,2), sample='up'):
 
 def upsample_array_parallel(in_arr, out_arr, upfactor=(2,2,2), chunk_size=(64,64,64),  n_jobs=1):
     def upsample(start, end, upfactor):
-        arr = in_arr[start[0]:end[0],start[1]:end[1],start[2]:end[2]]
+        if isinstance(in_arr, ts.TensorStore):
+            arr = in_arr[start[0]:end[0],start[1]:end[1],start[2]:end[2]].read().result()
+        else:
+            arr = in_arr[start[0]:end[0],start[1]:end[1],start[2]:end[2]]
         rs_image = ndimage.zoom(arr, upfactor)
         start, end = np.array(start)*np.array(upfactor), np.array(end)*np.array(upfactor)
         if isinstance(out_arr, ts.TensorStore):
@@ -43,7 +46,10 @@ def upsample_array_parallel(in_arr, out_arr, upfactor=(2,2,2), chunk_size=(64,64
         
 def downsample_array_parallel(in_arr, out_arr, downfactor=(2,2,2), chunk_size=(64,64,64),  n_jobs=1):
     def downsample(start, end, downfactor):
-        arr = in_arr[start[0]:end[0],start[1]:end[1],start[2]:end[2]]
+        if isinstance(in_arr, ts.TensorStore):
+            arr = in_arr[start[0]:end[0],start[1]:end[1],start[2]:end[2]].read().result()
+        else:
+            arr = in_arr[start[0]:end[0],start[1]:end[1],start[2]:end[2]]
         rs_image = tinybrain.downsample_with_averaging(arr, factor=downfactor)[0]
         start, end = resample_dim(start, zfactor=downfactor, sample='down'), resample_dim(end, zfactor=downfactor, sample='down')
         if isinstance(out_arr, ts.TensorStore):
