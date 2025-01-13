@@ -54,16 +54,36 @@ def stitch_over_segments(sd_kwargs,p_dslist,q_dslist,zstarts,zlength,i_slice,ij_
     ''' stitch by segment for ispim data (legacy, axis_type = "ispim")
     '''
     xdim = p_dslist[0].shape[4]
-    roi_list = [[[z,z+zlength],i_slice,[0,xdim]] for z in zstarts]
-    p_ptlist,q_ptlist = stitch_over_rois(sd_kwargs=sd_kwargs,
-                                         p_dslist=p_dslist,
-                                         q_dslist=q_dslist,
-                                         axis_type="ispim",
-                                         roi_list=roi_list,
-                                         ij_shift=ij_shift,
-                                         ns=ns,
-                                         ds=ds,
-                                         s0=s0)
+    p_ptlist = None
+    q_ptlist = None
+    for z in zstarts:
+        roi_list = [[[z,z+zlength],i_slice,[0,xdim]] for ds in p_dslist]
+        p_ptroi,q_ptroi = stitch_over_rois(sd_kwargs=sd_kwargs,
+                                             p_dslist=p_dslist,
+                                             q_dslist=q_dslist,
+                                             axis_type="ispim",
+                                             roi_list=roi_list,
+                                             ij_shift=ij_shift,
+                                             ns=ns,
+                                             ds=ds,
+                                             s0=s0)
+        if (not p_ptroi is None) and p_ptroi:
+            if not p_ptlist is None:
+                for i in range(len(p_ptlist)):
+                    if (not p_ptroi[i] is None) and (len(p_ptroi[i]) > 0):
+                        if p_ptlist[i] is None:
+                            p_ptlist[i] = p_ptroi[i]
+                            q_ptlist[i] = q_ptroi[i]
+                        else:
+                            try:
+                                p_ptlist[i] = np.concatenate((p_ptlist[i],p_ptroi[i]))
+                                q_ptlist[i] = np.concatenate((q_ptlist[i],q_ptroi[i]))
+                            except ValueError:
+                                print(p_ptlist[i])
+                                print(p_ptroi[i])
+            else:
+                p_ptlist = p_ptroi
+                q_ptlist = q_ptroi
     return p_ptlist,q_ptlist
 
 
