@@ -42,16 +42,41 @@ def psdeskew_kwargs(skew_dims_zyx, deskew_stride=1, deskew_flip=False, deskew_tr
     ydim = int(sdims[1]*crop_factor)
     blockdims = (int(sdims[2]/stride), ydim, stride*sdims[0])
     subblocks = int(np.ceil((sdims[2]+stride*sdims[0])/(stride*sdims[0])))
-    # print(subblocks)
+    print("number of subblocks = " + str(subblocks))
     blockx = sdims[0]
     dsi = []
     si = []
+    # for i_block in range(subblocks):
+    #     sxv = []
+    #     szv = []
+    #     for sz in range(blockx):
+    #         sxstart = i_block*stride*blockx-stride*sz
+    #         sxend = sxstart + stride*blockx #(i_block+1)*stride*blockx-stride*sz
+    #         if sxstart < 0:
+    #             sxstart = 0
+    #         if sxend > sdims[2]:
+    #             sxend = sdims[2]
+    #         sx = np.arange(sxstart, sxend)
+    #         sxv.append(sx)
+    #         szv.append(sz*np.ones(sx.shape, dtype=sx.dtype))
+    #     sxv = np.tile(np.concatenate(sxv)[:,np.newaxis],[1,blockdims[1]])
+    #     szv = np.tile(np.concatenate(szv)[:,np.newaxis],[1,blockdims[1]])
+    #     syv = np.tile(np.arange(blockdims[1]),[sxv.shape[0],1])
+    #     sxv = sxv.flatten()
+    #     szv = szv.flatten()
+    #     syv = syv.flatten()
+    #     dsx = sxv + stride*szv - i_block*stride*blockx
+    #     dsz = np.floor(sxv/stride).astype(int)
+    #     dsy = syv
+    #     dsi.append(np.ravel_multi_index(
+    #         (dsz,dsy,dsx), blockdims))
+    #     si.append(np.ravel_multi_index((szv,syv,sxv), sdims))
     for i_block in range(subblocks):
         sxv = []
         szv = []
         for sz in range(blockx):
             sxstart = i_block*stride*blockx-stride*sz
-            sxend = sxstart + stride*blockx #(i_block+1)*stride*blockx-stride*sz
+            sxend = (i_block+1)*stride*blockx-stride*sz
             if sxstart < 0:
                 sxstart = 0
             if sxend > sdims[2]:
@@ -59,21 +84,16 @@ def psdeskew_kwargs(skew_dims_zyx, deskew_stride=1, deskew_flip=False, deskew_tr
             sx = np.arange(sxstart, sxend)
             sxv.append(sx)
             szv.append(sz*np.ones(sx.shape, dtype=sx.dtype))
-        sxv = np.tile(np.concatenate(sxv)[:,np.newaxis],[1,blockdims[1]])
-        szv = np.tile(np.concatenate(szv)[:,np.newaxis],[1,blockdims[1]])
-        syv = np.tile(np.arange(blockdims[1]),[sxv.shape[0],1])
-        sxv = sxv.flatten()
-        szv = szv.flatten()
-        syv = syv.flatten()
+        sxv = np.concatenate(sxv)
+        szv = np.concatenate(szv)
         dsx = sxv + stride*szv - i_block*stride*blockx
         dsz = np.floor(sxv/stride).astype(int)
-        dsy = syv
         dsi.append(np.ravel_multi_index(
-            (dsz,dsy,dsx), blockdims))
-        si.append(np.ravel_multi_index((szv,syv,sxv), sdims))
+            (dsz, dsx), (blockdims[0], blockdims[2])))
+        si.append(np.ravel_multi_index((szv, sxv), (sdims[0], sdims[2])))
     kwargs = {'dsi': dsi,
               'si': si,
-              'slice1d': np.zeros((subblocks, blockdims[2]*blockdims[1]*blockdims[0]), dtype=dtype),
+              'slice1d': np.zeros((subblocks, blockdims[1], blockdims[2]*blockdims[0]), dtype=dtype), #np.zeros((subblocks, blockdims[2]*blockdims[1]*blockdims[0]), dtype=dtype),
               'blockdims': blockdims,
               'subblocks': subblocks,
               'flip': deskew_flip,
@@ -83,35 +103,6 @@ def psdeskew_kwargs(skew_dims_zyx, deskew_stride=1, deskew_flip=False, deskew_tr
               'stride': stride
               }
     return kwargs
-
-# commented code no longer in use
-#
-# def calculate_skewed_indices(zi,yi,xi,s):
-#     # convert input block voxel indices into skewed data space
-#     # edge blocks may have negative or out-of-bounds skewed indices
-#     xs = s*zi + xi % s
-#     ys = yi
-#     zs = xi // s - zi
-#     return zs,ys,xs
-
-
-# def get_deskewed_block(blockdims,dataset,start,end,stride):
-#     # create output block and get flattened indices
-#     blockdata = np.zeros(blockdims,dtype=dataset.dtype)
-#     zb,yb,xb = np.meshgrid(*[range(d) for d in blockdims],indexing="ij")
-#     fb = np.ravel_multi_index((zb,yb,xb),blockdims)
-#     # get indices of voxel data for input dataset
-#     sdims = dataset.shape
-#     zi,yi,xi = np.meshgrid(*[range(s,e) for s,e in zip(start,end)],indexing="ij")
-#     zs,ys,xs = calculate_skewed_indices(zi,yi,xi,stride)
-#     fi = np.ravel_multi_index((zs,ys,xs),sdims,mode='clip').flatten()
-#     # filter out-of-bounds voxels
-#     r = (fi > 0) & (fi < np.prod(sdims)-1)
-#     fb = fb[r]
-#     fi = fi[r]
-#     # assign input to output
-#     blockdata[fb] = dataset[fi]
-#     return blockdata
 
 
 def calculate_first_chunk(chunk_size,x_index,stride):
@@ -170,12 +161,19 @@ def deskew_block(blockData, n, dsi, si, slice1d, blockdims, subblocks, flip, tra
         blockData = np.concatenate((blockData, np.zeros(
             (int(chunklength-blockData.shape[0]), blockData.shape[1], blockData.shape[2]))))
     order = (np.arange(subb)+n) % subb
-    for i, o in enumerate(order):
-        # flip stack axis 2 for ispim2
-        s = -1 if flip else 1
-        slice1d[o, :][dsi[i]] = blockData[:, :, ::s].ravel()[si[i]]
-    block3d[:, :, :] = slice1d[n % subb, :].reshape((zdim,ydim,xdim))
-    slice1d[n % subb, :] = 0
+    # for i, o in enumerate(order):
+    #     # flip stack axis 2 for ispim2
+    #     s = -1 if flip else 1
+    #     slice1d[o, :][dsi[i]] = blockData[:, :, ::s].ravel()[si[i]]
+    # block3d[:, :, :] = slice1d[n % subb, :].reshape((zdim,ydim,xdim))
+    # slice1d[n % subb, :] = 0
+    for y in range(ydim):
+        for i, o in enumerate(order):
+            # flip stack axis 2 for ispim2
+            s = -1 if flip else 1
+            slice1d[o, y, :][dsi[i]] = blockData[:, y, ::s].ravel()[si[i]]
+        block3d[:, y, :] = slice1d[n % subb, y, :].reshape((zdim, xdim))
+        slice1d[n % subb, y, :] = 0
     return block3d
 
 

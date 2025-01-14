@@ -3,21 +3,21 @@
 import concurrent.futures
 import dataclasses
 #import itertools
-import math
+# import math
 #import pathlib
 
-import imageio
+# import imageio
 #from natsort import natsorted
 import numpy
-import skimage
+# import skimage
 
+import hdf5plugin # this needs to be imported
 import h5py
-import hdf5plugin
+from imaris_ims_file_reader.ims import ims
 import zarr
 from numcodecs import Blosc
 import argschema
 
-# import acpreprocessing.utils.convert
 import acpreprocessing.stitching_modules.convert_to_n5.psdeskew as psd
 from acpreprocessing.stitching_modules.convert_to_n5.tiff_to_ngff import downsample_array,mip_level_shape,omezarr_attrs,NGFFGroupGenerationParameters,TiffToNGFFValueError
 
@@ -68,9 +68,9 @@ def write_mips(zgrp,miparrs):
     for miparr in miparrs:
         dswrite_block(ds=zgrp[miparr.lvl],start=miparr.start,end=miparr.end,arr=miparr.array)
 
-# HERE : NEED TO UNTANGLE MISMATCH BETWEEN BLOCK (deskewed) and CHUNK (skewed) size
+
 def iterate_numpy_blocks_from_dataset(
-        dataset, nblocks, block_size=None, pad=True, deskew_kwargs={}, *args, **kwargs):
+        dataset, nblocks, chunknum=-1, block_size=None, pad=True, deskew_kwargs={}, *args, **kwargs):
     """iterate over a contiguous hdf5 daataset as chunks of numpy arrays
 
     Parameters
@@ -87,90 +87,103 @@ def iterate_numpy_blocks_from_dataset(
     arr : numpy.ndarray
         3D numpy array representing a consecutive chunk of 2D arrays
     """
-    # if deskew_kwargs and deskew_kwargs["deskew_method"] == "ps":
-    #     # create output block and get flattened indices
-    #     zb,yb,xb = numpy.meshgrid(*[range(d) for d in block_size],indexing="ij")
-    #     fb = numpy.ravel_multi_index((zb,yb,xb),block_size)
-    if nblocks[1] == 1:
-        print("test condition: using test tuple")
-        test = True
-    else:
-        test = False
-    dshape = dataset.shape
+    
+    nchunks = nblocks
+    test = False
+    dshape = dataset.shape[2:]
     if deskew_kwargs:
+        # calculate input data chunk dims based on output block dims
         chunk_size = (deskew_kwargs["chunklength"],block_size[1],block_size[2]*deskew_kwargs["stride"])
         if deskew_kwargs["transpose"]:
+            # transpose dims if needed
             chunk_size = (chunk_size[0],chunk_size[2],chunk_size[1])
             dshape = (dshape[0],dshape[2],dshape[1])
         print("chunk size: " + str(chunk_size))
-    for i in range(numpy.prod(nblocks)):#,*args,**kwargs):
-        chunk_tuple = numpy.unravel_index(i,tuple(nblocks),order='F')
-        if test:
-            chunk_tuple = (chunk_tuple[0], 11, chunk_tuple[2])
-        # deskew level 0 data blocks
-        if deskew_kwargs:
-            if deskew_kwargs["transpose"]:
-                chunk_tuple = (chunk_tuple[0],chunk_tuple[2],chunk_tuple[1])
-            print(str(chunk_tuple))
-            if chunk_tuple[0] == 0:
-                chunk_index = 0
-                deskew_kwargs["slice1d"][...] = 0
-                first_z,first_slice = psd.calculate_first_chunk(chunk_size=chunk_size,x_index=(nblocks[2] - chunk_tuple[1] - 1),stride=deskew_kwargs["stride"])
-            if chunk_tuple[0] < first_z or chunk_tuple[0]*chunk_size[0] - first_slice >= dshape[0]:
-                arr = numpy.zeros(block_size,dtype=dataset.dtype)
-            else:
-                chunk_start = numpy.array([t*s for t,s in zip(chunk_tuple,chunk_size)])
-                chunk_end = chunk_start + numpy.array(chunk_size)
-                if chunk_start[0] < first_slice:
-                    chunk_end[0] -= first_slice - chunk_start[0]
-                    chunk = numpy.zeros(chunk_size,dtype=dataset.dtype)
-                    chunk[first_slice-chunk_start[0]:] = dataset[chunk_start[0]:chunk_end[0],chunk_start[1]:chunk_end[1],chunk_start[2]:chunk_end[2]]
-                else:
-                    chunk_start[0] -= first_slice
-                    chunk_end[0] -= first_slice
-                    # if chunk_end[0] >= dshape[0]:
-                    #     chunk = numpy.zeros(chunk_size,dtype=dataset.dtype)
-                    #     chunk[:dshape[0]-chunk_start[0]] = dataset[chunk_start[0]:,chunk_start[1]:chunk_end[1],chunk_start[2]:chunk_end[2]]
-                    # else:
-                    chunk = dataset[chunk_start[0]:chunk_end[0],chunk_start[1]:chunk_end[1],chunk_start[2]:chunk_end[2]]
-                if any([sh<sz for sh,sz in zip(chunk.shape,chunk_size)]):
-                    print(str(chunk.shape) + " is small for" + str(chunk_size) + ": filling with zeros")
-                    temp_chunk = numpy.zeros(chunk_size,dtype=chunk.dtype)
-                    temp_chunk[:chunk.shape[0],:chunk.shape[1],:chunk.shape[2]] = chunk
-                    chunk = temp_chunk
+    for i in range(numpy.prod(nchunks)):
+        chunk_tuple = numpy.unravel_index(i,tuple(nchunks),order='F')
+        if chunknum >= 0:
+            chunk_is_ok = (chunk_tuple[2] == chunknum)
+        else:
+            chunk_is_ok = True
+        if chunk_is_ok:
+            if test:
+                chunk_tuple = (chunk_tuple[0], chunk_tuple[1], chunknum)
+            # deskew level 0 data blocks
+            if deskew_kwargs:
                 if deskew_kwargs["transpose"]:
-                    chunk = chunk.transpose((0,2,1))
-                arr = numpy.flip(
-                    numpy.transpose(
-                        psd.deskew_block(
-                            chunk,
-                            chunk_index,
-                            **deskew_kwargs), 
-                        (2, 1, 0)),
-                    axis=2)
-            chunk_index += 1
-        else:
-            if chunk_tuple[0] == 0:
+                    chunk_tuple = (chunk_tuple[0],chunk_tuple[2],chunk_tuple[1])
                 print(str(chunk_tuple))
-            block_start = [chunk_tuple[k]*block_size[k] for k in range(3)]
-            block_end = [block_start[k] + block_size[k] for k in range(3)]
-            arr = dataset[block_start[0]:block_end[0],block_start[1]:block_end[1],block_start[2]:block_end[2]]
-        if any([arr.shape[k] != block_size[k] for k in range(3)]):
-            print(str(arr.shape) + "is small for " + str(block_size))
-            if pad:
-                newarr = numpy.zeros(block_size,
-                                      dtype=arr.dtype)
-                newarr[:arr.shape[0], :arr.shape[1], :arr.shape[2]] = arr[:, :, :]
-                yield newarr
+                if chunk_tuple[0] == 0:
+                    chunk_index = 0
+                    deskew_kwargs["slice1d"][...] = 0
+                    if test:
+                        first_z = 0
+                        first_slice = 0
+                    else:
+                        if not deskew_kwargs["flip"]:
+                            x_index = chunk_tuple[1]
+                        else:
+                            x_index = nblocks[2] - chunk_tuple[1] - 1
+                        first_z,first_slice = psd.calculate_first_chunk(chunk_size=chunk_size,x_index=x_index,stride=deskew_kwargs["stride"])
+                    print(str(first_z) + "," + str(first_slice))
+                if chunk_tuple[0] < first_z or chunk_tuple[0]*chunk_size[0] - first_slice >= dshape[0]:
+                    arr = numpy.zeros(block_size,dtype=dataset.dtype)
+                else:
+                    chunk_start = numpy.array([t*s for t,s in zip(chunk_tuple,chunk_size)])
+                    chunk_end = chunk_start + numpy.array(chunk_size)
+                    if chunk_start[0] < first_slice:
+                        chunk_end[0] = chunk_size[0] - (first_slice - chunk_start[0])
+                        chunk = numpy.zeros(chunk_size,dtype=dataset.dtype)
+                        zdata = numpy.squeeze(numpy.asarray(dataset[0,0,:chunk_end[0],chunk_start[1]:chunk_end[1],chunk_start[2]:chunk_end[2]]))
+                        print("data dimension is " + str(zdata.shape) + " max is " + str(numpy.max(zdata)))
+                        chunk[first_slice-chunk_start[0]:] = zdata
+                    else:
+                        chunk_start[0] -= first_slice
+                        chunk_end[0] -= first_slice
+                        print(str(chunk_start[0]))
+                        zdata = numpy.squeeze(numpy.asarray(dataset[0,0,chunk_start[0]:chunk_end[0],chunk_start[1]:chunk_end[1],chunk_start[2]:chunk_end[2]]))
+                        print("data dimension is " + str(zdata.shape) + " max is " + str(numpy.max(zdata)))
+                        chunk = zdata
+                    if any([sh<sz for sh,sz in zip(chunk.shape,chunk_size)]):
+                        print(str(chunk.shape) + " is small for" + str(chunk_size) + ": filling with zeros")
+                        temp_chunk = numpy.zeros(chunk_size,dtype=chunk.dtype)
+                        temp_chunk[:chunk.shape[0],:chunk.shape[1],:chunk.shape[2]] = chunk
+                        chunk = temp_chunk
+                    if deskew_kwargs["transpose"]:
+                        chunk = chunk.transpose((0,2,1))
+                    arr = numpy.flip(
+                        numpy.transpose(
+                            psd.deskew_block(
+                                chunk,
+                                chunk_index,
+                                **deskew_kwargs), 
+                            (2, 1, 0)),
+                        axis=2)
+                chunk_index += 1
             else:
-                yield arr
+                if chunk_tuple[0] == 0:
+                    print(str(chunk_tuple))
+                block_start = [chunk_tuple[k]*block_size[k] for k in range(3)]
+                block_end = [block_start[k] + block_size[k] for k in range(3)]
+                arr = numpy.squeeze(numpy.asarray(dataset[0,0,block_start[0]:block_end[0],block_start[1]:block_end[1],block_start[2]:block_end[2]]))
+            if any([arr.shape[k] != block_size[k] for k in range(3)]):
+                print(str(arr.shape) + "is small for " + str(block_size))
+                if pad:
+                    newarr = numpy.zeros(block_size,
+                                          dtype=arr.dtype)
+                    newarr[:arr.shape[0], :arr.shape[1], :arr.shape[2]] = arr[:, :, :]
+                    yield i,newarr
+                else:
+                    yield i,arr
+            else:
+                yield i,arr
         else:
-            yield arr
+            yield i,None
 
 
 def iterate_mip_levels_from_dataset(
         dataset, lvl, maxlvl, nblocks, block_size, downsample_factor,
-        downsample_method=None, lvl_to_mip_kwargs=None,
+        chunknum=-1,downsample_method=None, lvl_to_mip_kwargs=None,
         interleaved_channels=1, channel=0, deskew_kwargs={}):
     """recursively generate MIPmap levels from an iterator of blocks
 
@@ -206,11 +219,13 @@ def iterate_mip_levels_from_dataset(
     lvl_to_mip_kwargs = ({} if lvl_to_mip_kwargs is None
                           else lvl_to_mip_kwargs)
     mip_kwargs = lvl_to_mip_kwargs.get(lvl, {})
-    block_index = 0
+    # block_index = 0
+    # if num_slice == 1:
+    #     block_index = nblocks[0]*nblocks[1]*chunknum
     if lvl > 0:
         for ma in iterate_mip_levels_from_dataset(
                 dataset, lvl-1, maxlvl, nblocks, block_size,
-                downsample_factor, downsample_method,
+                downsample_factor, chunknum, downsample_method,
                 lvl_to_mip_kwargs, interleaved_channels=interleaved_channels,
                 channel=channel, deskew_kwargs=deskew_kwargs):
             chunk = ma.array
@@ -229,23 +244,26 @@ def iterate_mip_levels_from_dataset(
     else:
         # get level 0 chunks
         # block_size is the number of slices to read from tiffs
-        for block in iterate_numpy_blocks_from_dataset(
-                dataset, nblocks, block_size=block_size, pad=False,
+        for block_index,block in iterate_numpy_blocks_from_dataset(
+                dataset, nblocks, chunknum=chunknum, block_size=block_size, pad=False,
                 deskew_kwargs=deskew_kwargs,
                 channel=channel):
-            block_tuple = numpy.unravel_index(block_index,nblocks,order='F')
-            block_start = tuple(block_tuple[k]*block_size[k] for k in range(3))
-            block_end = tuple(block_start[k] + block.shape[k] for k in range(3))
-            yield MIPArray(lvl, block, block_start, block_end)
-            block_index += 1
+            if not block is None:
+                block_tuple = numpy.unravel_index(block_index,nblocks,order='F')
+                if not deskew_kwargs["flip"]:
+                    block_tuple = (block_tuple[0],block_tuple[1],nblocks[2] - block_tuple[2] - 1)
+                block_start = tuple(block_tuple[k]*block_size[k] for k in range(3))
+                block_end = tuple(block_start[k] + block.shape[k] for k in range(3))
+                yield MIPArray(lvl, block, block_start, block_end)
+            # block_index += 1
 
 
 def write_ims_to_zarr(
         ims_fn, output_n5, group_names, group_attributes=None, max_mip=0,
         mip_dsfactor=(2, 2, 2), chunk_size=(1, 1, 64, 64, 64),
-        concurrency=10, slice_concurrency=1,
+        concurrency=10, slice_concurrency=1, block_size=(512,512,512),
         compression="raw", dtype="uint16", lvl_to_mip_kwargs=None,
-        interleaved_channels=1, channel=0, deskew_options=None, numchunks=0, **kwargs):
+        interleaved_channels=1, channel=0, deskew_options=None, chunknum=-1, **kwargs):
     """write a stack represented by an iterator of multi-image files as a zarr
     volume with ome-ngff metadata
 
@@ -286,26 +304,26 @@ def write_ims_to_zarr(
     group_attributes = ([] if group_attributes is None else group_attributes)
     deskew_options = ({} if deskew_options is None else deskew_options)
     
-    f = h5py.File(ims_fn, 'r')
-    dataset = f['DataSet']['ResolutionLevel 0']['TimePoint 0']['Channel 0']['Data']
-    # if deskew_options and deskew_options["deskew_transpose"]:
-    #     dataset = dataset.transpose((0,2,1))
-    #     print("transposed shape: " + str(dataset.shape))
+    #f = h5py.File(ims_fn, 'r', rdcc_nbytes=512*1024**2)
+    #dataset = f['DataSet']['ResolutionLevel 0']['TimePoint 0']['Channel 0']['Data']
+    store = ims(ims_fn,ResolutionLevelLock=0,aszarr=True)
+    dataset = zarr.open(store,mode="r")
+    ims_chunk_size = store.chunks
+    print("ims chunks: " + str(ims_chunk_size))
     
-    block_size = [m*sz for m,sz in zip([4,4,4],chunk_size[2:])]
+    # block_size = [512,512,512] #[ims_chunk_size[0]*2,ims_chunk_size[1]*32,ims_chunk_size[2]*8] #[128,2048,512] #[m*sz for m,sz in zip([2,2**max_mip,8],chunk_size[2:])]
     print("deskewed block size: " + str(block_size))
     
-    if numchunks < 1:
-        joined_shapes = dataset.shape
-        if deskew_options and deskew_options["deskew_transpose"]:
-            # input dataset must be transposed
-            joined_shapes = (joined_shapes[0],joined_shapes[2],joined_shapes[1])
-    else:
-        if deskew_options and deskew_options["deskew_transpose"]:
-            # input dataset must be transposed
-            joined_shapes = (dataset.shape[0],numchunks*block_size[1],dataset.shape[1])
-        else:
-            joined_shapes = (dataset.shape[0],numchunks*block_size[1],dataset.shape[2])
+    joined_shapes = dataset.shape[2:]
+    if deskew_options and deskew_options["deskew_transpose"]:
+        # input dataset must be transposed
+        joined_shapes = (joined_shapes[0],joined_shapes[2],joined_shapes[1])
+    # else:
+    #     if deskew_options and deskew_options["deskew_transpose"]:
+    #         # input dataset must be transposed
+    #         joined_shapes = (dataset.shape[2],dataset.shape[4],numchunks*block_size[2])
+    #     else:
+    #         joined_shapes = (dataset.shape[2],dataset.shape[3],numchunks*block_size[2])
     print("ims_to_ngff dataset shape:" + str(joined_shapes))
 
     if deskew_options and deskew_options["deskew_method"] == "ps":
@@ -333,10 +351,15 @@ def write_ims_to_zarr(
         # create groups with attributes according to omezarr spec
         if len(group_names) == 1:
             group_name = group_names[0]
-            try:
-                g = f.create_group(f"{group_name}")
-            except KeyError:
+            if group_name in f:
                 g = f[f"{group_name}"]
+            else:
+                g = f.create_group(f"{group_name}")
+            # try:
+            #     g = f.create_group(f"{group_name}")
+            # except KeyError:
+            #     g = f[f"{group_name}"]
+                
             if group_attributes:
                 try:
                     attributes = group_attributes[0]
@@ -360,14 +383,17 @@ def write_ims_to_zarr(
         # shuffle=Blosc.BITSHUFFLE)
         compression = Blosc(cname='zstd', clevel=1)
         for mip_lvl in range(max_mip + 1):
-            mip_3dshape = mip_level_shape(mip_lvl, joined_shapes)
-            ds_lvl = g.create_dataset(
-                f"{mip_lvl}",
-                chunks=chunk_size,
-                shape=(1, 1, mip_3dshape[0], mip_3dshape[1], mip_3dshape[2]),
-                compression=compression,
-                dtype=dtype
-            )
+            if not mip_lvl in g:
+                mip_3dshape = mip_level_shape(mip_lvl, joined_shapes)
+                ds_lvl = g.create_dataset(
+                    f"{mip_lvl}",
+                    chunks=chunk_size,
+                    shape=(1, 1, mip_3dshape[0], mip_3dshape[1], mip_3dshape[2]),
+                    compression=compression,
+                    dtype=dtype
+                )
+            else:
+                ds_lvl = g[mip_lvl]
             dsfactors = [int(i)**mip_lvl for i in mip_dsfactor]
             mip_ds[mip_lvl] = ds_lvl
             scales.append(dsfactors)
@@ -381,24 +407,38 @@ def write_ims_to_zarr(
             mips = []
             for miparr in iterate_mip_levels_from_dataset(
                     dataset, max_mip, max_mip, nblocks, block_size, mip_dsfactor,
+                    chunknum=chunknum,
                     lvl_to_mip_kwargs=lvl_to_mip_kwargs,
                     interleaved_channels=interleaved_channels,
                     channel=channel, deskew_kwargs=deskew_kwargs):
                 mips.append(miparr)
                 if miparr.lvl == max_mip:
-                    # futs.append(e.submit(
-                    #     dswrite_block, mip_ds[miparr.lvl],
-                    #     miparr.start, miparr.end, miparr.array))
                     futs.append(e.submit(
                         write_mips, mip_ds, mips))
                     mips = []
+            # for miparr in iterate_mip_levels_from_dataset(
+            #         dataset, max_mip, max_mip, nblocks, block_size, mip_dsfactor,
+            #         lvl_to_mip_kwargs=lvl_to_mip_kwargs,
+            #         interleaved_channels=interleaved_channels,
+            #         channel=channel, deskew_kwargs=deskew_kwargs):
+            #     futs.append(e.submit(
+            #         dswrite_block, mip_ds[miparr.lvl],
+            #         miparr.start, miparr.end, miparr.array))
             for fut in concurrent.futures.as_completed(futs):
                 _ = fut.result()
     print("conversion complete, closing file")
-    f.close()
+    #f.close()
 
 
-def ims_to_ngff_group(ims_fn, output, *args, **kwargs):
+def calculate_blocks(block_size,deskew_options,**kwargs):
+    if deskew_options:
+        stride = deskew_options["deskew_stride"]
+    else:
+        stride = 1
+    return int(numpy.ceil(10640/(block_size[2]*stride)))
+
+
+def ims_to_ngff_group(ims_fn, output, *args, block_cc=1, chunknum=-1, **kwargs):
     """convert directory of natsort-consecutive multitiffs to an n5 or zarr pyramid
 
     Parameters
@@ -409,7 +449,16 @@ def ims_to_ngff_group(ims_fn, output, *args, **kwargs):
 
     if output == 'zarr':
         print('converting to zarr')
-        return write_ims_to_zarr(ims_fn, *args, **kwargs)
+        if chunknum > -1:
+            return write_ims_to_zarr(ims_fn, *args, slice_concurrency=1, chunknum=chunknum, **kwargs)
+        else:
+            numblocks = calculate_blocks(**kwargs)
+            with concurrent.futures.ProcessPoolExecutor(max_workers=block_cc) as e:
+                futs = []
+                for n in range(numblocks):
+                    futs.append(e.submit(write_ims_to_zarr,ims_fn,*args,slice_concurrency=block_cc, chunknum=n, **kwargs))
+                for fut in concurrent.futures.as_completed(futs):
+                    _ = fut.result()
     else:
         print('unknown output format: ' + output)
 
@@ -419,7 +468,12 @@ class IMSToNGFFParameters(NGFFGroupGenerationParameters):
     input_file = argschema.fields.Str(required=True)
     interleaved_channels = argschema.fields.Int(required=False, default=1)
     channel = argschema.fields.Int(required=False, default=0)
-    num_chunks = argschema.fields.Int(required=False, default=0)
+    chunk_num = argschema.fields.Int(required=False, default=-1)
+    block_concurrency = argschema.fields.Int(required=False, default=1)
+    block_size = argschema.fields.Tuple((
+        argschema.fields.Int(),
+        argschema.fields.Int(),
+        argschema.fields.Int()), required=False, default=(512,512,512))
 
 
 class IMSToZarrInputParameters(argschema.ArgSchema,
@@ -449,7 +503,9 @@ class IMSToZarr(argschema.ArgSchemaParser):
             concurrency=self.args["concurrency"],
             compression=self.args["compression"],
             #lvl_to_mip_kwargs=self.args["lvl_to_mip_kwargs"],
-            numchunks = self.args["num_chunks"],
+            chunknum = self.args["chunk_num"],
+            block_cc = self.args["block_concurrency"],
+            block_size = self.args["block_size"],
             deskew_options=deskew_options)
 
 

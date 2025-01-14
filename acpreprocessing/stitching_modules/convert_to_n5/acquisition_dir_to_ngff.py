@@ -90,14 +90,13 @@ def acquisition_to_ngff(acquisition_dir, output, out_dir, concurrency=5, acq_par
     interleaved_channels = get_number_interleaved_channels_from_rootdir(
         acquisition_path)
     positionList = get_strip_positions_from_rootdir(acquisition_path)
+    ori = (1,1,1)
+    axes = (0,1,2)
     if acq_parameters and "stage_axes" in acq_parameters:
         axesStr = acq_parameters["stage_axes"]
         if axesStr=="yxz":
             axes = (1,0,2)
-        else:
-            axes = (0,1,2)
-    else:
-        axes = (0,1,2)
+            ori = (-1,1,1)
 
     try:
         setup_group_attributes = [{
@@ -106,7 +105,7 @@ def acquisition_to_ngff(acquisition_dir, output, out_dir, concurrency=5, acq_par
                     acquisition_path),
                 "unit": "um"
             },
-            "position": tuple(p[i] for i in axes)
+            "position": tuple(p[i]*o for i,o in zip(axes,ori))
         } for p in positionList]
     except (KeyError, FileNotFoundError):
         setup_group_attributes = {}
