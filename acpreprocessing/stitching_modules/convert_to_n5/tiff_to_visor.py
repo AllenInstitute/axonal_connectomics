@@ -1,5 +1,8 @@
 #!/usr/bin/env python
 
+"""conversion of tiff data to visor-zarr format for Visor software compatibility
+"""
+
 import concurrent.futures
 import dataclasses
 import itertools

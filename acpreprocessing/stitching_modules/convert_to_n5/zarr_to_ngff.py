@@ -1,5 +1,9 @@
 #!/usr/bin/env python
 
+"""auxiliary module to run deskew on data already converted to zarr
+"""
+
+
 import concurrent.futures
 import dataclasses
 #import itertools
