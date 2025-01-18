@@ -69,10 +69,13 @@ def get_number_interleaved_channels_from_rootdir(
     return interleaved_channels
 
 
-def acquisition_to_ngff(acquisition_dir, output, out_dir, concurrency=5,
+def acquisition_to_ngff(acquisition_dir, output, out_dir, concurrency=5, acq_parameters=None,
                         ngff_generation_kwargs=None, copy_top_level_files=True):
     """
     """
+    acq_parameters = (
+        {} if acq_parameters is None
+        else acq_parameters)
     ngff_generation_kwargs = (
         {} if ngff_generation_kwargs is None
         else ngff_generation_kwargs)
@@ -87,6 +90,13 @@ def acquisition_to_ngff(acquisition_dir, output, out_dir, concurrency=5,
     interleaved_channels = get_number_interleaved_channels_from_rootdir(
         acquisition_path)
     positionList = get_strip_positions_from_rootdir(acquisition_path)
+    ori = (1,1,1)
+    axes = (0,1,2)
+    if acq_parameters and "stage_axes" in acq_parameters:
+        axesStr = acq_parameters["stage_axes"]
+        if axesStr=="yxz":
+            axes = (1,0,2)
+            ori = (-1,1,1)
 
     try:
         setup_group_attributes = [{
@@ -95,7 +105,7 @@ def acquisition_to_ngff(acquisition_dir, output, out_dir, concurrency=5,
                     acquisition_path),
                 "unit": "um"
             },
-            "position": p
+            "position": tuple(p[i]*o for i,o in zip(axes,ori))
         } for p in positionList]
     except (KeyError, FileNotFoundError):
         setup_group_attributes = {}
@@ -138,6 +148,10 @@ def acquisition_to_ngff(acquisition_dir, output, out_dir, concurrency=5,
         for tlf_path in top_level_files_paths:
             out_tlf_path = out_path / tlf_path.name
             shutil.copy(str(tlf_path), str(out_tlf_path))
+            
+            
+class AcquisitionParameters(argschema.schemas.DefaultSchema):
+    stage_axes = argschema.fields.Str(required=False,default='')
 
 
 class AcquisitionDirToNGFFParameters(
@@ -147,6 +161,8 @@ class AcquisitionDirToNGFFParameters(
     # output_dir = argschema.fields.Str(required=True)
     copy_top_level_files = argschema.fields.Bool(required=False, default=True)
     position_concurrency = argschema.fields.Int(required=False, default=5)
+    acq_parameters = argschema.fields.Nested(
+        AcquisitionParameters, required=False, default=None)
 
 
 class AcquisitionDirToNGFF(argschema.ArgSchemaParser):
@@ -164,6 +180,7 @@ class AcquisitionDirToNGFF(argschema.ArgSchemaParser):
         acquisition_to_ngff(
             self.args["input_dir"], self.args["output_format"], self.args["output_file"],
             concurrency=self.args["position_concurrency"],
+            acq_parameters=self.args["acq_parameters"],
             ngff_generation_kwargs=ngff_kwargs,
             copy_top_level_files=self.args["copy_top_level_files"]
         )

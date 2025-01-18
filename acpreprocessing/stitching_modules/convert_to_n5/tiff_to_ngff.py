@@ -19,7 +19,6 @@ import argschema
 import acpreprocessing.utils.convert
 import acpreprocessing.stitching_modules.convert_to_n5.psdeskew as psd
 
-
 def iterate_chunks(it, slice_length):
     """given an iterator, iterate over tuples of a
     given length from that iterator
@@ -97,15 +96,14 @@ def iterate_2d_arrays_from_mimgfns(mimgfns, interleaved_channels=1, channel=0):
             offset = (offset + r.get_length()) % interleaved_channels
 
 
-def iterate_numpy_chunks_from_mimgfns(
-        mimgfns, slice_length=None, pad=True, *args, **kwargs):
-    """iterate over a contiguous iterator of imageio multi-image files as
-    chunks of numpy arrays
+def iterate_numpy_chunks_from_dataset(
+        dataset, slice_length=None, pad=True, *args, **kwargs):
+    """iterate over a contiguous hdf5 daataset as chunks of numpy arrays
 
     Parameters
     ----------
-    mimgfns : list of str
-        imageio-compatible name inputs to be opened as multi-images
+    dataset : sliceable array
+        iterable array generated from mimgfns or hdf5 dataset
     slice_length : int
         number of 2d arrays from mimgfns included per chunk
     pad : bool, optional
@@ -116,13 +114,13 @@ def iterate_numpy_chunks_from_mimgfns(
     arr : numpy.ndarray
         3D numpy array representing a consecutive chunk of 2D arrays
     """
-    array_gen = iterate_2d_arrays_from_mimgfns(mimgfns, *args, **kwargs)
-    for chunk in iterate_chunks(array_gen, slice_length):
-        arr = numpy.array(chunk)
+    #array_gen = iterate_2d_arrays_from_dataset(mimgfns, *args, **kwargs)
+    for chunk in iterate_chunks(dataset, slice_length):#,*args,**kwargs):
+        arr = numpy.asarray(chunk)
         if pad:
             if arr.shape[0] != slice_length:
                 newarr = numpy.zeros((slice_length, *arr.shape[1:]),
-                                     dtype=arr.dtype)
+                                      dtype=arr.dtype)
                 newarr[:arr.shape[0], :, :] = arr[:, :, :]
                 yield newarr
             else:
@@ -415,16 +413,16 @@ class MIPArray:
     end: int
 
 
-def iterate_mip_levels_from_mimgfns(
-        mimgfns, lvl, block_size, slice_length, downsample_factor,
+def iterate_mip_levels_from_dataset(
+        dataset, lvl, block_size, slice_length, downsample_factor,
         downsample_method=None, lvl_to_mip_kwargs=None,
         interleaved_channels=1, channel=0, deskew_kwargs={}):
     """recursively generate MIPmap levels from an iterator of multi-image files
 
     Parameters
     ----------
-    mimgfns : list of str
-        imageio-compatible name inputs to be opened as multi-images
+    dataset : sliceable array
+        hdf dataset or iterable array generated from mimgfns
     lvl : int
         integer mip level to generate
     block_size : int
@@ -451,7 +449,7 @@ def iterate_mip_levels_from_mimgfns(
         object describing chunked array, MIP level of origin, and chunk indices
     """
     lvl_to_mip_kwargs = ({} if lvl_to_mip_kwargs is None
-                         else lvl_to_mip_kwargs)
+                          else lvl_to_mip_kwargs)
     mip_kwargs = lvl_to_mip_kwargs.get(lvl, {})
     start_index = 0
     chunk_index = 0
@@ -459,8 +457,8 @@ def iterate_mip_levels_from_mimgfns(
         num_chunks = downsample_factor[0]
 
         i = 0
-        for ma in iterate_mip_levels_from_mimgfns(
-                mimgfns, lvl-1, block_size, slice_length,
+        for ma in iterate_mip_levels_from_dataset(
+                dataset, lvl-1, block_size, slice_length,
                 downsample_factor, downsample_method,
                 lvl_to_mip_kwargs, interleaved_channels=interleaved_channels,
                 channel=channel, deskew_kwargs=deskew_kwargs):
@@ -511,8 +509,8 @@ def iterate_mip_levels_from_mimgfns(
     else:
         # get level 0 chunks
         # block_size is the number of slices to read from tiffs
-        for chunk in iterate_numpy_chunks_from_mimgfns(
-                mimgfns, slice_length, pad=False,
+        for chunk in iterate_numpy_chunks_from_dataset(
+                dataset, slice_length, pad=False,
                 interleaved_channels=interleaved_channels,
                 channel=channel):
             # deskew level 0 chunk
@@ -570,7 +568,8 @@ def write_mimgfns_to_n5(
     """
     group_attributes = ([] if group_attributes is None else group_attributes)
     deskew_options = ({} if deskew_options is None else deskew_options)
-
+    
+    array_gen = iterate_2d_arrays_from_mimgfns(mimgfns, interleaved_channels=interleaved_channels,channel=channel)
     joined_shapes = joined_mimg_shape_from_fns(
         mimgfns, concurrency=concurrency,
         interleaved_channels=interleaved_channels, channel=channel)
@@ -632,8 +631,8 @@ def write_mimgfns_to_n5(
 
         with concurrent.futures.ThreadPoolExecutor(max_workers=workers) as e:
             futs = []
-            for miparr in iterate_mip_levels_from_mimgfns(
-                    mimgfns, max_mip, block_size, slice_length, mip_dsfactor,
+            for miparr in iterate_mip_levels_from_dataset(
+                    array_gen, max_mip, block_size, slice_length, mip_dsfactor,
                     lvl_to_mip_kwargs=lvl_to_mip_kwargs,
                     interleaved_channels=interleaved_channels,
                     channel=channel, deskew_kwargs=deskew_kwargs):
@@ -798,7 +797,8 @@ def write_mimgfns_to_zarr(
     """
     group_attributes = ([] if group_attributes is None else group_attributes)
     deskew_options = ({} if deskew_options is None else deskew_options)
-
+    
+    array_gen = iterate_2d_arrays_from_mimgfns(mimgfns, interleaved_channels=interleaved_channels,channel=channel)
     joined_shapes = joined_mimg_shape_from_fns(
         mimgfns, concurrency=concurrency,
         interleaved_channels=interleaved_channels, channel=channel)
@@ -863,8 +863,8 @@ def write_mimgfns_to_zarr(
 
         with concurrent.futures.ThreadPoolExecutor(max_workers=workers) as e:
             futs = []
-            for miparr in iterate_mip_levels_from_mimgfns(
-                    mimgfns, max_mip, block_size, slice_length, mip_dsfactor,
+            for miparr in iterate_mip_levels_from_dataset(
+                    array_gen, max_mip, block_size, slice_length, mip_dsfactor,
                     lvl_to_mip_kwargs=lvl_to_mip_kwargs,
                     interleaved_channels=interleaved_channels,
                     channel=channel, deskew_kwargs=deskew_kwargs):
@@ -904,7 +904,8 @@ class DownsampleOptions(argschema.schemas.DefaultSchema):
 class DeskewOptions(argschema.schemas.DefaultSchema):
     deskew_method = argschema.fields.Str(required=False, default='')
     deskew_stride = argschema.fields.Int(required=False, default=None)
-    deskew_flip = argschema.fields.Bool(required=False, default=True)
+    deskew_flip = argschema.fields.Bool(required=False, default=False)
+    deskew_transpose = argschema.fields.Bool(required=False, default=False)
     deskew_crop = argschema.fields.Float(required=False, default=1.0)
 
 
