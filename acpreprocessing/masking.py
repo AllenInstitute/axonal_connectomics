@@ -19,10 +19,7 @@ def upsample_array_parallel(in_arr, out_arr, upfactor=(2,2,2), chunk_size=(64,64
             arr = in_arr[start[0]:end[0],start[1]:end[1],start[2]:end[2]]
         rs_image = ndimage.zoom(arr, upfactor)
         start, end = np.array(start)*np.array(upfactor), np.array(end)*np.array(upfactor)
-        if isinstance(out_arr, ts.TensorStore):
-            out_arr[start[0]:end[0],start[1]:end[1],start[2]:end[2]].write(rs_image).result()
-        else:
-            out_arr[start[0]:end[0],start[1]:end[1],start[2]:end[2]] = rs_image
+        out_arr[start[0]:end[0],start[1]:end[1],start[2]:end[2]].write(rs_image).result()
 
     #confirm output dimensions
     out_dim = np.array(in_arr.shape)*np.array(upfactor)
@@ -39,7 +36,10 @@ def upsample_array_parallel(in_arr, out_arr, upfactor=(2,2,2), chunk_size=(64,64
     comb1 = list(itertools.product(sind_x,sind_y,sind_z))
     comb2 = list(itertools.product(eind_x,eind_y,eind_z))
     del sind_x, sind_y, sind_z, eind_x, eind_y, eind_z
-    
+
+    if not isinstance(out_arr, ts.TensorStore):
+        raise ValueError("Output array must be a tensorstore object")
+        
     #run upsampling in parallel
     with parallel_config(backend="loky", inner_max_num_threads=2):
         results = Parallel(n_jobs=n_jobs)(delayed(upsample)(start=start, end=end, upfactor=upfactor) for start, end in zip(comb1,comb2))
@@ -52,10 +52,7 @@ def downsample_array_parallel(in_arr, out_arr, downfactor=(2,2,2), chunk_size=(6
             arr = in_arr[start[0]:end[0],start[1]:end[1],start[2]:end[2]]
         rs_image = tinybrain.downsample_with_averaging(arr, factor=downfactor)[0]
         start, end = resample_dim(start, zfactor=downfactor, sample='down'), resample_dim(end, zfactor=downfactor, sample='down')
-        if isinstance(out_arr, ts.TensorStore):
-            out_arr[start[0]:end[0],start[1]:end[1],start[2]:end[2]].write(rs_image).result()
-        else:
-            out_arr[start[0]:end[0],start[1]:end[1],start[2]:end[2]] = rs_image
+        out_arr[start[0]:end[0],start[1]:end[1],start[2]:end[2]].write(rs_image).result()
 
     #confirm output dimensions
     out_dim = np.round(np.array(in_arr.shape)/np.array(downfactor))
@@ -72,6 +69,9 @@ def downsample_array_parallel(in_arr, out_arr, downfactor=(2,2,2), chunk_size=(6
     comb1 = list(itertools.product(sind_x,sind_y,sind_z))
     comb2 = list(itertools.product(eind_x,eind_y,eind_z))
     del sind_x, sind_y, sind_z, eind_x, eind_y, eind_z
+
+    if not isinstance(out_arr, ts.TensorStore):
+        raise ValueError("Output array must be a tensorstore object")
 
     #run upsampling in parallel
     with parallel_config(backend="loky", inner_max_num_threads=2):
