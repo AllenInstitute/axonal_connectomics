@@ -437,8 +437,8 @@ def zarrv3_to_ngff_group(zarr_fn, output, *args, block_cc=1, chunknum=-1, **kwar
         if chunknum > -1:
             return write_zarrv3_to_zarr(zarr_fn, *args, slice_concurrency=1, chunknum=chunknum, **kwargs)
         else:
-            with zarr.open(zarr_fn) as zf:
-                zshape = zf['0'].shape
+            zf = zarr.open(zarr_fn)
+            zshape = zf['0'].shape
             numblocks = calculate_blocks(zshape,**kwargs)
             with concurrent.futures.ProcessPoolExecutor(max_workers=block_cc) as e:
                 futs = []
