@@ -333,7 +333,7 @@ def write_zarrv3_to_zarr(
     workers = concurrency // slice_concurrency
     
     # updating for zarr v3 store and array creation
-    zstore = zarr.storage.LocalStore(output_n5, dimension_separator='/')
+    zstore = zarr.storage.LocalStore(output_n5)
     with zarr.open(zstore, mode='a') as f:
         mip_ds = {}
         # create groups with attributes according to omezarr spec
