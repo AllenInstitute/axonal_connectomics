@@ -371,7 +371,7 @@ def write_zarrv3_to_zarr(
     # shuffle=Blosc.BITSHUFFLE)
     compression = Blosc(cname='zstd', clevel=1)
     for mip_lvl in range(max_mip + 1):
-        if not mip_lvl in g:
+        if not mip_lvl in g.array_keys():
             mip_3dshape = mip_level_shape(mip_lvl, joined_shapes)
             ds_lvl = g.create_array(
                 f"{mip_lvl}",
