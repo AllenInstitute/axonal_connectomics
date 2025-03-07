@@ -331,8 +331,9 @@ def write_zarrv3_to_zarr(
     # TODO DESKEW: does this generally work regardless of skew?
 
     workers = concurrency // slice_concurrency
-
-    zstore = zarr.DirectoryStore(output_n5, dimension_separator='/')
+    
+    # updating for zarr v3 store and array creation
+    zstore = zarr.storage.LocalStore(output_n5, dimension_separator='/')
     with zarr.open(zstore, mode='a') as f:
         mip_ds = {}
         # create groups with attributes according to omezarr spec
@@ -372,12 +373,13 @@ def write_zarrv3_to_zarr(
         for mip_lvl in range(max_mip + 1):
             if not mip_lvl in g:
                 mip_3dshape = mip_level_shape(mip_lvl, joined_shapes)
-                ds_lvl = g.create_dataset(
+                ds_lvl = g.create_array(
                     f"{mip_lvl}",
                     chunks=chunk_size,
                     shape=(1, 1, mip_3dshape[0], mip_3dshape[1], mip_3dshape[2]),
                     compression=compression,
-                    dtype=dtype
+                    dtype=dtype,
+                    zarr_format=2
                 )
             else:
                 ds_lvl = g[mip_lvl]
