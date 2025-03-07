@@ -377,7 +377,7 @@ def write_zarrv3_to_zarr(
                 f"{mip_lvl}",
                 chunks=chunk_size,
                 shape=(1, 1, mip_3dshape[0], mip_3dshape[1], mip_3dshape[2]),
-                compression=compression,
+                compressors=compression,
                 dtype=dtype,
                 zarr_format=2
             )
