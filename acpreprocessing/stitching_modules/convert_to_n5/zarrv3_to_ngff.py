@@ -12,6 +12,7 @@ import numpy
 # import skimage
 
 import zarr
+import z5py
 from numcodecs import Blosc
 import argschema
 
@@ -333,83 +334,113 @@ def write_zarrv3_to_zarr(
     workers = concurrency // slice_concurrency
     
     # updating for zarr v3 store and array creation
-    zstore = zarr.storage.LocalStore(output_n5)
-    f = zarr.open(zstore, mode='a')
-    mip_ds = {}
-    # create groups with attributes according to omezarr spec
-    if len(group_names) == 1:
-        group_name = group_names[0]
-        if group_name in f:
-            g = f[f"{group_name}"]
-        else:
-            g = f.create_group(f"{group_name}")
-        # try:
-        #     g = f.create_group(f"{group_name}")
-        # except KeyError:
-        #     g = f[f"{group_name}"]
-            
-        if group_attributes:
+    with z5py.File(output_n5) as f:
+        mip_ds = {}
+        # create groups with attributes according to omezarr spec
+        # if len(group_names) == 1:
+        #     group_name = group_names[0]
+        #     if group_name in f:
+        #         g = f[f"{group_name}"]
+        #     else:
+        #         g = f.create_group(f"{group_name}")
+        #     # try:
+        #     #     g = f.create_group(f"{group_name}")
+        #     # except KeyError:
+        #     #     g = f[f"{group_name}"]
+                
+        #     if group_attributes:
+        #         try:
+        #             attributes = group_attributes[0]
+        #         except IndexError:
+        #             print('attributes error')
+        #     else:
+        #         attributes = {}
+    
+        #     if "pixelResolution" in attributes:
+        #         if deskew_options:
+        #             attributes["pixelResolution"]["dimensions"][2] /= deskew_options["deskew_stride"]
+        #         attributes = omezarr_attrs(
+        #             group_name, attributes["position"], attributes["pixelResolution"]["dimensions"], max_mip)
+        #     if attributes:
+        #         for k, v in attributes.items():
+        #             g.attrs[k] = v
+        # else:
+        #     raise TiffToNGFFValueError("only one group name expected")
+        # scales = []
+    
+        # # shuffle=Blosc.BITSHUFFLE)
+        # compression = Blosc(cname='zstd', clevel=1)
+        # for mip_lvl in range(max_mip + 1):
+        #     if not mip_lvl in g.array_keys():
+        #         mip_3dshape = mip_level_shape(mip_lvl, joined_shapes)
+        #         ds_lvl = g.create_array(
+        #             f"{mip_lvl}",
+        #             chunks=chunk_size,
+        #             shape=(1, 1, mip_3dshape[0], mip_3dshape[1], mip_3dshape[2]),
+        #             compressors=compression,
+        #             dtype=dtype
+        #         )
+        #     else:
+        #         ds_lvl = g[mip_lvl]
+        #     dsfactors = [int(i)**mip_lvl for i in mip_dsfactor]
+        #     mip_ds[mip_lvl] = ds_lvl
+        #     scales.append(dsfactors)
+        group_objs = []
+        for i, group_name in enumerate(group_names):
             try:
-                attributes = group_attributes[0]
+                g = group_objs[-1].create_group(f"{group_name}")
             except IndexError:
-                print('attributes error')
-        else:
-            attributes = {}
-
-        if "pixelResolution" in attributes:
+                try:
+                    g = f.create_group(f"{group_name}")
+                except KeyError:
+                    g = f[f"{group_name}"]
+            group_objs.append(g)
+            try:
+                attributes = group_attributes[i]
+            except IndexError:
+                continue
             if deskew_options:
-                attributes["pixelResolution"]["dimensions"][2] /= deskew_options["deskew_stride"]
-            attributes = omezarr_attrs(
-                group_name, attributes["position"], attributes["pixelResolution"]["dimensions"], max_mip)
-        if attributes:
+                if "pixelResolution" in attributes:
+                    attributes["pixelResolution"]["dimensions"][0] /= deskew_options["deskew_stride"]
             for k, v in attributes.items():
                 g.attrs[k] = v
-    else:
-        raise TiffToNGFFValueError("only one group name expected")
-    scales = []
-
-    # shuffle=Blosc.BITSHUFFLE)
-    compression = Blosc(cname='zstd', clevel=1)
-    for mip_lvl in range(max_mip + 1):
-        if not mip_lvl in g.array_keys():
-            mip_3dshape = mip_level_shape(mip_lvl, joined_shapes)
-            ds_lvl = g.create_array(
-                f"{mip_lvl}",
+        scales = []
+        for mip_lvl in range(max_mip + 1):
+            ds_lvl = g.create_dataset(
+                f"s{mip_lvl}",
                 chunks=chunk_size,
-                shape=(1, 1, mip_3dshape[0], mip_3dshape[1], mip_3dshape[2]),
-                compressors=compression,
+                shape=mip_level_shape(mip_lvl, joined_shapes),
+                compression=compression,
                 dtype=dtype,
-                zarr_format=2
-            )
-        else:
-            ds_lvl = g[mip_lvl]
-        dsfactors = [int(i)**mip_lvl for i in mip_dsfactor]
-        mip_ds[mip_lvl] = ds_lvl
-        scales.append(dsfactors)
+                n_threads=slice_concurrency)
+            dsfactors = [int(i)**mip_lvl for i in mip_dsfactor]
+            ds_lvl.attrs["downsamplingFactors"] = dsfactors
+            mip_ds[mip_lvl] = ds_lvl
+            scales.append(dsfactors)
+        g.attrs["scales"] = scales
+        group_objs[0].attrs["downsamplingFactors"] = scales
+        group_objs[0].attrs["dataType"] = dtype
+        
+        nblocks = [int(numpy.ceil(joined_shapes[k]/block_size[k])) for k in range(3)]
+        print(str(nblocks) + " number of chunks per axis")
+        print(str(g[0].nchunks) + " chunk number sanity check")
     
-    nblocks = [int(numpy.ceil(joined_shapes[k]/block_size[k])) for k in range(3)]
-    print(str(nblocks) + " number of chunks per axis")
-    print(str(g[0].nchunks) + " chunk number sanity check")
-
-    #currently no context manager support for zarr python v3...
-    #with concurrent.futures.ThreadPoolExecutor(max_workers=workers) as e:
-    e = concurrent.futures.ThreadPoolExecutor(max_workers=workers)
-    futs = []
-    mips = []
-    for miparr in iterate_mip_levels_from_dataset(
-            zarray, max_mip, max_mip, nblocks, block_size, mip_dsfactor,
-            chunknum=chunknum,
-            lvl_to_mip_kwargs=lvl_to_mip_kwargs,
-            interleaved_channels=interleaved_channels,
-            channel=channel, deskew_kwargs=deskew_kwargs):
-        mips.append(miparr)
-        if miparr.lvl == max_mip:
-            futs.append(e.submit(
-                write_mips, mip_ds, mips))
+        with concurrent.futures.ThreadPoolExecutor(max_workers=workers) as e:
+            futs = []
             mips = []
-    for fut in concurrent.futures.as_completed(futs):
-        _ = fut.result()
-    e.shutdown(wait=True)
+            for miparr in iterate_mip_levels_from_dataset(
+                    zarray, max_mip, max_mip, nblocks, block_size, mip_dsfactor,
+                    chunknum=chunknum,
+                    lvl_to_mip_kwargs=lvl_to_mip_kwargs,
+                    interleaved_channels=interleaved_channels,
+                    channel=channel, deskew_kwargs=deskew_kwargs):
+                mips.append(miparr)
+                if miparr.lvl == max_mip:
+                    futs.append(e.submit(
+                        write_mips, mip_ds, mips))
+                    mips = []
+            for fut in concurrent.futures.as_completed(futs):
+                _ = fut.result()
     print("conversion complete, closing file")
 
 
