@@ -387,14 +387,18 @@ def write_zarrv3_to_zarr(
         #     scales.append(dsfactors)
         if len(group_names) == 1:
             group_name = group_names[0]
-            try:
-                g = f.create_group(f"{group_name}")
-            except KeyError:
+            if group_name in f:
                 g = f[f"{group_name}"]
-            try:
-                attributes = group_attributes[0]
-            except IndexError:
-                print('attributes error')
+            else:
+                g = f.create_group(f"{group_name}")
+                
+            if group_attributes:
+                try:
+                    attributes = group_attributes[0]
+                except IndexError:
+                    print('attributes error')
+            else:
+                attributes = {}
 
             if "pixelResolution" in attributes:
                 if deskew_options:
@@ -407,6 +411,7 @@ def write_zarrv3_to_zarr(
         else:
             raise TiffToNGFFValueError("only one group name expected")
         scales = []
+        
         for mip_lvl in range(max_mip + 1):
             ds_lvl = g.create_dataset(
                 f"{mip_lvl}",
