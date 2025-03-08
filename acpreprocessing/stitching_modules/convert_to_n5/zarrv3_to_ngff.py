@@ -385,29 +385,31 @@ def write_zarrv3_to_zarr(
         #     dsfactors = [int(i)**mip_lvl for i in mip_dsfactor]
         #     mip_ds[mip_lvl] = ds_lvl
         #     scales.append(dsfactors)
-        group_objs = []
-        for i, group_name in enumerate(group_names):
+        if len(group_names) == 1:
+            group_name = group_names[0]
             try:
-                g = group_objs[-1].create_group(f"{group_name}")
-            except IndexError:
-                try:
-                    g = f.create_group(f"{group_name}")
-                except KeyError:
-                    g = f[f"{group_name}"]
-            group_objs.append(g)
+                g = f.create_group(f"{group_name}")
+            except KeyError:
+                g = f[f"{group_name}"]
             try:
-                attributes = group_attributes[i]
+                attributes = group_attributes[0]
             except IndexError:
-                continue
-            if deskew_options:
-                if "pixelResolution" in attributes:
-                    attributes["pixelResolution"]["dimensions"][0] /= deskew_options["deskew_stride"]
-            for k, v in attributes.items():
-                g.attrs[k] = v
+                print('attributes error')
+
+            if "pixelResolution" in attributes:
+                if deskew_options:
+                    attributes["pixelResolution"]["dimensions"][2] /= deskew_options["deskew_stride"]
+                attributes = omezarr_attrs(
+                    group_name, attributes["position"], attributes["pixelResolution"]["dimensions"], max_mip)
+            if attributes:
+                for k, v in attributes.items():
+                    g.attrs[k] = v
+        else:
+            raise TiffToNGFFValueError("only one group name expected")
         scales = []
         for mip_lvl in range(max_mip + 1):
             ds_lvl = g.create_dataset(
-                f"s{mip_lvl}",
+                f"{mip_lvl}",
                 chunks=chunk_size,
                 shape=mip_level_shape(mip_lvl, joined_shapes),
                 compression=compression,
@@ -417,9 +419,6 @@ def write_zarrv3_to_zarr(
             ds_lvl.attrs["downsamplingFactors"] = dsfactors
             mip_ds[mip_lvl] = ds_lvl
             scales.append(dsfactors)
-        g.attrs["scales"] = scales
-        group_objs[0].attrs["downsamplingFactors"] = scales
-        group_objs[0].attrs["dataType"] = dtype
         
         nblocks = [int(numpy.ceil(joined_shapes[k]/block_size[k])) for k in range(3)]
         print(str(nblocks) + " number of chunks per axis")
