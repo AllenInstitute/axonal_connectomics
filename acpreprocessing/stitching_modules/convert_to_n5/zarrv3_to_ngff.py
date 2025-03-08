@@ -424,7 +424,7 @@ def write_zarrv3_to_zarr(
             # ds_lvl.attrs["downsamplingFactors"] = dsfactors
             # mip_ds[mip_lvl] = ds_lvl
             # scales.append(dsfactors)
-            if not mip_lvl in g:
+            if not str(mip_lvl) in g:
                 mip_3dshape = mip_level_shape(mip_lvl, joined_shapes)
                 ds_lvl = g.create_dataset(
                     f"{mip_lvl}",
@@ -434,7 +434,7 @@ def write_zarrv3_to_zarr(
                     dtype=dtype
                 )
             else:
-                ds_lvl = g[mip_lvl]
+                ds_lvl = g[str(mip_lvl)]
             dsfactors = [int(i)**mip_lvl for i in mip_dsfactor]
             mip_ds[mip_lvl] = ds_lvl
             scales.append(dsfactors)
