@@ -423,7 +423,7 @@ def write_zarrv3_to_zarr(
         
         nblocks = [int(numpy.ceil(joined_shapes[k]/block_size[k])) for k in range(3)]
         print(str(nblocks) + " number of chunks per axis")
-        print(str(g[0].nchunks) + " chunk number sanity check")
+        #print(str(g[0].nchunks) + " chunk number sanity check")
     
         with concurrent.futures.ThreadPoolExecutor(max_workers=workers) as e:
             futs = []
