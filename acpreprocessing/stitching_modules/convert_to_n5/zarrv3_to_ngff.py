@@ -522,7 +522,9 @@ class Zarrv3ToZarrInputParameters(argschema.ArgSchema,
     chunk_size = argschema.fields.Tuple((
         argschema.fields.Int(),
         argschema.fields.Int(),
-        argschema.fields.Int()), required=False, default=(64, 64, 64))
+        argschema.fields.Int(),
+        argschema.fields.Int(),
+        argschema.fields.Int()), required=False, default=(1, 1, 64, 64, 64))
 
 
 
