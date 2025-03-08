@@ -334,7 +334,7 @@ def write_zarrv3_to_zarr(
     workers = concurrency // slice_concurrency
     
     # updating for zarr v3 store and array creation
-    with z5py.File(output_n5) as f:
+    with z5py.File(output_n5,use_zarr_format=True) as f:
         mip_ds = {}
         # create groups with attributes according to omezarr spec
         # if len(group_names) == 1:
