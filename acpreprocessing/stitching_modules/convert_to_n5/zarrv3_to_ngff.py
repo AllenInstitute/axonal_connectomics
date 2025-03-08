@@ -413,15 +413,29 @@ def write_zarrv3_to_zarr(
         scales = []
         
         for mip_lvl in range(max_mip + 1):
-            ds_lvl = g.create_dataset(
-                f"{mip_lvl}",
-                chunks=chunk_size,
-                shape=mip_level_shape(mip_lvl, joined_shapes),
-                compression=compression,
-                dtype=dtype,
-                n_threads=slice_concurrency)
+            # ds_lvl = g.create_dataset(
+            #     f"{mip_lvl}",
+            #     chunks=chunk_size,
+            #     shape=mip_level_shape(mip_lvl, joined_shapes),
+            #     compression=compression,
+            #     dtype=dtype,
+            #     n_threads=slice_concurrency)
+            # dsfactors = [int(i)**mip_lvl for i in mip_dsfactor]
+            # ds_lvl.attrs["downsamplingFactors"] = dsfactors
+            # mip_ds[mip_lvl] = ds_lvl
+            # scales.append(dsfactors)
+            if not mip_lvl in g:
+                mip_3dshape = mip_level_shape(mip_lvl, joined_shapes)
+                ds_lvl = g.create_dataset(
+                    f"{mip_lvl}",
+                    chunks=chunk_size,
+                    shape=(1, 1, mip_3dshape[0], mip_3dshape[1], mip_3dshape[2]),
+                    compression=compression,
+                    dtype=dtype
+                )
+            else:
+                ds_lvl = g[mip_lvl]
             dsfactors = [int(i)**mip_lvl for i in mip_dsfactor]
-            ds_lvl.attrs["downsamplingFactors"] = dsfactors
             mip_ds[mip_lvl] = ds_lvl
             scales.append(dsfactors)
         
