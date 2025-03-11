@@ -413,19 +413,8 @@ def write_zarrv3_to_zarr(
         scales = []
         
         for mip_lvl in range(max_mip + 1):
-            # ds_lvl = g.create_dataset(
-            #     f"{mip_lvl}",
-            #     chunks=chunk_size,
-            #     shape=mip_level_shape(mip_lvl, joined_shapes),
-            #     compression=compression,
-            #     dtype=dtype,
-            #     n_threads=slice_concurrency)
-            # dsfactors = [int(i)**mip_lvl for i in mip_dsfactor]
-            # ds_lvl.attrs["downsamplingFactors"] = dsfactors
-            # mip_ds[mip_lvl] = ds_lvl
-            # scales.append(dsfactors)
-            if not str(mip_lvl) in g:
-                mip_3dshape = mip_level_shape(mip_lvl, joined_shapes)
+            mip_3dshape = mip_level_shape(mip_lvl, joined_shapes)
+            try:
                 ds_lvl = g.create_dataset(
                     f"{mip_lvl}",
                     chunks=chunk_size,
@@ -433,7 +422,7 @@ def write_zarrv3_to_zarr(
                     compression=compression,
                     dtype=dtype
                 )
-            else:
+            except ValueError:
                 ds_lvl = g[str(mip_lvl)]
             dsfactors = [int(i)**mip_lvl for i in mip_dsfactor]
             mip_ds[mip_lvl] = ds_lvl
