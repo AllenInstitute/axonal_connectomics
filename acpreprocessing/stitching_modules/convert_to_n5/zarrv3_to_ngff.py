@@ -336,55 +336,6 @@ def write_zarrv3_to_zarr(
     # updating for zarr v3 store and array creation
     with z5py.File(output_n5,use_zarr_format=True,dimension_separator='/') as f:
         mip_ds = {}
-        # create groups with attributes according to omezarr spec
-        # if len(group_names) == 1:
-        #     group_name = group_names[0]
-        #     if group_name in f:
-        #         g = f[f"{group_name}"]
-        #     else:
-        #         g = f.create_group(f"{group_name}")
-        #     # try:
-        #     #     g = f.create_group(f"{group_name}")
-        #     # except KeyError:
-        #     #     g = f[f"{group_name}"]
-                
-        #     if group_attributes:
-        #         try:
-        #             attributes = group_attributes[0]
-        #         except IndexError:
-        #             print('attributes error')
-        #     else:
-        #         attributes = {}
-    
-        #     if "pixelResolution" in attributes:
-        #         if deskew_options:
-        #             attributes["pixelResolution"]["dimensions"][2] /= deskew_options["deskew_stride"]
-        #         attributes = omezarr_attrs(
-        #             group_name, attributes["position"], attributes["pixelResolution"]["dimensions"], max_mip)
-        #     if attributes:
-        #         for k, v in attributes.items():
-        #             g.attrs[k] = v
-        # else:
-        #     raise TiffToNGFFValueError("only one group name expected")
-        # scales = []
-    
-        # # shuffle=Blosc.BITSHUFFLE)
-        # compression = Blosc(cname='zstd', clevel=1)
-        # for mip_lvl in range(max_mip + 1):
-        #     if not mip_lvl in g.array_keys():
-        #         mip_3dshape = mip_level_shape(mip_lvl, joined_shapes)
-        #         ds_lvl = g.create_array(
-        #             f"{mip_lvl}",
-        #             chunks=chunk_size,
-        #             shape=(1, 1, mip_3dshape[0], mip_3dshape[1], mip_3dshape[2]),
-        #             compressors=compression,
-        #             dtype=dtype
-        #         )
-        #     else:
-        #         ds_lvl = g[mip_lvl]
-        #     dsfactors = [int(i)**mip_lvl for i in mip_dsfactor]
-        #     mip_ds[mip_lvl] = ds_lvl
-        #     scales.append(dsfactors)
         if len(group_names) == 1:
             group_name = group_names[0]
             if group_name in f:
@@ -414,15 +365,18 @@ def write_zarrv3_to_zarr(
         
         for mip_lvl in range(max_mip + 1):
             mip_3dshape = mip_level_shape(mip_lvl, joined_shapes)
-            try:
-                ds_lvl = g.create_dataset(
-                    f"{mip_lvl}",
-                    chunks=chunk_size,
-                    shape=(1, 1, mip_3dshape[0], mip_3dshape[1], mip_3dshape[2]),
-                    compression=compression,
-                    dtype=dtype
-                )
-            except ValueError:
+            if not str(mip_lvl) in g:
+                try:
+                    ds_lvl = g.create_dataset(
+                        f"{mip_lvl}",
+                        chunks=chunk_size,
+                        shape=(1, 1, mip_3dshape[0], mip_3dshape[1], mip_3dshape[2]),
+                        compression=compression,
+                        dtype=dtype
+                    )
+                except:
+                    ds_lvl = g[str(mip_lvl)]
+            else:
                 ds_lvl = g[str(mip_lvl)]
             dsfactors = [int(i)**mip_lvl for i in mip_dsfactor]
             mip_ds[mip_lvl] = ds_lvl
@@ -430,7 +384,6 @@ def write_zarrv3_to_zarr(
         
         nblocks = [int(numpy.ceil(joined_shapes[k]/block_size[k])) for k in range(3)]
         print(str(nblocks) + " number of chunks per axis")
-        #print(str(g[0].nchunks) + " chunk number sanity check")
     
         with concurrent.futures.ThreadPoolExecutor(max_workers=workers) as e:
             futs = []
