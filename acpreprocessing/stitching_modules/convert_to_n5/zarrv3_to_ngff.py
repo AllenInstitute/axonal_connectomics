@@ -343,7 +343,7 @@ def write_zarrv3_to_zarr(
             else:
                 try:
                     g = f.create_group(f"{group_name}")
-                except KeyError:
+                except:
                     g = f[f"{group_name}"]
                 
             if group_attributes:
@@ -379,7 +379,7 @@ def write_zarrv3_to_zarr(
                         compression=compression,
                         dtype=dtype
                     )
-                except KeyError:
+                except:
                     ds_lvl = g[str(mip_lvl)]
                 
             dsfactors = [int(i)**mip_lvl for i in mip_dsfactor]
