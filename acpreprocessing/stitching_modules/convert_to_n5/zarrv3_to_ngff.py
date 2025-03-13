@@ -341,7 +341,10 @@ def write_zarrv3_to_zarr(
             if group_name in f:
                 g = f[f"{group_name}"]
             else:
-                g = f.create_group(f"{group_name}")
+                try:
+                    g = f.create_group(f"{group_name}")
+                except KeyError:
+                    g = f[f"{group_name}"]
                 
             if group_attributes:
                 try:
@@ -365,7 +368,9 @@ def write_zarrv3_to_zarr(
         
         for mip_lvl in range(max_mip + 1):
             mip_3dshape = mip_level_shape(mip_lvl, joined_shapes)
-            if not str(mip_lvl) in g:
+            if str(mip_lvl) in g:
+                ds_lvl = g[str(mip_lvl)]
+            else:
                 try:
                     ds_lvl = g.create_dataset(
                         f"{mip_lvl}",
@@ -374,10 +379,9 @@ def write_zarrv3_to_zarr(
                         compression=compression,
                         dtype=dtype
                     )
-                except:
+                except KeyError:
                     ds_lvl = g[str(mip_lvl)]
-            else:
-                ds_lvl = g[str(mip_lvl)]
+                
             dsfactors = [int(i)**mip_lvl for i in mip_dsfactor]
             mip_ds[mip_lvl] = ds_lvl
             scales.append(dsfactors)
