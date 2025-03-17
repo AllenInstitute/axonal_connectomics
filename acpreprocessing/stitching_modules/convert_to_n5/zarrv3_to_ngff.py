@@ -435,7 +435,7 @@ def zarrv3_to_ngff_group(zarr_fn, output, *args, block_cc=1, chunknum=-1, **kwar
             numblocks = calculate_blocks(zshape,**kwargs)
             with concurrent.futures.ProcessPoolExecutor(max_workers=block_cc) as e:
                 futs = []
-                for n in [4,5]:#range(numblocks):
+                for n in range(numblocks):
                     futs.append(e.submit(write_zarrv3_to_zarr,zarr_fn,*args,slice_concurrency=block_cc, chunknum=n, **kwargs))
                     sleep(1)
                 for fut in concurrent.futures.as_completed(futs):
