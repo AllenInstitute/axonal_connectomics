@@ -2,15 +2,8 @@
 
 import concurrent.futures
 import dataclasses
-#import itertools
-# import math
-#import pathlib
-
-# import imageio
-#from natsort import natsorted
 import numpy
-# import skimage
-
+from time import sleep
 import zarr
 import z5py
 from numcodecs import Blosc
@@ -444,6 +437,7 @@ def zarrv3_to_ngff_group(zarr_fn, output, *args, block_cc=1, chunknum=-1, **kwar
                 futs = []
                 for n in range(numblocks):
                     futs.append(e.submit(write_zarrv3_to_zarr,zarr_fn,*args,slice_concurrency=block_cc, chunknum=n, **kwargs))
+                    sleep(1)
                 for fut in concurrent.futures.as_completed(futs):
                     _ = fut.result()
     else:
