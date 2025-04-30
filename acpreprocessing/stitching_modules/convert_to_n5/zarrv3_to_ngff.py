@@ -249,8 +249,38 @@ def iterate_mip_levels_from_dataset(
             # block_index += 1
 
 
+
+def write_zarr_slice(input_zarray,output_file,group_name,max_mip,nblocks,
+                    block_size,mip_dsfactor,slicenum,lvl_to_mip_kwargs,
+                    interleaved_channels,channel,deskew_kwargs,max_workers):
+    # output zarr array pyramid created
+    # open output zarr pyramid as tensorstores with ts_utils from ac_segmentation
+    mip_ts = {}
+    for mip_lvl in range(max_mip + 1):
+        mip_path = "/".join([f"{output_file}",f"{group_name}",f"{mip_lvl}"])
+        ts_lvl = open_tensor(fpath=mip_path)
+        mip_ts[mip_lvl] = ts_lvl
+
+    with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as e:
+        futs = []
+        mips = []
+        for miparr in iterate_mip_levels_from_dataset(
+                input_zarray, max_mip, max_mip, nblocks, block_size, mip_dsfactor,
+                chunknum=slicenum,
+                lvl_to_mip_kwargs=lvl_to_mip_kwargs,
+                interleaved_channels=interleaved_channels,
+                channel=channel, deskew_kwargs=deskew_kwargs):
+            mips.append(miparr)
+            if miparr.lvl == max_mip:
+                futs.append(e.submit(
+                    write_mips, mip_ts, mips))
+                mips = []
+        for fut in concurrent.futures.as_completed(futs):
+            _ = fut.result()
+
+
 def write_zarrv3_to_zarr(
-        zarr_fn, output_n5, group_names, group_attributes=None, max_mip=0,
+        zarr_fn, output_file, group_names, group_attributes=None, max_mip=0,
         mip_dsfactor=(2, 2, 2), chunk_size=(1, 1, 64, 64, 64),
         concurrency=10, slice_concurrency=1, block_size=(512,512,512),
         compression="raw", dtype="uint16", lvl_to_mip_kwargs=None,
@@ -321,8 +351,6 @@ def write_zarrv3_to_zarr(
         print("deskewed shape:" + str(joined_shapes))
     else:
         deskew_kwargs = {}
-
-    workers = concurrency // slice_concurrency
     
     # updating for zarr v3 store and array creation
     # TODO compressors
@@ -330,7 +358,7 @@ def write_zarrv3_to_zarr(
     # employ zarr-python for group and array creation (and input data reading)
     # employ tensorstore for output data writing (and reading eventually)
     
-    f = zarr.group(output_n5)
+    f = zarr.group(output_file)
     #mip_ds = {}
     if len(group_names) == 1:
         group_name = group_names[0]
@@ -387,34 +415,50 @@ def write_zarrv3_to_zarr(
         dsfactors = [int(i)**mip_lvl for i in mip_dsfactor]
         #mip_ds[mip_lvl] = ds_lvl
         scales.append(dsfactors)
-        
-    # output zarr array pyramid created
-    # open output zarr pyramid as tensorstores with ts_utils from ac_segmentation
-    mip_ts = {}
-    for mip_lvl in range(max_mip + 1):
-        mip_path = "/".join([f"{output_n5}",f"{group_name}",f"{mip_lvl}"])
-        ts_lvl = open_tensor(fpath=mip_path)
-        mip_ts[mip_lvl] = ts_lvl
     
     nblocks = [int(numpy.ceil(joined_shapes[k]/block_size[k])) for k in range(3)]
     print(str(nblocks) + " number of chunks per axis")
-
-    with concurrent.futures.ThreadPoolExecutor(max_workers=workers) as e:
-        futs = []
-        mips = []
-        for miparr in iterate_mip_levels_from_dataset(
-                zarray, max_mip, max_mip, nblocks, block_size, mip_dsfactor,
-                chunknum=chunknum,
-                lvl_to_mip_kwargs=lvl_to_mip_kwargs,
-                interleaved_channels=interleaved_channels,
-                channel=channel, deskew_kwargs=deskew_kwargs):
-            mips.append(miparr)
-            if miparr.lvl == max_mip:
-                futs.append(e.submit(
-                    write_mips, mip_ts, mips))
-                mips = []
-        for fut in concurrent.futures.as_completed(futs):
-            _ = fut.result()
+    if chunknum > -1:
+        slice_workers = concurrency
+        write_zarr_slice(input_zarray=zarray,
+                        output_file=output_file,
+                        group_name=group_name,
+                        max_mip=max_mip,
+                        nblocks=nblocks,
+                        block_size=block_size,
+                        mip_dsfactor=mip_dsfactor,
+                        slicenum=chunknum,
+                        lvl_to_mip_kwargs=lvl_to_mip_kwargs,
+                        interleaved_channels=interleaved_channels,
+                        channel=channel,
+                        deskew_kwargs=deskew_kwargs,
+                        max_workers=slice_workers)
+    else:
+        slice_workers = concurrency // slice_concurrency
+        zf = zarr.open(zarr_fn)
+        zshape = zf['0'].shape
+        numslices = calculate_blocks(zshape,**kwargs)
+        with concurrent.futures.ProcessPoolExecutor(max_workers=slice_concurrency) as e:
+            futs = []
+            for n in range(numslices):
+                futs.append(e.submit(write_zarr_slice,
+                                     input_zarray=zarray,
+                                    output_file=output_file,
+                                    group_name=group_name,
+                                    max_mip=max_mip,
+                                    nblocks=nblocks,
+                                    block_size=block_size,
+                                    mip_dsfactor=mip_dsfactor,
+                                    slicenum=n,
+                                    lvl_to_mip_kwargs=lvl_to_mip_kwargs,
+                                    interleaved_channels=interleaved_channels,
+                                    channel=channel,
+                                    deskew_kwargs=deskew_kwargs,
+                                    max_workers=slice_workers))
+                sleep(1)
+            for fut in concurrent.futures.as_completed(futs):
+                _ = fut.result()
+    
     print("conversion complete, closing file")
 
 
@@ -444,21 +488,7 @@ def zarrv3_to_ngff_group(zarr_fn, output, *args, block_cc=1, chunknum=-1, **kwar
 
     if output == 'zarr':
         print('converting to zarr')
-        if chunknum > -1:
-            return write_zarrv3_to_zarr(zarr_fn, *args, slice_concurrency=1, chunknum=chunknum, **kwargs)
-        else:
-            zf = zarr.open(zarr_fn)
-            zshape = zf['0'].shape
-            numblocks = calculate_blocks(zshape,**kwargs)
-            for n in range(numblocks):
-                write_zarrv3_to_zarr(zarr_fn, *args, slice_concurrency=block_cc, chunknum=n, **kwargs)
-            # with concurrent.futures.ProcessPoolExecutor(max_workers=block_cc) as e:
-            #     futs = []
-            #     for n in range(numblocks):
-            #         futs.append(e.submit(write_zarrv3_to_zarr,zarr_fn,*args,slice_concurrency=block_cc, chunknum=n, **kwargs))
-            #         sleep(1)
-            #     for fut in concurrent.futures.as_completed(futs):
-            #         _ = fut.result()
+        return write_zarrv3_to_zarr(zarr_fn, *args, slice_concurrency=block_cc, chunknum=chunknum, **kwargs)
     else:
         print('unknown output format: ' + output)
 
