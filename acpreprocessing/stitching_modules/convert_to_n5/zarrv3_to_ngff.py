@@ -437,7 +437,7 @@ def write_zarrv3_to_zarr(
         slice_workers = concurrency // slice_concurrency
         zf = zarr.open(zarr_fn)
         zshape = zf['0'].shape
-        numslices = calculate_blocks(zshape,**kwargs)
+        numslices = calculate_blocks(zshape,block_size,deskew_options)
         with concurrent.futures.ProcessPoolExecutor(max_workers=slice_concurrency) as e:
             futs = []
             for n in range(numslices):
@@ -462,7 +462,7 @@ def write_zarrv3_to_zarr(
     print("conversion complete, closing file")
 
 
-def calculate_blocks(dshape,block_size,deskew_options,**kwargs):
+def calculate_blocks(dshape,block_size,deskew_options):
     if deskew_options:
         transpose = deskew_options["deskew_transpose"]
         stride = deskew_options["deskew_stride"]
