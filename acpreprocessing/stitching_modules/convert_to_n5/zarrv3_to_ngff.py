@@ -404,7 +404,7 @@ def write_zarrv3_to_zarr(
                 ds_lvl = g.create_array(
                     name=f"{mip_lvl}",
                     chunks=chunk_size,
-                    shards=(1,1,1024,1024,1024),
+                    shards=(1,1,2048,2048,2048),
                     shape=(1, 1, mip_3dshape[0], mip_3dshape[1], mip_3dshape[2]),
                     compressors=compressors,
                     dtype=dtype
@@ -455,7 +455,7 @@ def write_zarrv3_to_zarr(
                                     channel=channel,
                                     deskew_kwargs=deskew_kwargs,
                                     max_workers=slice_workers))
-                sleep(1)
+                sleep(5)
             for fut in concurrent.futures.as_completed(futs):
                 _ = fut.result()
     
