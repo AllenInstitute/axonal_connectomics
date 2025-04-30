@@ -5,13 +5,13 @@ import dataclasses
 import numpy
 from time import sleep
 import zarr
-import z5py
+# import z5py
 from numcodecs import Blosc
 import argschema
 
 import acpreprocessing.stitching_modules.convert_to_n5.psdeskew as psd
 from acpreprocessing.stitching_modules.convert_to_n5.tiff_to_ngff import downsample_array,mip_level_shape,omezarr_attrs,NGFFGroupGenerationParameters,TiffToNGFFValueError
-
+from acpreprocessing.stitching_modules.convert_to_n5.ts_utils import open_tensor
 
 @dataclasses.dataclass
 class MIPArray:
@@ -322,20 +322,23 @@ def write_zarrv3_to_zarr(
     else:
         deskew_kwargs = {}
 
-    # TODO DESKEW: does this generally work regardless of skew?
-
     workers = concurrency // slice_concurrency
     
     # updating for zarr v3 store and array creation
-    with z5py.File(output_n5,use_zarr_format=True,dimension_separator='/') as f:
-        mip_ds = {}
+    # TODO compressors
+    # TODO sharding
+    # employ zarr-python for group and array creation (and input data reading)
+    # employ tensorstore for output data writing (and reading eventually)
+    
+    with zarr.group(output_n5) as f:
+        #mip_ds = {}
         if len(group_names) == 1:
             group_name = group_names[0]
             if group_name in f:
                 g = f[f"{group_name}"]
             else:
                 try:
-                    g = f.create_group(f"{group_name}")
+                    g = f.create_group(name=f"{group_name}")
                 except:
                     g = f[f"{group_name}"]
                 
@@ -359,25 +362,39 @@ def write_zarrv3_to_zarr(
             raise TiffToNGFFValueError("only one group name expected")
         scales = []
         
+        if compression == "raw":
+            compressors = None
+        elif compression == "blosc":
+            compressors = zarr.codecs.BloscCodec(cname='zstd', clevel=0, shuffle=zarr.codecs.BloscShuffle.bitshuffle)
+        
         for mip_lvl in range(max_mip + 1):
             mip_3dshape = mip_level_shape(mip_lvl, joined_shapes)
-            if str(mip_lvl) in g:
-                ds_lvl = g[str(mip_lvl)]
+            if f"{mip_lvl}" in g:
+                ds_lvl = g[f"{mip_lvl}"]
             else:
                 try:
-                    ds_lvl = g.create_dataset(
-                        f"{mip_lvl}",
+                    ds_lvl = g.create_array(
+                        name=f"{mip_lvl}",
                         chunks=chunk_size,
+                        shards=(1,1,1024,1024,1024),
                         shape=(1, 1, mip_3dshape[0], mip_3dshape[1], mip_3dshape[2]),
-                        compression=compression,
+                        compressors=compressors,
                         dtype=dtype
                     )
                 except:
-                    ds_lvl = g[str(mip_lvl)]
+                    ds_lvl = g[f"{mip_lvl}"]
                 
             dsfactors = [int(i)**mip_lvl for i in mip_dsfactor]
-            mip_ds[mip_lvl] = ds_lvl
+            #mip_ds[mip_lvl] = ds_lvl
             scales.append(dsfactors)
+        
+        # output zarr array pyramid created
+        # open output zarr pyramid as tensorstores with ts_utils from ac_segmentation
+        mip_ts = {}
+        for mip_lvl in range(max_mip + 1):
+            mip_path = "/".join([f"{output_n5}",f"{group_name}",f"{mip_lvl}"])
+            ts_lvl = open_tensor(fpath=mip_path)
+            mip_ts[mip_lvl] = ts_lvl
         
         nblocks = [int(numpy.ceil(joined_shapes[k]/block_size[k])) for k in range(3)]
         print(str(nblocks) + " number of chunks per axis")
@@ -394,7 +411,7 @@ def write_zarrv3_to_zarr(
                 mips.append(miparr)
                 if miparr.lvl == max_mip:
                     futs.append(e.submit(
-                        write_mips, mip_ds, mips))
+                        write_mips, mip_ts, mips))
                     mips = []
             for fut in concurrent.futures.as_completed(futs):
                 _ = fut.result()
@@ -433,6 +450,8 @@ def zarrv3_to_ngff_group(zarr_fn, output, *args, block_cc=1, chunknum=-1, **kwar
             zf = zarr.open(zarr_fn)
             zshape = zf['0'].shape
             numblocks = calculate_blocks(zshape,**kwargs)
+            # for n in range(numblocks):
+            #     write_zarrv3_to_zarr(zarr_fn, *args, slice_concurrency=block_cc, chunknum=n, **kwargs)
             with concurrent.futures.ProcessPoolExecutor(max_workers=block_cc) as e:
                 futs = []
                 for n in range(numblocks):
