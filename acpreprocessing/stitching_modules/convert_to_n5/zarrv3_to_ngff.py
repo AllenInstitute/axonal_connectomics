@@ -404,7 +404,7 @@ def write_zarrv3_to_zarr(
                 ds_lvl = g.create_array(
                     name=f"{mip_lvl}",
                     chunks=chunk_size,
-                    shards=(1,1,512,512,512),
+                    shards=(1,1,1024,1024,1024),
                     shape=(1, 1, mip_3dshape[0], mip_3dshape[1], mip_3dshape[2]),
                     compressors=compressors,
                     dtype=dtype
