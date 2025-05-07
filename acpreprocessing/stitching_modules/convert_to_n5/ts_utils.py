@@ -157,15 +157,18 @@ def open_tensor(fpath=None, kvstore=None, driver='zarr', bytes_limit=100_000_000
                 'recheck_cached_data': 'open',
             })
          return dataset_future.result()
-        
 
-def create_tensor(arr_shape, fpath=None, kvstore=None, driver='zarr3', dtype='float32', fill_value=-np.inf, 
-                       chunk_shape=[64, 64, 64], res=[1,1,1], scale=0):
+
+
+def create_tensor(arr_shape, fpath=None, kvstore=None, driver='zarr3', dtype='float32', fill_value=0, 
+                       chunk_shape=[64, 64, 64], shard_shape=None, res=[1,1,1], scale=0, codecs=None, index_codecs=None, sharded=False):
     """Create a tensorstore object, with optional setting of array
        driver: Type of file, including zarr, n5, precomputed
        store: Type of source, including file, in-memory, s3
        AWS Key, AWS_Secret_Key: Only applicable to s3 store
     """
+    
+    chunk_shape = list(chunk_shape)
     if 'int' in str(dtype):
         fill_value=0
 
@@ -173,7 +176,68 @@ def create_tensor(arr_shape, fpath=None, kvstore=None, driver='zarr3', dtype='fl
     if kvstore is None:
         kvstore = create_kvstore(fpath, store='file', AWS_param=None)
 
-    if driver in ['zarr','zarr3','n5']:
+    if driver == 'zarr':
+        out_arr = ts.open({
+            "driver": "zarr",
+            "kvstore": kvstore,
+            "key_encoding": ".",
+            "metadata": {
+                "shape": list(arr_shape),
+                "chunks": chunk_shape,
+                "order": "C",
+                "compressor": codecs
+            },
+            "dtype":dtype
+        },
+        fill_value=fill_value,
+        create=True,  # this is what makes it a new one
+        delete_existing=False  # optional: overwrite any existing array
+        ).result()
+
+    if driver == 'zarr3':
+        meta = {
+            "driver": "zarr3",
+            "kvstore": kvstore,
+            "metadata": {
+                "shape": list(arr_shape),
+                "chunk_grid": {"name": "regular", "configuration": {"chunk_shape": chunk_shape}},
+                "data_type": dtype,
+                "codecs": []
+            }
+        }
+
+        if codecs:
+            meta['metadata']['codecs'] = [codecs]
+        if index_codecs:
+            meta['metadata']['index_codecs'] = [index_codecs]
+
+        if sharded == True:
+            if not shard_shape:
+                shard_shape = list(np.array(chunk_shape[:-3] + [x * 4 for x in chunk_shape[-3:]]))
+            meta['metadata']['chunk_grid']['configuration']['chunk_shape']=shard_shape
+            shard_meta = {
+                    "name": "sharding_indexed",
+                    "configuration": {
+                        "chunk_shape": chunk_shape,
+                        "codecs": [],
+                        "index_codecs": [],
+                        "index_location": "end"
+                            }
+                        }
+            meta['metadata']['codecs'] = [shard_meta]
+
+            if codecs:
+                meta['metadata']['codecs'][0]['configuration']['codecs'] = [codecs]
+            if index_codecs:
+                meta['metadata']['codecs'][0]['configuration']['index_codecs'] = [index_codecs]
+            
+        out_arr =ts.open(meta,
+        fill_value = 0,
+        create=True,  
+        delete_existing=False 
+        ).result()
+
+    if driver == 'n5':
         fill_value=None if driver=='n5' else fill_value
         out_arr = ts.open({
          'driver': driver,
@@ -182,6 +246,7 @@ def create_tensor(arr_shape, fpath=None, kvstore=None, driver='zarr3', dtype='fl
          dtype=dtype,
          fill_value=fill_value,
          chunk_layout=ts.ChunkLayout(chunk_shape=chunk_shape),
+         
          create=True,
          shape=list(arr_shape)).result()
 
@@ -205,6 +270,7 @@ def create_tensor(arr_shape, fpath=None, kvstore=None, driver='zarr3', dtype='fl
                     )).result()
 
     return out_arr
+
 
 
 create_EmptyTensor = create_tensor  
