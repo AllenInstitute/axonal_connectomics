@@ -1,4 +1,281 @@
 #!/usr/bin/env python
+
+import configparser
+from typing import Optional
+import numpy as np
+import tensorstore as ts
+import os
+import json
+import boto3
+from functools import lru_cache
+from pathlib import Path
+from tempfile import TemporaryDirectory
+from typing_extensions import Self
+import torch
+
+
+def split_s3_path(s3_path):
+    if 'https' in s3_path:
+        path_parts=s3_path.replace("https://","").split("/")
+        bucket=path_parts.pop(0).split(".s3")[0]
+        key="/".join(path_parts)
+    else:
+        path_parts=s3_path.replace("s3://","").split("/")
+        bucket=path_parts.pop(0)
+        key="/".join(path_parts)
+    return bucket, key
+
+class AWS_Parameters:
+    entries: dict[int, tuple[str, str]]
+    temp_dir: TemporaryDirectory[str]
+    credentials_file_path: Path
+    @classmethod
+    @lru_cache
+    def singleton(cls) -> "Self":
+        return cls()
+        
+    def __init__(self, profile=None, region=None, endpoint_url=None):
+        self.entries = {}
+        self.temp_dir = TemporaryDirectory()
+        self.credentials_file_path = Path(self.temp_dir.name) / "aws_credentials"
+        self.credentials_file_path.touch()
+        #create session
+        session = boto3.Session(profile_name=profile, region_name=region)
+        if endpoint_url:
+            self.endpoint_url=endpoint_url
+        self.profile=session.profile_name
+        self.region=session.region_name
+    def _dump_credentials(self) -> None:
+        self.credentials_file_path.write_text(
+            "\n".join(
+                [
+                    f"[{self.profile}]\naws_access_key_id = {access_key_id}\naws_secret_access_key = {secret_access_key}\n"
+                    for key_hash, (
+                        access_key_id,
+                        secret_access_key,
+                    ) in self.entries.items()
+                ]
+            )
+        )
+    def add_credentials(self, access_key_id: str, secret_access_key: str) -> dict[str, str]:
+        key_tuple = (access_key_id, secret_access_key)
+        key_hash = hash(key_tuple)
+        self.entries[key_hash] = key_tuple
+        self._dump_credentials()
+        self.credential_file = {
+            "profile": f"profile-{key_hash}",
+            "filename": str(self.credentials_file_path),
+            "metadata_endpoint": "",
+        }
+
+
+def create_kvstore(fpath, store, AWS_param=None):
+    """Creates the kvstore configuration based on the input parameters.
+
+    Args:
+        fpath (str): Path to the tensorstore file or S3 URL.
+        store (str): Type of store ('file' or 's3').
+        AWS_param (Optional[dict]): AWS credentials and parameters (only used for S3).
+
+    Returns:
+        dict: The kvstore configuration.
+    """
+    kvstore = {"driver": store, "path": fpath}
+    
+    if store == 's3':
+        # Parse the S3 URL into bucket and path
+        bucket, path = split_s3_path(fpath)
+        kvstore = {"driver": "s3", "bucket": bucket, "path": path}
+        
+        if AWS_param:
+            kvstore.update({"aws_region": AWS_param.region})
+            if hasattr(AWS_param, "endpoint_url"):
+                kvstore.update({"endpoint": AWS_param.endpoint_url})
+            
+            # Handle credentials
+            cred = {"aws_credentials": {"profile": AWS_param.profile}}
+            if hasattr(AWS_param, "credential_file"):
+                cred = {"aws_credentials": {
+                    "profile": AWS_param.profile,
+                    "filename": AWS_param.credential_file['filename']
+                }}
+            kvstore.update(cred)
+    
+    return kvstore
+    
+    
+def open_tensor(fpath=None, kvstore=None, driver='zarr', bytes_limit=100_000_000):
+    """Open a tensorstore object.
+
+    Args:
+        fpath (str): Path to the tensorstore file or S3 URL.
+        driver (str): Type of file (e.g., 'zarr', 'n5', 'precomputed').
+        kvstore (dict, optional): Pre-constructed kvstore configuration.
+        bytes_limit (int): Memory limit for in-memory cache in bytes (default 100MB).
+
+    Returns:
+        tensorstore.Dataset: The opened tensorstore dataset.
+    """
+    # If kvstore is not provided, create it from fpath
+    if kvstore is None:
+        kvstore = create_kvstore(fpath, store='file', AWS_param=None)
+
+    # Check if zarr v3
+    if 'zarr' in driver:
+        # Load the tensorstore array with cache configuration
+        try:
+            dataset_future = ts.open({
+                'driver': 'zarr',
+                'kvstore': kvstore,
+                'context': {
+                    'cache_pool': {
+                        'total_bytes_limit': bytes_limit
+                    }
+                },
+                'recheck_cached_data': 'open',
+            })
+            return dataset_future.result()
+    
+        except:
+            dataset_future = ts.open({
+                'driver': 'zarr3',
+                'kvstore': kvstore,
+                'context': {
+                    'cache_pool': {
+                        'total_bytes_limit': bytes_limit
+                    }
+                },
+                'recheck_cached_data': 'open',
+            })
+            return dataset_future.result()
+            
+    else:
+         dataset_future = ts.open({
+                'driver': driver,
+                'kvstore': kvstore,
+                'context': {
+                    'cache_pool': {
+                        'total_bytes_limit': bytes_limit
+                    }
+                },
+                'recheck_cached_data': 'open',
+            })
+         return dataset_future.result()
+
+
+
+def create_tensor(arr_shape, fpath=None, kvstore=None, driver='zarr3', dtype='float32', fill_value=0, 
+                       chunk_shape=[64, 64, 64], shard_shape=None, res=[1,1,1], scale=0, codecs=None, index_codecs=None, sharded=False):
+    """Create a tensorstore object, with optional setting of array
+       driver: Type of file, including zarr, n5, precomputed
+       store: Type of source, including file, in-memory, s3
+       AWS Key, AWS_Secret_Key: Only applicable to s3 store
+    """
+    
+    chunk_shape = list(chunk_shape)
+    if 'int' in str(dtype):
+        fill_value=0
+
+     # If kvstore is not provided, create it from fpath
+    if kvstore is None:
+        kvstore = create_kvstore(fpath, store='file', AWS_param=None)
+
+    if driver == 'zarr':
+        out_arr = ts.open({
+            "driver": "zarr",
+            "kvstore": kvstore,
+            "key_encoding": ".",
+            "metadata": {
+                "shape": list(arr_shape),
+                "chunks": chunk_shape,
+                "order": "C",
+                "compressor": codecs
+            },
+            "dtype":dtype
+        },
+        fill_value=fill_value,
+        create=True,  # this is what makes it a new one
+        delete_existing=False  # optional: overwrite any existing array
+        ).result()
+
+    if driver == 'zarr3':
+        meta = {
+            "driver": "zarr3",
+            "kvstore": kvstore,
+            "metadata": {
+                "shape": list(arr_shape),
+                "chunk_grid": {"name": "regular", "configuration": {"chunk_shape": chunk_shape}},
+                "data_type": dtype,
+                "codecs": []
+            }
+        }
+
+        if codecs:
+            meta['metadata']['codecs'] = [codecs]
+        if index_codecs:
+            meta['metadata']['index_codecs'] = [index_codecs]
+
+        if sharded == True:
+            if not shard_shape:
+                shard_shape = list(np.array(chunk_shape[:-3] + [x * 4 for x in chunk_shape[-3:]]))
+            meta['metadata']['chunk_grid']['configuration']['chunk_shape']=shard_shape
+            shard_meta = {
+                    "name": "sharding_indexed",
+                    "configuration": {
+                        "chunk_shape": chunk_shape,
+                        "codecs": [],
+                        "index_codecs": [],
+                        "index_location": "end"
+                            }
+                        }
+            meta['metadata']['codecs'] = [shard_meta]
+
+            if codecs:
+                meta['metadata']['codecs'][0]['configuration']['codecs'] = [codecs]
+            if index_codecs:
+                meta['metadata']['codecs'][0]['configuration']['index_codecs'] = [index_codecs]
+            
+        out_arr =ts.open(meta,
+        fill_value = 0,
+        create=True,  
+        delete_existing=False 
+        ).result()
+
+    if driver == 'n5':
+        fill_value=None if driver=='n5' else fill_value
+        out_arr = ts.open({
+         'driver': driver,
+         'kvstore': kvstore,
+         },
+         dtype=dtype,
+         fill_value=fill_value,
+         chunk_layout=ts.ChunkLayout(chunk_shape=chunk_shape),
+         
+         create=True,
+         shape=list(arr_shape)).result()
+
+    if driver == 'neuroglancer_precomputed':
+        arr_shape=list(arr_shape)+[1] if len(arr_shape)==3 else arr_shape
+        out_arr = ts.open(
+                    {
+                        "driver": "neuroglancer_precomputed",
+                        "kvstore": kvstore,
+                        "scale_metadata": {
+                            "resolution": res,
+                            "chunk_size": list(chunk_shape),
+                            "encoding": "raw",
+                            "key": "s" + str(scale)
+                        }
+                    },
+                    create=True,
+                    dtype=dtype,
+                    domain=ts.IndexDomain(
+                        shape=list(list(arr_shape)),
+                    )).result()
+
+    return out_arr
+
+
 import concurrent.futures
 import dataclasses
 import numpy
@@ -14,7 +291,6 @@ import numcodecs
 
 import acpreprocessing.stitching_modules.convert_to_n5.psdeskew as psd
 from acpreprocessing.stitching_modules.convert_to_n5.tiff_to_ngff import downsample_array,mip_level_shape,omezarr_attrs,NGFFGroupGenerationParameters,TiffToNGFFValueError
-from acpreprocessing.stitching_modules.convert_to_n5.ts_utils import open_tensor,create_tensor,AWS_Parameters,create_kvstore
 
 import os
 import json
@@ -53,15 +329,15 @@ def dswrite_block(ds, start, end, arr, silent_overflow=True):
         for i in range(3):
             if end[i] >= ds.shape[2+i] and silent_overflow:
                 end[i] = ds.shape[2+i]
-        #if end > start:
-        ds[0, 0, start[0]:end[0], start[1]:end[1], start[2]:end[2]] = arr[:(end[0] - start[0]), :(end[1] - start[1]), :(end[2] - start[2])]
+        if end > start:
+            ds[0, 0, start[0]:end[0], start[1]:end[1], start[2]:end[2]] = arr[:(end[0] - start[0]), :(end[1] - start[1]), :(end[2] - start[2])]
         #ds[0, 0, start[0]:end[0], start[1]:end[1], start[2]:end[2]].write(arr[:(end[0] - start[0]), :(end[1] - start[1]), :(end[2] - start[2])]).result() ###edit
     elif len(ds.shape) == 3:
         for i in range(3):    
             if end[i] >= ds.shape[i] and silent_overflow:
                 end[i] = ds.shape[i]
-        #if end > start:
-        ds[start[0]:end[0], start[1]:end[1], start[2]:end[2]] = arr[:(end[0] - start[0]), :(end[1] - start[1]), :(end[2] - start[2])]
+        if end > start:
+            ds[start[0]:end[0], start[1]:end[1], start[2]:end[2]] = arr[:(end[0] - start[0]), :(end[1] - start[1]), :(end[2] - start[2])]
         #ds[start[0]:end[0], start[1]:end[1], start[2]:end[2]].write(arr[:(end[0] - start[0]), :(end[1] - start[1]), :(end[2] - start[2])]).result() ###edit
 
 
@@ -168,6 +444,7 @@ def iterate_numpy_blocks_from_dataset(
                     print(str(chunk_tuple))
                 block_start = [chunk_tuple[k]*block_size[k] for k in range(3)]
                 block_end = [block_start[k] + block_size[k] for k in range(3)]
+                block_end = np.minimum(np.array(block_end), np.array(dataset.shape[-3:]))
                 arr = numpy.asarray(dataset[block_start[0]:block_end[0],block_start[1]:block_end[1],block_start[2]:block_end[2]])
                                   
                 
@@ -268,7 +545,7 @@ def iterate_mip_levels_from_dataset(
 def create_output_zarr(
         zarr_fn, output_n5, group_names, group_attributes=None, max_mip=0,
         mip_dsfactor=(2, 2, 2), chunk_size=(1, 1, 64, 64, 64),
-        concurrency=10, slice_concurrency=1, block_size=(512,512,512),
+        concurrency=5, slice_concurrency=1, block_size=(128,128,128),
         compression=None, dtype="uint16", lvl_to_mip_kwargs=None,
         interleaved_channels=1, channel=0, deskew_options=None, **kwargs):
     """write a stack represented by an iterator of multi-image files as a zarr
@@ -355,6 +632,7 @@ def create_output_zarr(
     workers = concurrency // slice_concurrency 
     mip_ds = {}
     group_name = group_names[0]
+    scales = []
     
     try:
         f = zarr.open(zstore, mode='a', zarr_format=3)  
@@ -384,7 +662,6 @@ def create_output_zarr(
                     g.attrs[k] = v
         else:
             raise TiffToNGFFValueError("only one group name expected")
-        scales = []
         
     except:
         pass
@@ -409,7 +686,7 @@ def create_output_zarr(
         try:
             mip_3dshape = mip_level_shape(mip_lvl, joined_shapes)
             ds_lvl = create_tensor(fpath=out_mip ,arr_shape=[1, 1, mip_3dshape[0], mip_3dshape[1], mip_3dshape[2]], kvstore=kvstore, driver='zarr3', 
-            codecs=compressor, sharded=True, dtype=dtype, chunk_shape=list(chunk_size))  
+            codecs=compressor, sharded=True, dtype=dtype, chunk_shape=list(chunk_size), shard_shape=[1,1,1024,1024,1024])  
         except:
             ds_lvl = open_tensor(fpath=out_mip, driver='zarr', kvstore=kvstore)  
              
@@ -513,7 +790,7 @@ class IMSToNGFFParameters(NGFFGroupGenerationParameters):
     block_size = argschema.fields.Tuple((
         argschema.fields.Int(),
         argschema.fields.Int(),
-        argschema.fields.Int()), required=False, default=(256,256,256))
+        argschema.fields.Int()), required=False, default=(128,128,128))
 
 
 

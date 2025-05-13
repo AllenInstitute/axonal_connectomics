@@ -6,7 +6,7 @@ version = "0.0.1"
 dynamic = ["dependencies"] 
 
 [tool.setuptools.dynamic]
-dependencies = { file = ["requirements.txt"] }
+dependencies = { file = ["pixi_requirements.txt"] }
 
 [project.optional-dependencies]
 test = [
@@ -42,16 +42,19 @@ acpreprocessing = { path = ".", editable = true }
 
 # conda-enabled features
 [tool.pixi.feature.pixi-base.dependencies]
-numpy = "1.26.0"
-imageio = "*"
 matplotlib = "*"
+z5py = "*"
 
 # version-specific python features
 [tool.pixi.feature.py310.dependencies]
 python = "3.10.*"
+numpy = "*"
+
 [tool.pixi.feature.py311.dependencies]
 python = "3.11.*"
-
+s3fs = "2025.3.2"
+numpy = "*"
+zarr = "3.0.6"
 
 [tool.pixi.feature.conda-lab.dependencies]
 jupyterlab = "*"
@@ -60,17 +63,12 @@ jupyterlab = "*"
 scalene = "*"
 
 [tool.pixi.environments]
-py310 = ["py310"]
-py310-test = ["py310", "test"]
-py311 = ["py311"]
-py311-test = ["py311", "test"]
-py310-conda = ["py310", "pixi-base"]
-py310-conda-test = ["py310", "pixi-base", "test"]
-py311-conda = ["py311", "pixi-base"]
-py311-conda-test = ["py311", "pixi-base", "test"]
-py311-conda-lab = ["py311", "pixi-base", "conda-lab"]
-py311-conda-scalene = ["py311", "pixi-base", "scalene"]
-py311-conda-scalene-lab = ["py311", "pixi-base", "scalene", "conda-lab"]
+py310-conda = ["pixi-base", "py310"]
+py311-conda = ["pixi-base", "py311"]
+#py311-conda-lab = ["pixi-base", "py311", "conda-lab"]
+py310-conda-scalene = ["pixi-base", "py310", "scalene"]
+py311-conda-scalene = ["pixi-base", "py311", "scalene"]
+#py311-conda-scalene-lab = ["pixi-base", "py311", "scalene", "conda-lab"]
 
 
 [tool.coverage.run]

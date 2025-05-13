@@ -1,39 +1,31 @@
-# syntax=docker/dockerfile:1
+FROM continuumio/miniconda3:23.10.0-1 as acpreprocessing
 
-FROM openjdk:8
-# Setup JAVA_HOME -- useful for docker commandline
-ENV JAVA_HOME /usr/lib/jvm/java-8-openjdk-amd64/
-RUN export JAVA_HOME
+# Update conda and install Python
+RUN conda update -y conda && \
+    conda install -y python=3.10 && \
+    conda clean -a
 
-RUN apt-get update -y
+# Set bash as the default shell
+SHELL ["/bin/bash", "-c"]
 
-RUN apt-get install -y python
+# Install curl
+RUN apt-get update && apt-get install -y curl
 
+# Copy your project code into the container
+COPY . /ax_conn
 
-WORKDIR /ac-stitch
+# Set working directory
+WORKDIR /ax_conn
 
-COPY requirements.txt requirements.txt
-RUN set -xe \
-    && apt-get update -y \
-    && apt-get install -y python3.6 python3-pip
-RUN apt install -y python-is-python3
+# Install dependencies and run migrations
+RUN conda install -y pip && \
+    conda install -y -c conda-forge gcc && \
+    curl -fsSL https://pixi.sh/install.sh | bash 
 
-RUN pip3 install -r requirements.txt
+ENV PATH="/root/.pixi/bin:$PATH"
 
-RUN apt-get install -y curl 
-RUN curl https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh --output miniconda.sh
-RUN bash miniconda.sh -b
-ENV PATH="/root/miniconda3/bin:$PATH"
+RUN pixi install && \
+    conda clean -a
 
-RUN conda install -c conda-forge z5py
-
-RUN pip install argschema
-RUN pip install imageio
-RUN pip install natsort
-RUN pip install scikit-image
-
-COPY . .
-
-RUN pip install .
-
-
+# Final working directory (adjust as needed)
+WORKDIR /ax_conn
