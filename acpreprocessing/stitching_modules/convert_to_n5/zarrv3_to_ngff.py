@@ -441,19 +441,22 @@ def write_zarrv3_to_zarr(
         numslices = calculate_blocks(zshape,block_size,deskew_options)
         for n in range(numslices):
             print(f"starting slice {n}/{numslices}")
-            write_zarr_slice(input_zarray=zarray,
-                            output_file=output_file,
-                            group_name=group_name,
-                            max_mip=max_mip,
-                            nblocks=nblocks,
-                            block_size=block_size,
-                            mip_dsfactor=mip_dsfactor,
-                            slicenum=n,
-                            lvl_to_mip_kwargs=lvl_to_mip_kwargs,
-                            interleaved_channels=interleaved_channels,
-                            channel=channel,
-                            deskew_kwargs=deskew_kwargs,
-                            max_workers=slice_workers)
+            try:
+                write_zarr_slice(input_zarray=zarray,
+                                output_file=output_file,
+                                group_name=group_name,
+                                max_mip=max_mip,
+                                nblocks=nblocks,
+                                block_size=block_size,
+                                mip_dsfactor=mip_dsfactor,
+                                slicenum=n,
+                                lvl_to_mip_kwargs=lvl_to_mip_kwargs,
+                                interleaved_channels=interleaved_channels,
+                                channel=channel,
+                                deskew_kwargs=deskew_kwargs,
+                                max_workers=slice_workers)
+            except:
+                pass
         # with concurrent.futures.ProcessPoolExecutor(max_workers=slice_concurrency) as e:
         #     futs = []
         #     for n in range(numslices):
