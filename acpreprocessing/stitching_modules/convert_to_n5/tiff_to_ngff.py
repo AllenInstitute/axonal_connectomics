@@ -11,7 +11,7 @@ from natsort import natsorted
 import numpy
 import skimage
 
-import z5py
+#import z5py
 import zarr
 from numcodecs import Blosc
 import argschema
@@ -590,7 +590,7 @@ def write_mimgfns_to_n5(
 
     workers = concurrency // slice_concurrency
 
-    with z5py.File(output_n5) as f:
+    with zarr.open(output_n5) as f:
         mip_ds = {}
         # create groups with custom attributes
         group_objs = []
