@@ -18,6 +18,7 @@ import argschema
 
 import acpreprocessing.utils.convert
 import acpreprocessing.stitching_modules.convert_to_n5.psdeskew as psd
+from acpreprocessing.stitching_modules.convert_to_n5.ts_utils import open_tensor
 
 def iterate_chunks(it, slice_length):
     """given an iterator, iterate over tuples of a
@@ -819,60 +820,122 @@ def write_mimgfns_to_zarr(
 
     workers = concurrency // slice_concurrency
 
-    zstore = zarr.DirectoryStore(output_n5, dimension_separator='/')
-    with zarr.open(zstore, mode='a') as f:
-        mip_ds = {}
-        # create groups with attributes according to omezarr spec
-        if len(group_names) == 1:
-            group_name = group_names[0]
+    #zstore = zarr.DirectoryStore(output_n5, dimension_separator='/')
+    f = zarr.group(output_n5)
+    # with zarr.open(zstore, mode='a') as f:
+    #     mip_ds = {}
+    #     # create groups with attributes according to omezarr spec
+    #     if len(group_names) == 1:
+    #         group_name = group_names[0]
+    #         try:
+    #             g = f.create_group(f"{group_name}")
+    #         except KeyError:
+    #             g = f[f"{group_name}"]
+    #         try:
+    #             attributes = group_attributes[0]
+    #         except IndexError:
+    #             print('attributes error')
+
+    #         if "pixelResolution" in attributes:
+    #             if deskew_options:
+    #                 attributes["pixelResolution"]["dimensions"][2] /= deskew_options["deskew_stride"]
+    #             attributes = omezarr_attrs(
+    #                 group_name, attributes["position"], attributes["pixelResolution"]["dimensions"], max_mip)
+    #         if attributes:
+    #             for k, v in attributes.items():
+    #                 g.attrs[k] = v
+    #     else:
+    #         raise TiffToNGFFValueError("only one group name expected")
+    #     scales = []
+
+    #     # shuffle=Blosc.BITSHUFFLE)
+    #     compression = Blosc(cname='zstd', clevel=1)
+    #     for mip_lvl in range(max_mip + 1):
+    #         mip_3dshape = mip_level_shape(mip_lvl, joined_shapes)
+    #         ds_lvl = g.create_dataset(
+    #             f"{mip_lvl}",
+    #             chunks=chunk_size,
+    #             shape=(1, 1, mip_3dshape[0], mip_3dshape[1], mip_3dshape[2]),
+    #             compression=compression,
+    #             dtype=dtype
+    #         )
+    #         dsfactors = [int(i)**mip_lvl for i in mip_dsfactor]
+    #         mip_ds[mip_lvl] = ds_lvl
+    #         scales.append(dsfactors)
+    if len(group_names) == 1:
+        group_name = group_names[0]
+        if group_name in f:
+            g = f[f"{group_name}"]
+        else:
             try:
-                g = f.create_group(f"{group_name}")
-            except KeyError:
+                g = f.create_group(name=f"{group_name}")
+            except:
                 g = f[f"{group_name}"]
+            
+        if group_attributes:
             try:
                 attributes = group_attributes[0]
             except IndexError:
                 print('attributes error')
-
-            if "pixelResolution" in attributes:
-                if deskew_options:
-                    attributes["pixelResolution"]["dimensions"][2] /= deskew_options["deskew_stride"]
-                attributes = omezarr_attrs(
-                    group_name, attributes["position"], attributes["pixelResolution"]["dimensions"], max_mip)
-            if attributes:
-                for k, v in attributes.items():
-                    g.attrs[k] = v
         else:
-            raise TiffToNGFFValueError("only one group name expected")
-        scales = []
+            attributes = {}
 
-        # shuffle=Blosc.BITSHUFFLE)
-        compression = Blosc(cname='zstd', clevel=1)
-        for mip_lvl in range(max_mip + 1):
-            mip_3dshape = mip_level_shape(mip_lvl, joined_shapes)
-            ds_lvl = g.create_dataset(
-                f"{mip_lvl}",
-                chunks=chunk_size,
-                shape=(1, 1, mip_3dshape[0], mip_3dshape[1], mip_3dshape[2]),
-                compression=compression,
-                dtype=dtype
-            )
-            dsfactors = [int(i)**mip_lvl for i in mip_dsfactor]
-            mip_ds[mip_lvl] = ds_lvl
-            scales.append(dsfactors)
+        if "pixelResolution" in attributes:
+            if deskew_options:
+                attributes["pixelResolution"]["dimensions"][2] /= deskew_options["deskew_stride"]
+            attributes = omezarr_attrs(
+                group_name, attributes["position"], attributes["pixelResolution"]["dimensions"], max_mip)
+        if attributes:
+            for k, v in attributes.items():
+                g.attrs[k] = v
+    else:
+        raise TiffToNGFFValueError("only one group name expected")
+    scales = []
+    
+    if compression == "raw":
+        compressors = None
+    elif compression == "blosc":
+        compressors = zarr.codecs.BloscCodec(cname='zstd', clevel=1, shuffle=zarr.codecs.BloscShuffle.bitshuffle)
+    
+    for mip_lvl in range(max_mip + 1):
+        mip_3dshape = mip_level_shape(mip_lvl, joined_shapes)
+        if f"{mip_lvl}" in g:
+            ds_lvl = g[f"{mip_lvl}"]
+        else:
+            try:
+                ds_lvl = g.create_array(
+                    name=f"{mip_lvl}",
+                    chunks=chunk_size,
+                    shards=(1,1,512,512,512),
+                    shape=(1, 1, mip_3dshape[0], mip_3dshape[1], mip_3dshape[2]),
+                    compressors=compressors,
+                    dtype=dtype
+                )
+            except:
+                ds_lvl = g[f"{mip_lvl}"]
+            
+        dsfactors = [int(i)**mip_lvl for i in mip_dsfactor]
+        #mip_ds[mip_lvl] = ds_lvl
+        scales.append(dsfactors)
+    
+    mip_ds = {}
+    for mip_lvl in range(max_mip + 1):
+        mip_path = "/".join([f"{output_n5}",f"{group_name}",f"{mip_lvl}"])
+        ts_lvl = open_tensor(fpath=mip_path)
+        mip_ds[mip_lvl] = ts_lvl
 
-        with concurrent.futures.ThreadPoolExecutor(max_workers=workers) as e:
-            futs = []
-            for miparr in iterate_mip_levels_from_dataset(
-                    array_gen, max_mip, block_size, slice_length, mip_dsfactor,
-                    lvl_to_mip_kwargs=lvl_to_mip_kwargs,
-                    interleaved_channels=interleaved_channels,
-                    channel=channel, deskew_kwargs=deskew_kwargs):
-                futs.append(e.submit(
-                    dswrite_chunk, mip_ds[miparr.lvl],
-                    miparr.start, miparr.end, miparr.array))
-            for fut in concurrent.futures.as_completed(futs):
-                _ = fut.result()
+    with concurrent.futures.ThreadPoolExecutor(max_workers=workers) as e:
+        futs = []
+        for miparr in iterate_mip_levels_from_dataset(
+                array_gen, max_mip, block_size, slice_length, mip_dsfactor,
+                lvl_to_mip_kwargs=lvl_to_mip_kwargs,
+                interleaved_channels=interleaved_channels,
+                channel=channel, deskew_kwargs=deskew_kwargs):
+            futs.append(e.submit(
+                dswrite_chunk, mip_ds[miparr.lvl],
+                miparr.start, miparr.end, miparr.array))
+        for fut in concurrent.futures.as_completed(futs):
+            _ = fut.result()
 
 
 def tiffdir_to_ngff_group(tiffdir, output, *args, **kwargs):
