@@ -393,7 +393,7 @@ def write_zarrv3_to_zarr(
     if compression == "raw":
         compressors = None
     elif compression == "blosc":
-        compressors = zarr.codecs.BloscCodec(cname='zstd', clevel=0, shuffle=zarr.codecs.BloscShuffle.bitshuffle)
+        compressors = zarr.codecs.BloscCodec(cname='zstd', clevel=1, shuffle=zarr.codecs.BloscShuffle.bitshuffle)
     
     for mip_lvl in range(max_mip + 1):
         mip_3dshape = mip_level_shape(mip_lvl, joined_shapes)
