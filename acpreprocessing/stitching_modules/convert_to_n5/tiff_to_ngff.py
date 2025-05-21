@@ -756,7 +756,7 @@ class TiffToNGFFValueError(TiffToNGFFException, ValueError):
 def write_mimgfns_to_zarr(
         mimgfns, output_n5, group_names, group_attributes=None, max_mip=0,
         mip_dsfactor=(2, 2, 2), chunk_size=(1, 1, 64, 64, 64),
-        concurrency=10, slice_concurrency=1,
+        concurrency=10,
         compression="raw", dtype="uint16", lvl_to_mip_kwargs=None,
         interleaved_channels=1, channel=0, deskew_options=None, **kwargs):
     """write a stack represented by an iterator of multi-image files as a zarr
@@ -779,10 +779,7 @@ def write_mimgfns_to_zarr(
     chunk_size : tuple of int
         chunk size for n5 datasets
     concurrency : int
-        total concurrency used for writing arrays to n5
-        (python threads = concurrency // slice_concurrency)
-    slice_concurrency : int
-        threads used by z5py
+        total concurrency allowed for process instance
     compression : str, optional
         compression for n5 (default: raw)
     dtype : str, optional
@@ -818,7 +815,7 @@ def write_mimgfns_to_zarr(
 
     # TODO DESKEW: does this generally work regardless of skew?
 
-    workers = concurrency // slice_concurrency
+    workers = concurrency
 
     #zstore = zarr.DirectoryStore(output_n5, dimension_separator='/')
     f = zarr.group(output_n5)
