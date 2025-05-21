@@ -21,48 +21,48 @@ def split_s3_path(s3_path):
         key="/".join(path_parts)
     return bucket, key
 
-class AWS_Parameters:
-    entries: dict[int, tuple[str, str]]
-    temp_dir: TemporaryDirectory[str]
-    credentials_file_path: Path
-    @classmethod
-    @lru_cache
-    def singleton(cls) -> "Self":
-        return cls()
+# class AWS_Parameters:
+#     entries: dict[int, tuple[str, str]]
+#     temp_dir: TemporaryDirectory[str]
+#     credentials_file_path: Path
+#     @classmethod
+#     @lru_cache
+#     def singleton(cls) -> "Self":
+#         return cls()
         
-    def __init__(self, profile=None, region=None, endpoint_url=None):
-        self.entries = {}
-        self.temp_dir = TemporaryDirectory()
-        self.credentials_file_path = Path(self.temp_dir.name) / "aws_credentials"
-        self.credentials_file_path.touch()
-        #create session
-        session = boto3.Session(profile_name=profile, region_name=region)
-        if endpoint_url:
-            self.endpoint_url=endpoint_url
-        self.profile=session.profile_name
-        self.region=session.region_name
-    def _dump_credentials(self) -> None:
-        self.credentials_file_path.write_text(
-            "\n".join(
-                [
-                    f"[{self.profile}]\naws_access_key_id = {access_key_id}\naws_secret_access_key = {secret_access_key}\n"
-                    for key_hash, (
-                        access_key_id,
-                        secret_access_key,
-                    ) in self.entries.items()
-                ]
-            )
-        )
-    def add_credentials(self, access_key_id: str, secret_access_key: str) -> dict[str, str]:
-        key_tuple = (access_key_id, secret_access_key)
-        key_hash = hash(key_tuple)
-        self.entries[key_hash] = key_tuple
-        self._dump_credentials()
-        self.credential_file = {
-            "profile": f"profile-{key_hash}",
-            "filename": str(self.credentials_file_path),
-            "metadata_endpoint": "",
-        }
+#     def __init__(self, profile=None, region=None, endpoint_url=None):
+#         self.entries = {}
+#         self.temp_dir = TemporaryDirectory()
+#         self.credentials_file_path = Path(self.temp_dir.name) / "aws_credentials"
+#         self.credentials_file_path.touch()
+#         #create session
+#         session = boto3.Session(profile_name=profile, region_name=region)
+#         if endpoint_url:
+#             self.endpoint_url=endpoint_url
+#         self.profile=session.profile_name
+#         self.region=session.region_name
+#     def _dump_credentials(self) -> None:
+#         self.credentials_file_path.write_text(
+#             "\n".join(
+#                 [
+#                     f"[{self.profile}]\naws_access_key_id = {access_key_id}\naws_secret_access_key = {secret_access_key}\n"
+#                     for key_hash, (
+#                         access_key_id,
+#                         secret_access_key,
+#                     ) in self.entries.items()
+#                 ]
+#             )
+#         )
+#     def add_credentials(self, access_key_id: str, secret_access_key: str) -> dict[str, str]:
+#         key_tuple = (access_key_id, secret_access_key)
+#         key_hash = hash(key_tuple)
+#         self.entries[key_hash] = key_tuple
+#         self._dump_credentials()
+#         self.credential_file = {
+#             "profile": f"profile-{key_hash}",
+#             "filename": str(self.credentials_file_path),
+#             "metadata_endpoint": "",
+#         }
 
 
 def create_kvstore(fpath, store, AWS_param=None):
