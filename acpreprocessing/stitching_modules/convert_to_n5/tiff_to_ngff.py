@@ -6,7 +6,8 @@ import itertools
 import math
 import pathlib
 
-import imageio
+#import imageio
+from tifffile import TiffFile
 from natsort import natsorted
 import numpy
 import skimage
@@ -170,13 +171,20 @@ def mimg_shape_from_fn(mimg_fn, only_length_tup=False):
     shape : tuple of int
         shape of array defined by mimg_fn
     """
-    with imageio.get_reader(mimg_fn, mode="I") as r:
-        l = r.get_length()
+    # with imageio.get_reader(mimg_fn, mode="I") as r:
+    #     l = r.get_length()
 
+    #     if only_length_tup:
+    #         s = (l,)
+    #     else:
+    #         s = (l, *r.get_data(0).shape)
+    with TiffFile(mimg_fn) as t:
+        l = len(t.pages)
         if only_length_tup:
             s = (l,)
         else:
-            s = (l, *r.get_data(0).shape)
+            s = (l, *t.pages[0].shape)
+            
     return s
 
 
