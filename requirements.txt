@@ -11,3 +11,4 @@ requests
 cloud-volume>=8.5.5
 zarr
 h5py
+tensorstore

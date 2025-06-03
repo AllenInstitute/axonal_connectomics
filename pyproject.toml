@@ -35,7 +35,7 @@ libc = "2.27"
 
 [tool.pixi.project]
 channels = ["conda-forge"]
-platforms = ["linux-64"]
+platforms = ["linux-64", "osx-arm64"]
 
 [tool.pixi.pypi-dependencies]
 acpreprocessing = { path = ".", editable = true }
@@ -71,6 +71,10 @@ py311-conda-test = ["py311", "pixi-base", "test"]
 py311-conda-lab = ["py311", "pixi-base", "conda-lab"]
 py311-conda-scalene = ["py311", "pixi-base", "scalene"]
 py311-conda-scalene-lab = ["py311", "pixi-base", "scalene", "conda-lab"]
+
+[tool.pixi.dependencies]
+python = ">=3.10.17,<3.14"
+ipykernel = ">=6.29.5,<7"
 
 
 [tool.coverage.run]
