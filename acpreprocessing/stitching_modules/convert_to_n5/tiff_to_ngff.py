@@ -6,7 +6,7 @@ import itertools
 import math
 import pathlib
 
-#import imageio
+import imageio
 from tifffile import TiffFile
 from natsort import natsorted
 import numpy
