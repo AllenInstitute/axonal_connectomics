@@ -6,7 +6,7 @@ import itertools
 import math
 import pathlib
 
-import imageio
+#import imageio.v2 as imageio
 from tifffile import TiffFile
 from natsort import natsorted
 import numpy
@@ -45,7 +45,7 @@ def iterate_chunks(it, slice_length):
         chunk = tuple(itertools.islice(it, slice_length))
 
 
-def iter_arrays(r, interleaved_channels=1, channel=0, interleaving_offset=0):
+def iter_arrays(t, interleaved_channels=1, channel=0, interleaving_offset=0):
     """iterate arrays from an imageio tiff reader.  Allows the last image
     of the array to be None, as is the case for data with 'dropped frames'.
 
@@ -64,14 +64,14 @@ def iter_arrays(r, interleaved_channels=1, channel=0, interleaving_offset=0):
     arr : numpy.ndarray
         constituent page array of reader r
     """
-    for i, p in enumerate(r._tf.pages):
+    for i, p in enumerate(t.pages):
         page_channel = (i + interleaving_offset) % interleaved_channels
         if page_channel != channel:
             continue
         arr = p.asarray()
         if arr is not None:
             yield arr
-        elif i == r.get_length() - 1:
+        elif i == len(t.pages) - 1:
             continue
         else:
             raise ValueError
@@ -93,9 +93,9 @@ def iterate_2d_arrays_from_mimgfns(mimgfns, interleaved_channels=1, channel=0):
     """
     offset = 0
     for mimgfn in mimgfns:
-        with imageio.get_reader(mimgfn, mode="I") as r:
-            yield from iter_arrays(r, interleaved_channels, channel, offset)
-            offset = (offset + r.get_length()) % interleaved_channels
+        with TiffFile(mimgfn) as t:
+            yield from iter_arrays(t, interleaved_channels, channel, offset)
+            offset = (offset + len(t.pages)) % interleaved_channels
 
 
 def iterate_numpy_chunks_from_dataset(
