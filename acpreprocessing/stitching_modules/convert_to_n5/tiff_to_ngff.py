@@ -681,6 +681,9 @@ def write_mimgfns_to_zarr(
     joined_shapes = joined_mimg_shape_from_fns(
         mimgfns, concurrency=concurrency,
         interleaved_channels=interleaved_channels, channel=channel)
+    if deskew_options and deskew_options["deskew_transpose"]:
+        # input dataset must be transposed
+        joined_shapes = (joined_shapes[0],joined_shapes[2],joined_shapes[1])
     if deskew_options and deskew_options["deskew_method"] == "ps":
         block_size = chunk_size[2]
         slice_length = int(chunk_size[2]/deskew_options['deskew_stride'])

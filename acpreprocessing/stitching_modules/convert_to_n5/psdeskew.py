@@ -177,7 +177,7 @@ def deskew_block(blockData, n, dsi, si, slice1d, blockdims, subblocks, flip, tra
     return block3d
 
 
-def reshape_joined_shapes(joined_shapes, stride, blockdims, transpose=None, **kwargs):
+def reshape_joined_shapes(joined_shapes, stride, blockdims, **kwargs):
     """get dimensions of deskewed joined shapes from skewed joined shapes
 
     Parameters
@@ -194,10 +194,10 @@ def reshape_joined_shapes(joined_shapes, stride, blockdims, transpose=None, **kw
     deskewed_shape : tuple of int
         shape of deskewed 3D array represented by joined_shapes
     """
-    if not transpose is None:
-        axes = transpose
-    else:
-        axes = (0,1,2)
+    # if not transpose is None:
+    #     axes = transpose
+    # else:
+    axes = (0,1,2)
     # deskewed_shape = (int(np.ceil(joined_shapes[axes[0]]/(blockdims[axes[0]]/stride))*blockdims[axes[0]]),
     #                   joined_shapes[axes[1]],
     #                   joined_shapes[axes[2]])
