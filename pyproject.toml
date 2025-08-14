@@ -1,9 +1,9 @@
 [project]
 name = "acpreprocessing"
-description='Axonal connectomics processing'
+description = "Axonal connectomics processing"
 requires-python = ">3.8,<3.12"
 version = "0.0.1"
-dynamic = ["dependencies"] 
+dynamic = ["dependencies"]
 
 [tool.setuptools.dynamic]
 dependencies = { file = ["requirements.txt"] }
@@ -21,9 +21,8 @@ requires = ["setuptools>=64", "setuptools_scm>=8"]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools]
-py-modules = [
-    "acpreprocessing",
-]
+packages = ["acpreprocessing"]  # <- changed from py-modules
+include-package-data = true     # optional: include non-Python files like configs, data, etc.
 
 [tool.setuptools_scm]
 version_file = "acpreprocessing/_version.py"
@@ -52,7 +51,6 @@ python = "3.10.*"
 [tool.pixi.feature.py311.dependencies]
 python = "3.11.*"
 
-
 [tool.pixi.feature.conda-lab.dependencies]
 jupyterlab = "*"
 
@@ -72,9 +70,8 @@ py311-conda-lab = ["py311", "pixi-base", "conda-lab"]
 py311-conda-scalene = ["py311", "pixi-base", "scalene"]
 py311-conda-scalene-lab = ["py311", "pixi-base", "scalene", "conda-lab"]
 
-
 [tool.coverage.run]
-omit = ["test/*",]
+omit = ["test/*"]
 
 [tool.pixi.feature.test.tasks]
-test = "pytest  --cov --cov-report=xml --junitxml=test-reports/test.xml"
+test = "pytest --cov --cov-report=xml --junitxml=test-reports/test.xml"
