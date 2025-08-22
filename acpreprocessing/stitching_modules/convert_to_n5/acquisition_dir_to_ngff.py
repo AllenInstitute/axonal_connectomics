@@ -69,7 +69,7 @@ def get_number_interleaved_channels_from_rootdir(
     return interleaved_channels
 
 
-def acquisition_to_ngff(acquisition_dir, output, out_dir, concurrency=5, acq_parameters=None,
+def acquisition_to_ngff(acquisition_dir, output, out_dir, position_concurrency=5, acq_parameters=None,
                         ngff_generation_kwargs=None, copy_top_level_files=True):
     """
     """
@@ -112,7 +112,7 @@ def acquisition_to_ngff(acquisition_dir, output, out_dir, concurrency=5, acq_par
 
     for channel_idx in range(interleaved_channels):
         channel_group_attributes = {}
-        with concurrent.futures.ProcessPoolExecutor(max_workers=concurrency) as e:
+        with concurrent.futures.ProcessPoolExecutor(max_workers=position_concurrency) as e:
             futs = []
             for i, pospath in enumerate(
                     yield_position_paths_from_rootdir(
@@ -179,7 +179,7 @@ class AcquisitionDirToNGFF(argschema.ArgSchemaParser):
         ngff_kwargs = self._get_ngff_kwargs()
         acquisition_to_ngff(
             self.args["input_dir"], self.args["output_format"], self.args["output_file"],
-            concurrency=self.args["position_concurrency"],
+            position_concurrency=self.args["position_concurrency"],
             acq_parameters=self.args["acq_parameters"],
             ngff_generation_kwargs=ngff_kwargs,
             copy_top_level_files=self.args["copy_top_level_files"]
