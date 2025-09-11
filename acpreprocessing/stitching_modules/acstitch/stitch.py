@@ -5,6 +5,7 @@ Created on Mon Jul 31 13:39:58 2023
 @author: kevint
 """
 import numpy
+import argschema
 from acpreprocessing.stitching_modules.acstitch.sift_stitch import generate_rois_from_pointmatches,stitch_over_rois,stitch_over_segments
 from acpreprocessing.stitching_modules.acstitch.ccorr_stitch import get_correspondences
 from acpreprocessing.stitching_modules.acstitch.zarrutils import get_group_from_src
@@ -66,41 +67,77 @@ def generate_ccorr_pointmatches(p_srclist,q_srclist,miplvl=0,ccorr_kwargs=None,s
     return pmlist
     
 
-def run_ccorr_with_sift_points(p_ds,q_ds,p_siftpts,q_siftpts,n_cc_pts=1,axis_w=[32,32,32],pad_array=False,axis_shift=[0,0,0],axis_range=None,cc_threshold=0.8,**kwargs):
-    p_pts,q_pts = get_cc_points_from_sift(p_ds, q_ds, p_siftpts, q_siftpts,n_cc_pts,axis_shift,axis_range)
+def run_ccorr(p_ds,q_ds,p_dict,q_dict,n_cc_pts=1,axis_w=[32,32,32],pad_array=False,axis_shift=[0,0,0],axis_range=None,cc_threshold=0.8,**kwargs):
+    p_pts = get_points_from_tiledict(p_dict)
+    q_pts = get_points_from_tiledict(q_dict)
     ppm,qpm = get_correspondences(p_ds,q_ds,p_pts,q_pts,numpy.asarray(axis_w),pad=pad_array,cc_threshold=cc_threshold)
     return ppm,qpm
 
 
-def get_cc_points_from_sift(p_ds,q_ds,p_siftpts,q_siftpts,n_cc_pts=1,axis_shift=[0,0,0],axis_range=None):
-    # TODO: handle overly granular bins with potentially 0 sift points returned
-    if axis_range is None:
-        axis_range = [[] for i in range(p_siftpts.shape[1])]
-    if len(axis_range[0]) == 0:
-        zstarts = numpy.linspace(numpy.min(p_siftpts[:,0]),numpy.max(p_siftpts[:,0]),n_cc_pts+1)
-    p_pts = numpy.empty((n_cc_pts,3),dtype=int)
-    q_pts = numpy.empty((n_cc_pts,3),dtype=int)
-    for i in range(n_cc_pts):
-        r = numpy.full(p_siftpts.shape[0],True)
-        for ai,a in enumerate(axis_range):
-            if len(a)>0:
-                r = r & ((p_siftpts[:,ai]>=a[0]) & (p_siftpts[:,ai]<=a[1]))
-            elif ai == 0:
-                r = r & ((p_siftpts[:,ai]>=zstarts[i]) & (p_siftpts[:,ai]<=zstarts[i+1]))
-        pr = p_siftpts[r]
-        qr = q_siftpts[r]
-        if len(pr) > 0:
-            imax = numpy.argmax(p_ds[0,0,pr[:,0],pr[:,1],pr[:,2]])
-            ppt = pr[imax,:]
-            qpt = qr[imax,:]
-        else:
-            ppt = numpy.array([(zstarts[i]+zstarts[i+1])/2,numpy.mean(p_siftpts[:,1]),numpy.mean(p_siftpts[:,2])],dtype=int)
-            qpt = ppt + numpy.array(axis_shift)
-        p_pts[i] = ppt
-        q_pts[i] = qpt
-    return p_pts,q_pts
-    
-    
-    
-def run_ccorr(**kwargs):
+def get_dataset_from_tilepath(tilepath):
     pass
+
+
+def get_points_from_tiledict(tiledict):
+    pass
+
+
+# def get_cc_points_from_sift(p_ds,q_ds,p_siftpts,q_siftpts,n_cc_pts=1,axis_shift=[0,0,0],axis_range=None):
+#     # TODO: handle overly granular bins with potentially 0 sift points returned
+#     if axis_range is None:
+#         axis_range = [[] for i in range(p_siftpts.shape[1])]
+#     if len(axis_range[0]) == 0:
+#         zstarts = numpy.linspace(numpy.min(p_siftpts[:,0]),numpy.max(p_siftpts[:,0]),n_cc_pts+1)
+#     p_pts = numpy.empty((n_cc_pts,3),dtype=int)
+#     q_pts = numpy.empty((n_cc_pts,3),dtype=int)
+#     for i in range(n_cc_pts):
+#         r = numpy.full(p_siftpts.shape[0],True)
+#         for ai,a in enumerate(axis_range):
+#             if len(a)>0:
+#                 r = r & ((p_siftpts[:,ai]>=a[0]) & (p_siftpts[:,ai]<=a[1]))
+#             elif ai == 0:
+#                 r = r & ((p_siftpts[:,ai]>=zstarts[i]) & (p_siftpts[:,ai]<=zstarts[i+1]))
+#         pr = p_siftpts[r]
+#         qr = q_siftpts[r]
+#         if len(pr) > 0:
+#             imax = numpy.argmax(p_ds[0,0,pr[:,0],pr[:,1],pr[:,2]])
+#             ppt = pr[imax,:]
+#             qpt = qr[imax,:]
+#         else:
+#             ppt = numpy.array([(zstarts[i]+zstarts[i+1])/2,numpy.mean(p_siftpts[:,1]),numpy.mean(p_siftpts[:,2])],dtype=int)
+#             qpt = ppt + numpy.array(axis_shift)
+#         p_pts[i] = ppt
+#         q_pts[i] = qpt
+#     return p_pts,q_pts
+    
+    
+def run_stitch_method(ptile_path,qtile_path,ptile_cors,qtile_cors,stitch_method,stitch_kwargs):
+    if stitch_method == "ccorr":
+        kwargs = {"p_ds":get_dataset_from_tilepath(ptile_path),
+                  "q_ds":get_dataset_from_tilepath(qtile_path),
+                  "p_dict":ptile_cors,
+                  "q_dict":qtile_cors}
+        run_ccorr(**kwargs,**stitch_kwargs)
+    else:
+        pass
+
+
+class StitchTilesParameters(argschema.ArgSchema):
+    ptile_path = argschema.fields.Str(required=True)
+    qtile_path = argschema.fields.Str(required=True)
+    ptile_cors = argschema.fields.Dict(required=True)
+    qtile_cors = argschema.fields.Dict(required=True)
+    stitch_method = argschema.fields.Str(required=True)
+    stitch_kwargs = argschema.fields.Dict(required=True)
+
+
+class StitchTiles(argschema.ArgSchemaParser):
+    default_schema = StitchTilesParameters
+    
+    def run(self):
+        run_stitch_method(**self.args)
+
+
+if __name__ == "__main__":
+    mod = StitchTiles()
+    mod.run()
