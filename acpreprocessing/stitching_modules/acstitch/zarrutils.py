@@ -2,11 +2,19 @@ import pathlib
 import zarr
 import json
 
-def get_zarr_group(zpath,grpname):
+def get_zarr_array(zpath,grpname=None,miplvl=0):
+    zg = get_zarr_group(zpath,grpname)
+    return zg[f"{miplvl}"]
+    
+
+def get_zarr_group(zpath,grpname=None):
     # key to working with zarr files
     # group contains mip datasets and dataset attributes
     zf = zarr.open(zpath)
-    return zf[grpname]
+    if not grpname is None:
+        return zf[grpname]
+    else:
+        return zf
 
 def get_group_from_src(srcpath,
                        outpath='zarr://http://bigkahuna.corp.alleninstitute.org/ACdata', # Url for ACdata for NG hosted on BigKahuna
