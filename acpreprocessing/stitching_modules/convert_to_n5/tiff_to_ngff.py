@@ -6,15 +6,12 @@ import itertools
 import math
 import pathlib
 
-#import imageio.v2 as imageio
 from tifffile import TiffFile
 from natsort import natsorted
 import numpy
 import skimage
 
-#import z5py
 import zarr
-from numcodecs import Blosc
 import argschema
 
 import acpreprocessing.utils.convert
@@ -747,7 +744,7 @@ def write_mimgfns_to_zarr(
                 ds_lvl = g.create_array(
                     name=f"{mip_lvl}",
                     chunks=chunk_size,
-                    shards=shard_size,
+                    shards=(1, 1, max(chunk_size[2],min(shard_size[2],mip_3dshape[0])), max(chunk_size[3],min(shard_size[3],mip_3dshape[1])), max(chunk_size[4],min(shard_size[4],mip_3dshape[2]))),
                     shape=(1, 1, mip_3dshape[0], mip_3dshape[1], mip_3dshape[2]),
                     compressors=compressors,
                     dtype=dtype
@@ -831,24 +828,6 @@ class NGFFGenerationParameters(argschema.schemas.DefaultSchema):
         argschema.fields.Int()), required=False, default=(2, 2, 2))
     deskew_options = argschema.fields.Nested(
         DeskewOptions, required=False)
-
-
-class NGFFGroupGenerationParameters(NGFFGenerationParameters):
-    group_names = argschema.fields.List(
-        argschema.fields.Str, required=True)
-    group_attributes = argschema.fields.List(
-        argschema.fields.Dict(required=False, default={}), default=[],
-        required=False)
-
-
-class TiffDirToNGFFParameters(NGFFGroupGenerationParameters):
-    input_dir = argschema.fields.InputDir(required=True)
-    interleaved_channels = argschema.fields.Int(required=False, default=1)
-    channel = argschema.fields.Int(required=False, default=0)
-
-
-class TiffDirToZarrInputParameters(argschema.ArgSchema,
-                                   TiffDirToNGFFParameters):
     chunk_size = argschema.fields.Tuple((
         argschema.fields.Int(),
         argschema.fields.Int(),
@@ -863,12 +842,18 @@ class TiffDirToZarrInputParameters(argschema.ArgSchema,
         argschema.fields.Int()), required=False, default=(1, 1, 512, 512, 512))
 
 
-class TiffDirToN5LegacyParameters(argschema.ArgSchema,
-                                  TiffDirToNGFFParameters):
-    chunk_size = argschema.fields.Tuple((
-        argschema.fields.Int(),
-        argschema.fields.Int(),
-        argschema.fields.Int()), required=False, default=(64, 64, 64))
+class NGFFGroupGenerationParameters(NGFFGenerationParameters):
+    group_names = argschema.fields.List(
+        argschema.fields.Str, required=True)
+    group_attributes = argschema.fields.List(
+        argschema.fields.Dict(required=False, default={}), default=[],
+        required=False)
+
+
+class TiffDirToZarrInputParameters(NGFFGroupGenerationParameters):
+    input_dir = argschema.fields.InputDir(required=True)
+    interleaved_channels = argschema.fields.Int(required=False, default=1)
+    channel = argschema.fields.Int(required=False, default=0)
 
 
 class TiffDirToZarr(argschema.ArgSchemaParser):
@@ -889,10 +874,6 @@ class TiffDirToZarr(argschema.ArgSchemaParser):
             compression=self.args["compression"],
             lvl_to_mip_kwargs=self.args["lvl_to_mip_kwargs"],
             deskew_options=deskew_options)
-
-
-class TiffDirToN5(TiffDirToZarr):
-    default_schema = TiffDirToN5LegacyParameters
 
 
 if __name__ == "__main__":
