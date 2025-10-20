@@ -701,48 +701,8 @@ def write_mimgfns_to_zarr(
 
     workers = concurrency
 
-    #zstore = zarr.DirectoryStore(output_n5, dimension_separator='/')
     f = zarr.group(output_n5)
-    # with zarr.open(zstore, mode='a') as f:
-    #     mip_ds = {}
-    #     # create groups with attributes according to omezarr spec
-    #     if len(group_names) == 1:
-    #         group_name = group_names[0]
-    #         try:
-    #             g = f.create_group(f"{group_name}")
-    #         except KeyError:
-    #             g = f[f"{group_name}"]
-    #         try:
-    #             attributes = group_attributes[0]
-    #         except IndexError:
-    #             print('attributes error')
 
-    #         if "pixelResolution" in attributes:
-    #             if deskew_options:
-    #                 attributes["pixelResolution"]["dimensions"][2] /= deskew_options["deskew_stride"]
-    #             attributes = omezarr_attrs(
-    #                 group_name, attributes["position"], attributes["pixelResolution"]["dimensions"], max_mip)
-    #         if attributes:
-    #             for k, v in attributes.items():
-    #                 g.attrs[k] = v
-    #     else:
-    #         raise TiffToNGFFValueError("only one group name expected")
-    #     scales = []
-
-    #     # shuffle=Blosc.BITSHUFFLE)
-    #     compression = Blosc(cname='zstd', clevel=1)
-    #     for mip_lvl in range(max_mip + 1):
-    #         mip_3dshape = mip_level_shape(mip_lvl, joined_shapes)
-    #         ds_lvl = g.create_dataset(
-    #             f"{mip_lvl}",
-    #             chunks=chunk_size,
-    #             shape=(1, 1, mip_3dshape[0], mip_3dshape[1], mip_3dshape[2]),
-    #             compression=compression,
-    #             dtype=dtype
-    #         )
-    #         dsfactors = [int(i)**mip_lvl for i in mip_dsfactor]
-    #         mip_ds[mip_lvl] = ds_lvl
-    #         scales.append(dsfactors)
     if len(group_names) == 1:
         group_name = group_names[0]
         if group_name in f:
@@ -796,7 +756,6 @@ def write_mimgfns_to_zarr(
                 ds_lvl = g[f"{mip_lvl}"]
             
         dsfactors = [int(i)**mip_lvl for i in mip_dsfactor]
-        #mip_ds[mip_lvl] = ds_lvl
         scales.append(dsfactors)
     
     mip_ds = {}
