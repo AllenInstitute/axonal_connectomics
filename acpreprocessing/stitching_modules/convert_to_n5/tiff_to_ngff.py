@@ -636,7 +636,7 @@ class TiffToNGFFValueError(TiffToNGFFException, ValueError):
 
 def write_mimgfns_to_zarr(
         mimgfns, output_n5, group_names, group_attributes=None, max_mip=0,
-        mip_dsfactor=(2, 2, 2), chunk_size=(1, 1, 64, 64, 64),
+        mip_dsfactor=(2, 2, 2), chunk_size=(1, 1, 64, 64, 64), shard_size=(1,1,512,512,512),
         concurrency=10,
         compression="raw", dtype="uint16", lvl_to_mip_kwargs=None,
         interleaved_channels=1, channel=0, deskew_options=None, **kwargs):
@@ -747,7 +747,7 @@ def write_mimgfns_to_zarr(
                 ds_lvl = g.create_array(
                     name=f"{mip_lvl}",
                     chunks=chunk_size,
-                    shards=(1,1,512,512,512),
+                    shards=shard_size,
                     shape=(1, 1, mip_3dshape[0], mip_3dshape[1], mip_3dshape[2]),
                     compressors=compressors,
                     dtype=dtype
@@ -855,6 +855,12 @@ class TiffDirToZarrInputParameters(argschema.ArgSchema,
         argschema.fields.Int(),
         argschema.fields.Int(),
         argschema.fields.Int()), required=False, default=(1, 1, 64, 64, 64))
+    shard_size = argschema.fields.Tuple((
+        argschema.fields.Int(),
+        argschema.fields.Int(),
+        argschema.fields.Int(),
+        argschema.fields.Int(),
+        argschema.fields.Int()), required=False, default=(1, 1, 512, 512, 512))
 
 
 class TiffDirToN5LegacyParameters(argschema.ArgSchema,
@@ -878,6 +884,7 @@ class TiffDirToZarr(argschema.ArgSchemaParser):
             self.args["max_mip"],
             self.args["mip_dsfactor"],
             self.args["chunk_size"],
+            self.args["shard_size"],
             concurrency=self.args["concurrency"],
             compression=self.args["compression"],
             lvl_to_mip_kwargs=self.args["lvl_to_mip_kwargs"],
