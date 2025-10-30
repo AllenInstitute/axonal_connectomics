@@ -737,6 +737,8 @@ def write_mimgfns_to_zarr(
     
     for mip_lvl in range(max_mip + 1):
         mip_3dshape = mip_level_shape(mip_lvl, joined_shapes)
+        #mip_3dshape = tuple([max(a,b) for a,b in zip(shard_size[2:],mip_3dshape)])
+        mip_shard_size = shard_size #(1, 1, min(shard_size[2],mip_3dshape[0]), min(shard_size[3],mip_3dshape[1]), min(shard_size[4],mip_3dshape[2]))
         if f"{mip_lvl}" in g:
             ds_lvl = g[f"{mip_lvl}"]
         else:
@@ -744,7 +746,7 @@ def write_mimgfns_to_zarr(
                 ds_lvl = g.create_array(
                     name=f"{mip_lvl}",
                     chunks=chunk_size,
-                    shards=(1, 1, max(chunk_size[2],min(shard_size[2],mip_3dshape[0])), max(chunk_size[3],min(shard_size[3],mip_3dshape[1])), max(chunk_size[4],min(shard_size[4],mip_3dshape[2]))),
+                    shards=mip_shard_size,
                     shape=(1, 1, mip_3dshape[0], mip_3dshape[1], mip_3dshape[2]),
                     compressors=compressors,
                     dtype=dtype
@@ -839,7 +841,7 @@ class NGFFGenerationParameters(argschema.schemas.DefaultSchema):
         argschema.fields.Int(),
         argschema.fields.Int(),
         argschema.fields.Int(),
-        argschema.fields.Int()), required=False, default=(1, 1, 512, 512, 512))
+        argschema.fields.Int()), required=False, default=(1, 1, 1024, 512, 512))
 
 
 class NGFFGroupGenerationParameters(NGFFGenerationParameters):
