@@ -194,9 +194,7 @@ def reshape_joined_shapes(joined_shapes, stride, blockdims, **kwargs):
     deskewed_shape : tuple of int
         shape of deskewed 3D array represented by joined_shapes
     """
-    # if not transpose is None:
-    #     axes = transpose
-    # else:
+    # assume axis 0 is length of scan i.e. z axis dimension from raw data stack
     axes = (0,1,2)
     # deskewed_shape = (int(np.ceil(joined_shapes[axes[0]]/(blockdims[axes[0]]/stride))*blockdims[axes[0]]),
     #                   joined_shapes[axes[1]],

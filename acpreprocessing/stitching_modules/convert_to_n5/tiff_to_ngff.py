@@ -96,7 +96,7 @@ def iterate_2d_arrays_from_mimgfns(mimgfns, interleaved_channels=1, channel=0):
 
 
 def iterate_numpy_chunks_from_dataset(
-        dataset, slice_length=None, pad=True, *args, **kwargs):
+        dataset, slice_length=None, n_pad=0, *args, **kwargs):
     """iterate over a contiguous hdf5 daataset as chunks of numpy arrays
 
     Parameters
@@ -113,19 +113,26 @@ def iterate_numpy_chunks_from_dataset(
     arr : numpy.ndarray
         3D numpy array representing a consecutive chunk of 2D arrays
     """
-    #array_gen = iterate_2d_arrays_from_dataset(mimgfns, *args, **kwargs)
+
     for chunk in iterate_chunks(dataset, slice_length):#,*args,**kwargs):
         arr = numpy.asarray(chunk)
-        if pad:
+        if n_pad>-1:
             if arr.shape[0] != slice_length:
                 newarr = numpy.zeros((slice_length, *arr.shape[1:]),
                                       dtype=arr.dtype)
                 newarr[:arr.shape[0], :, :] = arr[:, :, :]
+                print(f"incomplete chunk of size {arr.shape[0]} padded")
                 yield newarr
             else:
                 yield arr
         else:
             yield arr
+    if n_pad>0:
+        print(f"chunk padding, n_pad = {n_pad}")
+        for i_n in range(n_pad):
+            newarr = numpy.zeros((slice_length, *arr.shape[1:]),
+                                      dtype=arr.dtype)
+            yield newarr
 
 
 def length_to_interleaved_length(length, interleaved_channels):
@@ -450,6 +457,8 @@ def iterate_mip_levels_from_dataset(
     lvl_to_mip_kwargs = ({} if lvl_to_mip_kwargs is None
                           else lvl_to_mip_kwargs)
     mip_kwargs = lvl_to_mip_kwargs.get(lvl, {})
+    #TODO: deskew chunk fixing parameter
+    n_pad = 19 if deskew_kwargs else 0
     start_index = 0
     chunk_index = 0
     if lvl > 0:
@@ -509,7 +518,7 @@ def iterate_mip_levels_from_dataset(
         # get level 0 chunks
         # block_size is the number of slices to read from tiffs
         for chunk in iterate_numpy_chunks_from_dataset(
-                dataset, slice_length, pad=False,
+                dataset, slice_length, n_pad=n_pad,
                 interleaved_channels=interleaved_channels,
                 channel=channel):
             # deskew level 0 chunk
@@ -835,7 +844,7 @@ class NGFFGenerationParameters(argschema.schemas.DefaultSchema):
         argschema.fields.Int(),
         argschema.fields.Int(),
         argschema.fields.Int(),
-        argschema.fields.Int()), required=False, default=(1, 1, 64, 64, 64))
+        argschema.fields.Int()), required=False, default=(1, 1, 128, 128, 128))
     shard_size = argschema.fields.Tuple((
         argschema.fields.Int(),
         argschema.fields.Int(),
