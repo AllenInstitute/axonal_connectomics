@@ -2,8 +2,7 @@
 name = "acpreprocessing"
 description = "Axonal connectomics processing"
 requires-python = ">3.8,<3.12"
-version = "0.0.1"
-dynamic = ["dependencies"]
+dynamic = ["dependencies", "version"]
 
 [tool.setuptools.dynamic]
 dependencies = { file = ["requirements.txt"] }
@@ -41,7 +40,7 @@ acpreprocessing = { path = ".", editable = true }
 
 # conda-enabled features
 [tool.pixi.feature.pixi-base.dependencies]
-numpy = "1.26.0"
+numpy = "*"  # "1.26.0"
 imageio = "*"
 matplotlib = "*"
 
