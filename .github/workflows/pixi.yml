@@ -1,0 +1,27 @@
+name: ci
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - develop
+  pull_request:
+    branches:
+      - develop
+jobs:
+  Pixi_Environments:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - uses: prefix-dev/setup-pixi@v0.8.1
+      with:
+        # separated by spaces
+        environments: >-
+          py310-conda
+          py311-conda
+          py311-conda-scalene
+          py311-conda-scalene-lab 
+    - run: |
+        pixi run -e py310-conda pytest
+        pixi run -e py311-conda pytest
+        pixi run -e py311-conda-scalene pytest
+        pixi run -e py311-conda-scalene-lab  pytest
