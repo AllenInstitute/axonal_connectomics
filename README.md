@@ -1,12 +1,16 @@
 # axonal_connectomics
 Repository for tools developed for axonal connectomics
 
-# Level of support
+# Stitching modules
+## Deskew and zarr conversion
+acpreprocessing.stitching_modules.convert_to_n5.tiff_to_ngff
+Sequentially reads image arrays from a tiff stack series for pixel-wise deskew (optional), for computing a downsampling pyramid to a user-defined depth, and for writing out the data volume into a next-generation file format (zarr v3).
 
-We are not currently supporting this code, but simply releasing it to the community AS IS but are not able to provide any guarantees of support. The community is welcome to submit issues and pull requests, but you should not expect an active response.
+## Tile stitching
+acpreprocessing.stitching_modules.acstitch.stitch
+Generate point correspondences between tiles from template matching or SIFT features at user-defined resolution level (mip).
 
-
-##Stitching requirements:
+## Stitching requirements:
 Set these env variables:
 ```
 export JAVA_HOME=/usr/lib/jvm/java-1.8.0-openjdk-amd64
