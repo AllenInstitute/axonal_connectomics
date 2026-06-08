@@ -1,7 +1,7 @@
 pillow
-tifffile==2020.7.4
+tifffile>=2020.7.4
 scikit-image
-numpy==1.26.0
+numpy
 imageio
 # "imageio<2.21",
 matplotlib
