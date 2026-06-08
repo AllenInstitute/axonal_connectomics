@@ -1,6 +1,9 @@
 # axonal_connectomics
 Repository for tools developed for axonal connectomics
 
+### Level of Support
+We are planning on occasional updating this tool with no fixed schedule. Community involvement is encouraged through both issues and pull requests. Please make pull requests against the develop branch, as we will test changes there before merging into main.
+
 # Stitching modules
 ## Deskew and zarr conversion
 acpreprocessing.stitching_modules.convert_to_n5.tiff_to_ngff
