@@ -109,3 +109,6 @@ pixi.lock
 .mypy_cache/
 
 **.vscode/
+
+# version file used by scm_version
+_version.py
