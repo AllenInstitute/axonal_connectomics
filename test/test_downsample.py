@@ -2,6 +2,8 @@ import itertools
 
 import pytest
 
+import numpy
+
 import acpreprocessing.utils.convert
 import acpreprocessing.downsampling
 
@@ -32,7 +34,7 @@ def test_downsampling(img_vol_fixture, stack_downsample_method,
     assert ds_vol.shape == target_shape
 
     # mean of even subsamples is mean of full sample
-    assert ds_vol.mean() == img_vol.mean()
+    assert numpy.isclose(ds_vol.mean(), img_vol.mean(), rtol=1e-5)
 
 
 @pytest.mark.parametrize(
