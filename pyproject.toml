@@ -60,8 +60,8 @@ python = "3.11.*"
 [tool.pixi.feature.conda-lab.dependencies]
 jupyterlab = "*"
 
-[tool.pixi.feature.scalene.dependencies]
-scalene = "*"
+# [tool.pixi.feature.scalene.dependencies]
+# scalene = "*"
 
 [tool.pixi.environments]
 py310 = ["py310"]
@@ -73,8 +73,8 @@ py310-conda-test = ["py310", "pixi-base", "test"]
 py311-conda = ["py311", "pixi-base"]
 py311-conda-test = ["py311", "pixi-base", "test"]
 py311-conda-lab = ["py311", "pixi-base", "conda-lab"]
-py311-conda-scalene = ["py311", "pixi-base", "scalene"]
-py311-conda-scalene-lab = ["py311", "pixi-base", "scalene", "conda-lab"]
+# py311-conda-scalene = ["py311", "pixi-base", "scalene"]
+# py311-conda-scalene-lab = ["py311", "pixi-base", "scalene", "conda-lab"]
 
 [tool.coverage.run]
 omit = ["test/*"]
