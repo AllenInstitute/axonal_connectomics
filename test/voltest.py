@@ -33,15 +33,22 @@ def uint16_image_volume_30_2048_2048():
 def yield_tiffimg_bytes_with_acqmd(vol_array, acquisition_tag=51123):
     acquisition_md = {"k": "v"}
     with io.BytesIO() as b_io:
-        img_arr = imageio.core.util.Array(
-            vol_array,
-            {
+        imageio.v2.volwrite(
+            b_io, vol_array,
+            format="tiff",
+            metadata={
                 "description": "description",
                 "extratags": [
-                    (acquisition_tag, "s", 0, json.dumps(acquisition_md), True)
+                    (
+                        acquisition_tag,
+                        "s",
+                        0,
+                        json.dumps(acquisition_md),
+                        True,
+                    )
                 ]
-            })
-        imageio.volwrite(b_io, img_arr, format="tiff")
+            }
+        )
         yield b_io.getvalue()
 
 

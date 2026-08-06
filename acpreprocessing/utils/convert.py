@@ -40,7 +40,11 @@ def area_average_downsample(array, block_shape, dtype=None):
         indexing_expr = tuple(np.s_[:s] for s in part.shape)
         temp[indexing_expr] += part
         counts[indexing_expr] += 1
-    return np.cast[dtype or array.dtype](temp / counts)
+
+    return np.asarray(
+        (temp / counts),
+        dtype=(dtype or array.dtype)
+    )
 
 
 def downsample_stack_legacy(imstack, dsfactor=4):
