@@ -12,19 +12,31 @@ import acpreprocessing.header_parse
 
 from .voltest import fullsize_imgs
 
+import shutil
 
 @pytest.mark.parametrize("img_fixture", fullsize_imgs)
 def test_actiff_vol_rw(img_fixture, request):
     img = request.getfixturevalue(img_fixture)
-    rvol = imageio.volread(img, format="actiff")
 
-    assert not {"description", "MicroManagerMetadata"} - rvol.meta.keys()
+    rvol = imageio.v2.volread(img, format="actiff")
+
+    md_keys_to_check = (
+        "description",
+        "MicroManagerMetadata"
+    )
+    assert not set(md_keys_to_check) - rvol.meta.keys()
 
     with io.BytesIO() as b_io:
-        imageio.volwrite(b_io, rvol, format="actiff")
+        acpreprocessing.utils.ac_imageio.volwrite_preserving_md_fields(
+            b_io, rvol,
+            metadata_fields=md_keys_to_check,
+            format="actiff")
         b = b_io.getvalue()
-    wvol = imageio.volread(b, format="actiff")
-    assert wvol.meta == rvol.meta
+    wvol = imageio.v2.volread(b, format="actiff")
+    assert (
+        acpreprocessing.utils.ac_imageio.filter_metadata(wvol.meta, md_keys_to_check) ==
+        acpreprocessing.utils.ac_imageio.filter_metadata(rvol.meta, md_keys_to_check)
+    )
 
 
 @pytest.mark.parametrize("img_fixture", fullsize_imgs)

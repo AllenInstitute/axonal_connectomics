@@ -6,6 +6,9 @@ import argschema
 from acpreprocessing.utils import io
 import os
 
+from acpreprocessing.utils.logging import setup_logger
+logger = setup_logger(__name__)
+
 example_input = {
     'rootDir': "/ACdata/processed/demoModules/raw/",
     "outputDir": "/ACdata/processed/demoModules/output/",
@@ -41,7 +44,7 @@ def update_positions(statejson, stitchoutjson, n_pos, factor, n_channels):
                 statejson['layers'][pos+channel*n_pos]['source'][0]['transform']['matrix'][1][3] = stitchoutjson[pos]['position'][1]*factor
                 statejson['layers'][pos+channel*n_pos]['source'][0]['transform']['matrix'][2][3] = stitchoutjson[pos]['position'][2]*factor
             except IndexError:
-                print("Something went wrong with the stitching output!")
+                logger.error("Something went wrong with the stitching output!")
                 # print(pos)
 
 
@@ -54,8 +57,8 @@ def update_positions_consolidated(statejson, stitchoutjson, n_pos, factor, n_cha
                 statejson['layers'][channel]['source'][pos]['transform']['matrix'][1][3] = stitchoutjson[pos]['position'][1]*factor
                 statejson['layers'][channel]['source'][pos]['transform']['matrix'][2][3] = stitchoutjson[pos]['position'][2]*factor
             except IndexError:
-                print("Something went wrong with the stitching output!")
-                print(pos)
+                logger.error("Something went wrong with the stitching output!")
+                logger.error(pos)
 
 
 class UpdateState(argschema.ArgSchemaParser):
@@ -85,7 +88,7 @@ class UpdateState(argschema.ArgSchemaParser):
         if not os.path.exists(os.path.join(nglink_input['outputDir'], nglink_input["fname"])):
             create_nglink.Nglink(input_data=nglink_input).run(statejson)
         else:
-            print(f"{nglink_input['fname']} already exists")
+            logger.warning(f"{nglink_input['fname']} already exists")
 
         io.save_metadata(os.path.join(self.args['outputDir'],
                                       self.args["stitched_state"]), statejson)

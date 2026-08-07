@@ -101,7 +101,15 @@ venv.bak/
 # mkdocs documentation
 /site
 
+#Pixi
+pixi.lock
+.pixi/
+
 # mypy
 .mypy_cache/
 
 **.vscode/
+
+# version file used by scm_version
+_version.py
+

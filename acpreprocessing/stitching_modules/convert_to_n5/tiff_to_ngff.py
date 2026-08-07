@@ -6,16 +6,20 @@ import itertools
 import math
 import pathlib
 
-import imageio
+#import imageio.v2 as imageio
+from tifffile import TiffFile
 from natsort import natsorted
 import numpy
 import skimage
 
-import z5py
+#import z5py
+import zarr
+from numcodecs import Blosc
 import argschema
 
 import acpreprocessing.utils.convert
-
+import acpreprocessing.stitching_modules.convert_to_n5.psdeskew as psd
+from acpreprocessing.stitching_modules.convert_to_n5.ts_utils import open_tensor
 
 def iterate_chunks(it, slice_length):
     """given an iterator, iterate over tuples of a
@@ -41,7 +45,7 @@ def iterate_chunks(it, slice_length):
         chunk = tuple(itertools.islice(it, slice_length))
 
 
-def iter_arrays(r, interleaved_channels=1, channel=0, interleaving_offset=0):
+def iter_arrays(t, interleaved_channels=1, channel=0, interleaving_offset=0):
     """iterate arrays from an imageio tiff reader.  Allows the last image
     of the array to be None, as is the case for data with 'dropped frames'.
 
@@ -60,14 +64,14 @@ def iter_arrays(r, interleaved_channels=1, channel=0, interleaving_offset=0):
     arr : numpy.ndarray
         constituent page array of reader r
     """
-    for i, p in enumerate(r._tf.pages):
+    for i, p in enumerate(t.pages):
         page_channel = (i + interleaving_offset) % interleaved_channels
         if page_channel != channel:
             continue
         arr = p.asarray()
         if arr is not None:
             yield arr
-        elif i == r.get_length() - 1:
+        elif i == len(t.pages) - 1:
             continue
         else:
             raise ValueError
@@ -89,20 +93,19 @@ def iterate_2d_arrays_from_mimgfns(mimgfns, interleaved_channels=1, channel=0):
     """
     offset = 0
     for mimgfn in mimgfns:
-        with imageio.get_reader(mimgfn, mode="I") as r:
-            yield from iter_arrays(r, interleaved_channels, channel, offset)
-            offset = (offset + r.get_length()) % interleaved_channels
+        with TiffFile(mimgfn) as t:
+            yield from iter_arrays(t, interleaved_channels, channel, offset)
+            offset = (offset + len(t.pages)) % interleaved_channels
 
 
-def iterate_numpy_chunks_from_mimgfns(
-        mimgfns, slice_length=None, pad=True, *args, **kwargs):
-    """iterate over a contiguous iterator of imageio multi-image files as
-    chunks of numpy arrays
+def iterate_numpy_chunks_from_dataset(
+        dataset, slice_length=None, pad=True, *args, **kwargs):
+    """iterate over a contiguous hdf5 daataset as chunks of numpy arrays
 
     Parameters
     ----------
-    mimgfns : list of str
-        imageio-compatible name inputs to be opened as multi-images
+    dataset : sliceable array
+        iterable array generated from mimgfns or hdf5 dataset
     slice_length : int
         number of 2d arrays from mimgfns included per chunk
     pad : bool, optional
@@ -113,13 +116,13 @@ def iterate_numpy_chunks_from_mimgfns(
     arr : numpy.ndarray
         3D numpy array representing a consecutive chunk of 2D arrays
     """
-    array_gen = iterate_2d_arrays_from_mimgfns(mimgfns, *args, **kwargs)
-    for chunk in iterate_chunks(array_gen, slice_length):
-        arr = numpy.array(chunk)
+    #array_gen = iterate_2d_arrays_from_dataset(mimgfns, *args, **kwargs)
+    for chunk in iterate_chunks(dataset, slice_length):#,*args,**kwargs):
+        arr = numpy.asarray(chunk)
         if pad:
             if arr.shape[0] != slice_length:
                 newarr = numpy.zeros((slice_length, *arr.shape[1:]),
-                                     dtype=arr.dtype)
+                                      dtype=arr.dtype)
                 newarr[:arr.shape[0], :, :] = arr[:, :, :]
                 yield newarr
             else:
@@ -168,13 +171,13 @@ def mimg_shape_from_fn(mimg_fn, only_length_tup=False):
     shape : tuple of int
         shape of array defined by mimg_fn
     """
-    with imageio.get_reader(mimg_fn, mode="I") as r:
-        l = r.get_length()
-
+    with TiffFile(mimg_fn) as t:
+        l = len(t.pages)
         if only_length_tup:
             s = (l,)
         else:
-            s = (l, *r.get_data(0).shape)
+            s = (l, *t.pages[0].shape)
+            
     return s
 
 
@@ -380,7 +383,7 @@ def dswrite_chunk(ds, start, end, arr, silent_overflow=True):
 
     Parameters
     ----------
-    ds : z5py.dataset.Dataset
+    ds : z5py.dataset.Dataset (n5 3D) or zarr.dataset (zarr 5D)
         array-like dataset to fill in
     start : int
         start index along 0 axis of ds to fill in
@@ -392,9 +395,16 @@ def dswrite_chunk(ds, start, end, arr, silent_overflow=True):
         whether to shrink the end index to match the
         shape of ds (default: True)
     """
-    if end >= ds.shape[0] and silent_overflow:
-        end = ds.shape[0]
-    ds[start:end, :, :] = arr[:(end - start), :, :]
+    if len(ds.shape) == 5:  # dataset dimensions should be 3 or 5
+        if end >= ds.shape[2] and silent_overflow:
+            end = ds.shape[2]
+        if end > start:
+            ds[0, 0, start:end, :, :] = arr[:(end - start), :, :]
+    elif len(ds.shape) == 3:
+        if end >= ds.shape[0] and silent_overflow:
+            end = ds.shape[0]
+        if end > start:
+            ds[start:end, :, :] = arr[:(end - start), :, :]
 
 
 @dataclasses.dataclass
@@ -405,20 +415,22 @@ class MIPArray:
     end: int
 
 
-def iterate_mip_levels_from_mimgfns(
-        mimgfns, lvl, block_size, downsample_factor,
+def iterate_mip_levels_from_dataset(
+        dataset, lvl, block_size, slice_length, downsample_factor,
         downsample_method=None, lvl_to_mip_kwargs=None,
-        interleaved_channels=1, channel=0):
+        interleaved_channels=1, channel=0, deskew_kwargs={}):
     """recursively generate MIPmap levels from an iterator of multi-image files
 
     Parameters
     ----------
-    mimgfns : list of str
-        imageio-compatible name inputs to be opened as multi-images
+    dataset : sliceable array
+        hdf dataset or iterable array generated from mimgfns
     lvl : int
         integer mip level to generate
     block_size : int
         number of 2D arrays in chunk to process for a chunk at lvl
+    slice_length : int
+        number of 2D arrays to gather from tiff stacks
     downsample_factor : tuple of int
         integer downsampling factor for MIP levels
     downsample_method : str, optional
@@ -430,6 +442,8 @@ def iterate_mip_levels_from_mimgfns(
         number of channels interleaved in the tiff files (default 1)
     channel : int, optional
         channel from which interleaved data should be read (default 0)
+    deskew_kwargs : dict, optional
+        parameters for pixel shifting deskew
 
     Yields
     ------
@@ -437,18 +451,19 @@ def iterate_mip_levels_from_mimgfns(
         object describing chunked array, MIP level of origin, and chunk indices
     """
     lvl_to_mip_kwargs = ({} if lvl_to_mip_kwargs is None
-                         else lvl_to_mip_kwargs)
+                          else lvl_to_mip_kwargs)
     mip_kwargs = lvl_to_mip_kwargs.get(lvl, {})
     start_index = 0
+    chunk_index = 0
     if lvl > 0:
         num_chunks = downsample_factor[0]
 
         i = 0
-        for ma in iterate_mip_levels_from_mimgfns(
-                mimgfns, lvl-1, block_size,
+        for ma in iterate_mip_levels_from_dataset(
+                dataset, lvl-1, block_size, slice_length,
                 downsample_factor, downsample_method,
                 lvl_to_mip_kwargs, interleaved_channels=interleaved_channels,
-                channel=channel):
+                channel=channel, deskew_kwargs=deskew_kwargs):
             chunk = ma.array
             # throw array up for further processing
             yield ma
@@ -495,30 +510,145 @@ def iterate_mip_levels_from_mimgfns(
             yield MIPArray(lvl, temp_arr, start_index, end_index)
     else:
         # get level 0 chunks
-        for chunk in iterate_numpy_chunks_from_mimgfns(
-                mimgfns, block_size, pad=False,
+        # block_size is the number of slices to read from tiffs
+        for chunk in iterate_numpy_chunks_from_dataset(
+                dataset, slice_length, pad=False,
                 interleaved_channels=interleaved_channels,
                 channel=channel):
+            # deskew level 0 chunk
+            if deskew_kwargs:
+                chunk = numpy.transpose(psd.deskew_block(
+                    chunk, chunk_index, **deskew_kwargs), (2, 1, 0))
             end_index = start_index + chunk.shape[0]
             yield MIPArray(lvl, chunk, start_index, end_index)
             start_index += chunk.shape[0]
+            chunk_index += 1
 
 
-def write_mimgfns_to_n5(
+def omezarr_attrs(name, position_xyz, lvl0_xyz_res, max_lvl):
+    # TODO only single channel implemented
+    datasets = []
+    for i in range(max_lvl+1):
+        s = [(2**i)*r for r in lvl0_xyz_res]
+        d = {"coordinateTransformations": [
+            {"scale": [
+                1.0,
+                1.0,
+                s[2],
+                s[1],
+                s[0]
+            ],
+                "type": "scale"
+            }
+        ],
+            "path": str(i)
+        }
+        datasets.append(d)
+    attrs = {}
+    attrs["multiscales"] = [
+        {
+            "axes": [
+                {
+                    "name": "t",
+                    "type": "time",
+                    "unit": "millisecond"
+                },
+                {
+                    "name": "c",
+                    "type": "channel"
+                },
+                {
+                    "name": "z",
+                    "type": "space",
+                    "unit": "micrometer"
+                },
+                {
+                    "name": "y",
+                    "type": "space",
+                    "unit": "micrometer"
+                },
+                {
+                    "name": "x",
+                    "type": "space",
+                    "unit": "micrometer"
+                }
+            ],
+            "datasets": datasets,
+            "name": "/" + name,
+            "translation": [
+                0,
+                0,
+                0.0,
+                0.0,
+                0.0
+            ],
+            "version": "0.4",
+            "coordinateTransformations": [
+                {
+                    "translation": [
+                        0.0,
+                        0.0,
+                        position_xyz[2],
+                        position_xyz[1],
+                        position_xyz[0]
+                    ],
+                    "type": "translation"
+                }
+            ]
+        }
+    ]
+    attrs["omero"] = {
+        "channels": [
+            {
+                "active": True,
+                "coefficient": 1,
+                "color": "000000",
+                "family": "linear",
+                "inverted": False,
+                "label": "Channel:" + name + ":0",
+                "window": {
+                    "end": 1.0,
+                    "max": 1.0,
+                    "min": 0.0,
+                    "start": 0.0
+                }
+            }
+        ],
+        "id": 1,
+        "name": name,
+        "rdefs": {
+            "defaultT": 0,
+            "defaultZ": 288,
+            "model": "color"
+        },
+        "version": "0.4"
+    }
+    return attrs
+
+
+class TiffToNGFFException(Exception):
+    """class to describe exceptions with TiffToNGFF module"""
+
+
+class TiffToNGFFValueError(TiffToNGFFException, ValueError):
+    """value error in TiffToNgff"""
+
+
+def write_mimgfns_to_zarr(
         mimgfns, output_n5, group_names, group_attributes=None, max_mip=0,
-        mip_dsfactor=(2, 2, 2), chunk_size=(64, 64, 64),
-        concurrency=10, slice_concurrency=1,
+        mip_dsfactor=(2, 2, 2), chunk_size=(1, 1, 64, 64, 64),
+        concurrency=10,
         compression="raw", dtype="uint16", lvl_to_mip_kwargs=None,
-        interleaved_channels=1, channel=0):
-    """write a stack represented by an iterator of multi-image files as an n5
-    volume
+        interleaved_channels=1, channel=0, deskew_options=None, **kwargs):
+    """write a stack represented by an iterator of multi-image files as a zarr
+    volume with ome-ngff metadata
 
     Parameters
     ----------
     mimgfns : list of str
         imageio-compatible name inputs to be opened as multi-images
     output_n5 : str
-        output n5 directory
+        output zarr directory
     group_names : list of str
         names of groups to generate within n5
     group_attributes : list of dict, optional
@@ -530,10 +660,7 @@ def write_mimgfns_to_n5(
     chunk_size : tuple of int
         chunk size for n5 datasets
     concurrency : int
-        total concurrency used for writing arrays to n5
-        (python threads = concurrency // slice_concurrency)
-    slice_concurrency : int
-        threads used by z5py
+        total concurrency allowed for process instance
     compression : str, optional
         compression for n5 (default: raw)
     dtype : str, optional
@@ -544,70 +671,156 @@ def write_mimgfns_to_n5(
         number of channels interleaved in the tiff files (default 1)
     channel : int, optional
         channel from which interleaved data should be read (default 0)
+    deskew_options : dict, optional
+        dictionary of parameters to run pixel shifting deskew (default None)
     """
     group_attributes = ([] if group_attributes is None else group_attributes)
-
+    deskew_options = ({} if deskew_options is None else deskew_options)
+    
+    array_gen = iterate_2d_arrays_from_mimgfns(mimgfns, interleaved_channels=interleaved_channels,channel=channel)
     joined_shapes = joined_mimg_shape_from_fns(
         mimgfns, concurrency=concurrency,
         interleaved_channels=interleaved_channels, channel=channel)
-    # TODO also get dtype from mimg
+    if deskew_options and deskew_options["deskew_transpose"]:
+        # input dataset must be transposed
+        joined_shapes = (joined_shapes[0],joined_shapes[2],joined_shapes[1])
+    if deskew_options and deskew_options["deskew_method"] == "ps":
+        block_size = chunk_size[2]
+        slice_length = int(chunk_size[2]/deskew_options['deskew_stride'])
+        deskew_kwargs = psd.psdeskew_kwargs(skew_dims_zyx=(slice_length, joined_shapes[1], joined_shapes[2]),
+                                            **deskew_options
+                                            )
+        joined_shapes = psd.reshape_joined_shapes(
+            joined_shapes, **deskew_kwargs)
+    else:
+        block_size = chunk_size[2]
+        slice_length = block_size
+        deskew_kwargs = {}
 
-    slice_length = chunk_size[0]
+    # TODO DESKEW: does this generally work regardless of skew?
 
-    workers = concurrency // slice_concurrency
+    workers = concurrency
 
-    with z5py.File(output_n5) as f:
-        mip_ds = {}
-        # create groups with custom attributes
-        group_objs = []
-        for i, group_name in enumerate(group_names):
+    #zstore = zarr.DirectoryStore(output_n5, dimension_separator='/')
+    f = zarr.group(output_n5)
+    # with zarr.open(zstore, mode='a') as f:
+    #     mip_ds = {}
+    #     # create groups with attributes according to omezarr spec
+    #     if len(group_names) == 1:
+    #         group_name = group_names[0]
+    #         try:
+    #             g = f.create_group(f"{group_name}")
+    #         except KeyError:
+    #             g = f[f"{group_name}"]
+    #         try:
+    #             attributes = group_attributes[0]
+    #         except IndexError:
+    #             print('attributes error')
+
+    #         if "pixelResolution" in attributes:
+    #             if deskew_options:
+    #                 attributes["pixelResolution"]["dimensions"][2] /= deskew_options["deskew_stride"]
+    #             attributes = omezarr_attrs(
+    #                 group_name, attributes["position"], attributes["pixelResolution"]["dimensions"], max_mip)
+    #         if attributes:
+    #             for k, v in attributes.items():
+    #                 g.attrs[k] = v
+    #     else:
+    #         raise TiffToNGFFValueError("only one group name expected")
+    #     scales = []
+
+    #     # shuffle=Blosc.BITSHUFFLE)
+    #     compression = Blosc(cname='zstd', clevel=1)
+    #     for mip_lvl in range(max_mip + 1):
+    #         mip_3dshape = mip_level_shape(mip_lvl, joined_shapes)
+    #         ds_lvl = g.create_dataset(
+    #             f"{mip_lvl}",
+    #             chunks=chunk_size,
+    #             shape=(1, 1, mip_3dshape[0], mip_3dshape[1], mip_3dshape[2]),
+    #             compression=compression,
+    #             dtype=dtype
+    #         )
+    #         dsfactors = [int(i)**mip_lvl for i in mip_dsfactor]
+    #         mip_ds[mip_lvl] = ds_lvl
+    #         scales.append(dsfactors)
+    if len(group_names) == 1:
+        group_name = group_names[0]
+        if group_name in f:
+            g = f[f"{group_name}"]
+        else:
             try:
-                g = group_objs[-1].create_group(f"{group_name}")
-            except IndexError:
-                try:
-                    g = f.create_group(f"{group_name}")
-                except KeyError:
-                    g = f[f"{group_name}"]
-            group_objs.append(g)
+                g = f.create_group(name=f"{group_name}")
+            except:
+                g = f[f"{group_name}"]
+            
+        if group_attributes:
             try:
-                attributes = group_attributes[i]
+                attributes = group_attributes[0]
             except IndexError:
-                continue
+                print('attributes error')
+        else:
+            attributes = {}
+
+        if "pixelResolution" in attributes:
+            if deskew_options:
+                attributes["pixelResolution"]["dimensions"][2] /= deskew_options["deskew_stride"]
+            attributes = omezarr_attrs(
+                group_name, attributes["position"], attributes["pixelResolution"]["dimensions"], max_mip)
+        if attributes:
             for k, v in attributes.items():
                 g.attrs[k] = v
-        scales = []
-        for mip_lvl in range(max_mip + 1):
-            ds_lvl = g.create_dataset(
-                f"s{mip_lvl}",
-                chunks=chunk_size,
-                shape=mip_level_shape(mip_lvl, joined_shapes),
-                compression=compression,
-                dtype=dtype,
-                n_threads=slice_concurrency)
-            dsfactors = [int(i)**mip_lvl for i in mip_dsfactor]
-            ds_lvl.attrs["downsamplingFactors"] = dsfactors
-            mip_ds[mip_lvl] = ds_lvl
-            scales.append(dsfactors)
-        g.attrs["scales"] = scales
-        group_objs[0].attrs["downsamplingFactors"] = scales
-        group_objs[0].attrs["dataType"] = dtype
+    else:
+        raise TiffToNGFFValueError("only one group name expected")
+    scales = []
+    
+    if compression == "raw":
+        compressors = None
+    elif compression == "blosc":
+        compressors = zarr.codecs.BloscCodec(cname='zstd', clevel=1, shuffle=zarr.codecs.BloscShuffle.bitshuffle)
+    
+    for mip_lvl in range(max_mip + 1):
+        mip_3dshape = mip_level_shape(mip_lvl, joined_shapes)
+        if f"{mip_lvl}" in g:
+            ds_lvl = g[f"{mip_lvl}"]
+        else:
+            try:
+                ds_lvl = g.create_array(
+                    name=f"{mip_lvl}",
+                    chunks=chunk_size,
+                    shards=(1,1,512,512,512),
+                    shape=(1, 1, mip_3dshape[0], mip_3dshape[1], mip_3dshape[2]),
+                    compressors=compressors,
+                    dtype=dtype
+                )
+            except:
+                ds_lvl = g[f"{mip_lvl}"]
+            
+        dsfactors = [int(i)**mip_lvl for i in mip_dsfactor]
+        #mip_ds[mip_lvl] = ds_lvl
+        scales.append(dsfactors)
+    
+    mip_ds = {}
+    for mip_lvl in range(max_mip + 1):
+        mip_path = "/".join([f"{output_n5}",f"{group_name}",f"{mip_lvl}"])
+        ts_lvl = open_tensor(fpath=mip_path)
+        mip_ds[mip_lvl] = ts_lvl
 
-        with concurrent.futures.ThreadPoolExecutor(max_workers=workers) as e:
-            futs = []
-            for miparr in iterate_mip_levels_from_mimgfns(
-                    mimgfns, max_mip, slice_length, mip_dsfactor,
-                    lvl_to_mip_kwargs=lvl_to_mip_kwargs,
-                    interleaved_channels=interleaved_channels,
-                    channel=channel):
-                futs.append(e.submit(
-                    dswrite_chunk, mip_ds[miparr.lvl],
-                    miparr.start, miparr.end, miparr.array))
-            for fut in concurrent.futures.as_completed(futs):
-                _ = fut.result()
+    with concurrent.futures.ThreadPoolExecutor(max_workers=workers) as e:
+        futs = []
+        for miparr in iterate_mip_levels_from_dataset(
+                array_gen, max_mip, block_size, slice_length, mip_dsfactor,
+                lvl_to_mip_kwargs=lvl_to_mip_kwargs,
+                interleaved_channels=interleaved_channels,
+                channel=channel, deskew_kwargs=deskew_kwargs):
+            futs.append(e.submit(
+                dswrite_chunk, mip_ds[miparr.lvl],
+                miparr.start, miparr.end, miparr.array))
+        for fut in concurrent.futures.as_completed(futs):
+            _ = fut.result()
 
 
-def tiffdir_to_n5_group(tiffdir, *args, **kwargs):
-    """convert directory of natsort-consecutive multitiffs to an n5 pyramid
+def tiffdir_to_ngff_group(tiffdir, output, *args, **kwargs):
+    """convert directory of natsort-consecutive multitiffs to an n5 or zarr pyramid
 
     Parameters
     ----------
@@ -615,9 +828,15 @@ def tiffdir_to_n5_group(tiffdir, *args, **kwargs):
         directory of consecutive multitiffs to convert
     """
     mimgfns = [str(p) for p in natsorted(
-                   pathlib.Path(tiffdir).iterdir(), key=lambda x:str(x))
-               if p.is_file()]
-    return write_mimgfns_to_n5(mimgfns, *args, **kwargs)
+        pathlib.Path(tiffdir).iterdir(), key=lambda x:str(x))
+        if p.is_file()]
+
+    if output == 'zarr':
+        print('converting to zarr')
+        return write_mimgfns_to_zarr(mimgfns, *args, **kwargs)
+    else:
+        print('n5 conversion no longer available')
+        # return write_mimgfns_to_n5(mimgfns, *args, **kwargs)
 
 
 class DownsampleOptions(argschema.schemas.DefaultSchema):
@@ -626,7 +845,17 @@ class DownsampleOptions(argschema.schemas.DefaultSchema):
     n_threads = argschema.fields.Int(required=False, allow_none=True)
 
 
-class N5GenerationParameters(argschema.schemas.DefaultSchema):
+class DeskewOptions(argschema.schemas.DefaultSchema):
+    deskew_method = argschema.fields.Str(required=False, default='')
+    deskew_stride = argschema.fields.Int(required=False, default=1)
+    deskew_flip = argschema.fields.Bool(required=False, default=False)
+    deskew_transpose = argschema.fields.Bool(required=False, default=False)
+    deskew_crop = argschema.fields.Float(required=False, default=1.0)
+
+
+class NGFFGenerationParameters(argschema.schemas.DefaultSchema):
+    output_format = argschema.fields.Str(required=True)
+    output_file = argschema.fields.Str(required=True)
     max_mip = argschema.fields.Int(required=False, default=0)
     concurrency = argschema.fields.Int(required=False, default=10)
     compression = argschema.fields.Str(required=False, default="raw")
@@ -636,17 +865,16 @@ class N5GenerationParameters(argschema.schemas.DefaultSchema):
 
     # FIXME argschema supports lists and tuples,
     #   but has some version differences
-    chunk_size = argschema.fields.Tuple((
-        argschema.fields.Int(),
-        argschema.fields.Int(),
-        argschema.fields.Int()), required=False, default=(64, 64, 64))
+
     mip_dsfactor = argschema.fields.Tuple((
         argschema.fields.Int(),
         argschema.fields.Int(),
         argschema.fields.Int()), required=False, default=(2, 2, 2))
+    deskew_options = argschema.fields.Nested(
+        DeskewOptions, required=False)
 
 
-class N5GroupGenerationParameters(N5GenerationParameters):
+class NGFFGroupGenerationParameters(NGFFGenerationParameters):
     group_names = argschema.fields.List(
         argschema.fields.Str, required=True)
     group_attributes = argschema.fields.List(
@@ -654,29 +882,53 @@ class N5GroupGenerationParameters(N5GenerationParameters):
         required=False)
 
 
-class TiffDirToN5InputParameters(argschema.ArgSchema,
-                                 N5GroupGenerationParameters):
+class TiffDirToNGFFParameters(NGFFGroupGenerationParameters):
     input_dir = argschema.fields.InputDir(required=True)
-    out_n5 = argschema.fields.Str(required=True)
-    interleaved_channels = argschema.fields.Int(required=False, deafult=1)
+    interleaved_channels = argschema.fields.Int(required=False, default=1)
     channel = argschema.fields.Int(required=False, default=0)
 
 
-class TiffDirToN5(argschema.ArgSchemaParser):
-    default_schema = TiffDirToN5InputParameters
+class TiffDirToZarrInputParameters(argschema.ArgSchema,
+                                   TiffDirToNGFFParameters):
+    chunk_size = argschema.fields.Tuple((
+        argschema.fields.Int(),
+        argschema.fields.Int(),
+        argschema.fields.Int(),
+        argschema.fields.Int(),
+        argschema.fields.Int()), required=False, default=(1, 1, 64, 64, 64))
+
+
+class TiffDirToN5LegacyParameters(argschema.ArgSchema,
+                                  TiffDirToNGFFParameters):
+    chunk_size = argschema.fields.Tuple((
+        argschema.fields.Int(),
+        argschema.fields.Int(),
+        argschema.fields.Int()), required=False, default=(64, 64, 64))
+
+
+class TiffDirToZarr(argschema.ArgSchemaParser):
+    default_schema = TiffDirToZarrInputParameters
 
     def run(self):
-        tiffdir_to_n5_group(
-            self.args["input_dir"], self.args["out_n5"],
-            self.args["group_names"], self.args["group_attributes"],
+        deskew_options = (self.args["deskew_options"]
+                          if "deskew_options" in self.args else {})
+        tiffdir_to_ngff_group(
+            self.args["input_dir"], self.args["output_format"],
+            self.args["output_file"], self.args["group_names"],
+            self.args["group_attributes"],
             self.args["max_mip"],
             self.args["mip_dsfactor"],
             self.args["chunk_size"],
             concurrency=self.args["concurrency"],
             compression=self.args["compression"],
-            lvl_to_mip_kwargs=self.args["lvl_to_mip_kwargs"])
+            lvl_to_mip_kwargs=self.args["lvl_to_mip_kwargs"],
+            deskew_options=deskew_options)
+
+
+class TiffDirToN5(TiffDirToZarr):
+    default_schema = TiffDirToN5LegacyParameters
 
 
 if __name__ == "__main__":
-    mod = TiffDirToN5()
+    mod = TiffDirToZarr()
     mod.run()
