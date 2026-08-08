@@ -76,7 +76,7 @@ def create_kvstore(fpath, store, AWS_param=None):
     Returns:
         dict: The kvstore configuration.
     """
-    kvstore = {"driver": store, "path": fpath}
+    kvstore = {"driver": store, "path": fpath, "file_io_locking": {"mode":"non_atomic"}}
     
     if store == 's3':
         # Parse the S3 URL into bucket and path

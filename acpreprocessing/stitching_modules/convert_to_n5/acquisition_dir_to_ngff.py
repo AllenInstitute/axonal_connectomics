@@ -96,8 +96,7 @@ def acquisition_to_ngff(acquisition_dir, output, out_dir, position_concurrency=5
         axesStr = acq_parameters["stage_axes"]
         if axesStr=="yxz":
             axes = (1,0,2)
-            ori = (-1,1,1)
-
+            ori = (-1,1,-1)
     try:
         setup_group_attributes = [{
             "pixelResolution": {
@@ -171,7 +170,7 @@ class AcquisitionDirToNGFF(argschema.ArgSchemaParser):
     def _get_ngff_kwargs(self):
         ngff_keys = {
             "max_mip", "concurrency", "compression",
-            "lvl_to_mip_kwargs", "chunk_size", "mip_dsfactor",
+            "lvl_to_mip_kwargs", "chunk_size", "shard_size", "mip_dsfactor",
             "deskew_options"}
         return {k: self.args[k] for k in (ngff_keys & self.args.keys())}
 

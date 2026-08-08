@@ -6,15 +6,12 @@ import itertools
 import math
 import pathlib
 
-#import imageio.v2 as imageio
 from tifffile import TiffFile
 from natsort import natsorted
 import numpy
 import skimage
 
-#import z5py
 import zarr
-from numcodecs import Blosc
 import argschema
 
 import acpreprocessing.utils.convert
@@ -99,7 +96,7 @@ def iterate_2d_arrays_from_mimgfns(mimgfns, interleaved_channels=1, channel=0):
 
 
 def iterate_numpy_chunks_from_dataset(
-        dataset, slice_length=None, pad=True, *args, **kwargs):
+        dataset, slice_length=None, n_pad=0, *args, **kwargs):
     """iterate over a contiguous hdf5 daataset as chunks of numpy arrays
 
     Parameters
@@ -116,19 +113,26 @@ def iterate_numpy_chunks_from_dataset(
     arr : numpy.ndarray
         3D numpy array representing a consecutive chunk of 2D arrays
     """
-    #array_gen = iterate_2d_arrays_from_dataset(mimgfns, *args, **kwargs)
+
     for chunk in iterate_chunks(dataset, slice_length):#,*args,**kwargs):
         arr = numpy.asarray(chunk)
-        if pad:
+        if n_pad>-1:
             if arr.shape[0] != slice_length:
                 newarr = numpy.zeros((slice_length, *arr.shape[1:]),
                                       dtype=arr.dtype)
                 newarr[:arr.shape[0], :, :] = arr[:, :, :]
+                print(f"incomplete chunk of size {arr.shape[0]} padded")
                 yield newarr
             else:
                 yield arr
         else:
             yield arr
+    if n_pad>0:
+        print(f"chunk padding, n_pad = {n_pad}")
+        for i_n in range(n_pad):
+            newarr = numpy.zeros((slice_length, *arr.shape[1:]),
+                                      dtype=arr.dtype)
+            yield newarr
 
 
 def length_to_interleaved_length(length, interleaved_channels):
@@ -453,6 +457,8 @@ def iterate_mip_levels_from_dataset(
     lvl_to_mip_kwargs = ({} if lvl_to_mip_kwargs is None
                           else lvl_to_mip_kwargs)
     mip_kwargs = lvl_to_mip_kwargs.get(lvl, {})
+    #TODO: deskew chunk fixing parameter
+    n_pad = 19 if deskew_kwargs else 0
     start_index = 0
     chunk_index = 0
     if lvl > 0:
@@ -512,7 +518,7 @@ def iterate_mip_levels_from_dataset(
         # get level 0 chunks
         # block_size is the number of slices to read from tiffs
         for chunk in iterate_numpy_chunks_from_dataset(
-                dataset, slice_length, pad=False,
+                dataset, slice_length, n_pad=n_pad,
                 interleaved_channels=interleaved_channels,
                 channel=channel):
             # deskew level 0 chunk
@@ -636,7 +642,7 @@ class TiffToNGFFValueError(TiffToNGFFException, ValueError):
 
 def write_mimgfns_to_zarr(
         mimgfns, output_n5, group_names, group_attributes=None, max_mip=0,
-        mip_dsfactor=(2, 2, 2), chunk_size=(1, 1, 64, 64, 64),
+        mip_dsfactor=(2, 2, 2), chunk_size=(1, 1, 64, 64, 64), shard_size=(1,1,512,512,512),
         concurrency=10,
         compression="raw", dtype="uint16", lvl_to_mip_kwargs=None,
         interleaved_channels=1, channel=0, deskew_options=None, **kwargs):
@@ -701,48 +707,8 @@ def write_mimgfns_to_zarr(
 
     workers = concurrency
 
-    #zstore = zarr.DirectoryStore(output_n5, dimension_separator='/')
     f = zarr.group(output_n5)
-    # with zarr.open(zstore, mode='a') as f:
-    #     mip_ds = {}
-    #     # create groups with attributes according to omezarr spec
-    #     if len(group_names) == 1:
-    #         group_name = group_names[0]
-    #         try:
-    #             g = f.create_group(f"{group_name}")
-    #         except KeyError:
-    #             g = f[f"{group_name}"]
-    #         try:
-    #             attributes = group_attributes[0]
-    #         except IndexError:
-    #             print('attributes error')
 
-    #         if "pixelResolution" in attributes:
-    #             if deskew_options:
-    #                 attributes["pixelResolution"]["dimensions"][2] /= deskew_options["deskew_stride"]
-    #             attributes = omezarr_attrs(
-    #                 group_name, attributes["position"], attributes["pixelResolution"]["dimensions"], max_mip)
-    #         if attributes:
-    #             for k, v in attributes.items():
-    #                 g.attrs[k] = v
-    #     else:
-    #         raise TiffToNGFFValueError("only one group name expected")
-    #     scales = []
-
-    #     # shuffle=Blosc.BITSHUFFLE)
-    #     compression = Blosc(cname='zstd', clevel=1)
-    #     for mip_lvl in range(max_mip + 1):
-    #         mip_3dshape = mip_level_shape(mip_lvl, joined_shapes)
-    #         ds_lvl = g.create_dataset(
-    #             f"{mip_lvl}",
-    #             chunks=chunk_size,
-    #             shape=(1, 1, mip_3dshape[0], mip_3dshape[1], mip_3dshape[2]),
-    #             compression=compression,
-    #             dtype=dtype
-    #         )
-    #         dsfactors = [int(i)**mip_lvl for i in mip_dsfactor]
-    #         mip_ds[mip_lvl] = ds_lvl
-    #         scales.append(dsfactors)
     if len(group_names) == 1:
         group_name = group_names[0]
         if group_name in f:
@@ -780,6 +746,8 @@ def write_mimgfns_to_zarr(
     
     for mip_lvl in range(max_mip + 1):
         mip_3dshape = mip_level_shape(mip_lvl, joined_shapes)
+        #mip_3dshape = tuple([max(a,b) for a,b in zip(shard_size[2:],mip_3dshape)])
+        mip_shard_size = shard_size #(1, 1, min(shard_size[2],mip_3dshape[0]), min(shard_size[3],mip_3dshape[1]), min(shard_size[4],mip_3dshape[2]))
         if f"{mip_lvl}" in g:
             ds_lvl = g[f"{mip_lvl}"]
         else:
@@ -787,7 +755,7 @@ def write_mimgfns_to_zarr(
                 ds_lvl = g.create_array(
                     name=f"{mip_lvl}",
                     chunks=chunk_size,
-                    shards=(1,1,512,512,512),
+                    shards=mip_shard_size,
                     shape=(1, 1, mip_3dshape[0], mip_3dshape[1], mip_3dshape[2]),
                     compressors=compressors,
                     dtype=dtype
@@ -796,7 +764,6 @@ def write_mimgfns_to_zarr(
                 ds_lvl = g[f"{mip_lvl}"]
             
         dsfactors = [int(i)**mip_lvl for i in mip_dsfactor]
-        #mip_ds[mip_lvl] = ds_lvl
         scales.append(dsfactors)
     
     mip_ds = {}
@@ -872,6 +839,18 @@ class NGFFGenerationParameters(argschema.schemas.DefaultSchema):
         argschema.fields.Int()), required=False, default=(2, 2, 2))
     deskew_options = argschema.fields.Nested(
         DeskewOptions, required=False)
+    chunk_size = argschema.fields.Tuple((
+        argschema.fields.Int(),
+        argschema.fields.Int(),
+        argschema.fields.Int(),
+        argschema.fields.Int(),
+        argschema.fields.Int()), required=False, default=(1, 1, 128, 128, 128))
+    shard_size = argschema.fields.Tuple((
+        argschema.fields.Int(),
+        argschema.fields.Int(),
+        argschema.fields.Int(),
+        argschema.fields.Int(),
+        argschema.fields.Int()), required=False, default=(1, 1, 1024, 512, 512))
 
 
 class NGFFGroupGenerationParameters(NGFFGenerationParameters):
@@ -882,28 +861,10 @@ class NGFFGroupGenerationParameters(NGFFGenerationParameters):
         required=False)
 
 
-class TiffDirToNGFFParameters(NGFFGroupGenerationParameters):
+class TiffDirToZarrInputParameters(NGFFGroupGenerationParameters):
     input_dir = argschema.fields.InputDir(required=True)
     interleaved_channels = argschema.fields.Int(required=False, default=1)
     channel = argschema.fields.Int(required=False, default=0)
-
-
-class TiffDirToZarrInputParameters(argschema.ArgSchema,
-                                   TiffDirToNGFFParameters):
-    chunk_size = argschema.fields.Tuple((
-        argschema.fields.Int(),
-        argschema.fields.Int(),
-        argschema.fields.Int(),
-        argschema.fields.Int(),
-        argschema.fields.Int()), required=False, default=(1, 1, 64, 64, 64))
-
-
-class TiffDirToN5LegacyParameters(argschema.ArgSchema,
-                                  TiffDirToNGFFParameters):
-    chunk_size = argschema.fields.Tuple((
-        argschema.fields.Int(),
-        argschema.fields.Int(),
-        argschema.fields.Int()), required=False, default=(64, 64, 64))
 
 
 class TiffDirToZarr(argschema.ArgSchemaParser):
@@ -919,14 +880,11 @@ class TiffDirToZarr(argschema.ArgSchemaParser):
             self.args["max_mip"],
             self.args["mip_dsfactor"],
             self.args["chunk_size"],
+            self.args["shard_size"],
             concurrency=self.args["concurrency"],
             compression=self.args["compression"],
             lvl_to_mip_kwargs=self.args["lvl_to_mip_kwargs"],
             deskew_options=deskew_options)
-
-
-class TiffDirToN5(TiffDirToZarr):
-    default_schema = TiffDirToN5LegacyParameters
 
 
 if __name__ == "__main__":
