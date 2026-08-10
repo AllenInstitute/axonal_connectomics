@@ -10,8 +10,9 @@ We are planning on occasional updating this tool with no fixed schedule. Communi
 `acpreprocessing.stitching_modules.convert_to_n5.tiff_to_ngff`
 - Sequentially reads image arrays from a tiff stack series for pixel-wise deskew (optional), for computing a downsampling pyramid to a user-defined depth, and for writing out the data volume into a next-generation file format (zarr v3).
 ```
-python zarrv3_to_zarr.py \
---input_file PATH_TO_INPUT_ZARR_FILE \
+
+python -m acpreprocessing.stitching_modules.convert_to_n5.tiff_to_ngff \
+--input_dir PATH_TO_TIFF_DIR \
 --output_file PATH_TO_OUTPUT_ZARR_FILE \
 --group_names LIST_OF_GROUP_NAMES \
 --group_attributes LIST_OF_GROUP_ATTRIBUTE_DICTS \
@@ -20,10 +21,10 @@ python zarrv3_to_zarr.py \
 ```
 
 **Point extraction**
-`acpreprocessing.stitching_modules.acstitch.extract_points`
 - Detects blob features within user-defined ROIs of a source tile and generates initial point correspondences with a target tile using the estimated tile offset.
 ```
-python extract_points.py \
+
+python -m acpreprocessing.stitching_modules.acstitch.extract_points \
 --p_tile PATH_TO_SOURCE_TILE \
 --q_tile PATH_TO_TARGET_TILE \
 --output_file PATH_TO_OUTPUT_POINTMATCH_FILE \
@@ -35,10 +36,10 @@ python extract_points.py \
 ```
 
 **Tile stitching**
-`acpreprocessing.stitching_modules.acstitch.stitch`
 - Generate point correspondences between tiles from template matching or SIFT features at user-defined resolution level (mip).
 ```
-python stitch_tiles.py \
+
+python -m acpreprocessing.stitching_modules.acstitch.stitch \
 --input_file PATH_TO_INPUT_POINTMATCH_FILE \
 --output_file PATH_TO_OUTPUT_POINTMATCH_FILE \
 --stitch_method STITCH_METHOD_ccorr_OR_sift \
