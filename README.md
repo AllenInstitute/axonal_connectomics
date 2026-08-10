@@ -7,7 +7,6 @@ We are planning on occasional updating this tool with no fixed schedule. Communi
 ### Methods
 
 **Deskew and zarr conversion**
-`acpreprocessing.stitching_modules.convert_to_n5.tiff_to_ngff`
 - Sequentially reads image arrays from a tiff stack series for pixel-wise deskew (optional), for computing a downsampling pyramid to a user-defined depth, and for writing out the data volume into a next-generation file format (zarr v3).
 ```
 
