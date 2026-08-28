@@ -1,3 +1,4 @@
+[![DOI](https://zenodo.org/badge/260070458.svg)](https://doi.org/10.5281/zenodo.22151004)
 # axonal_connectomics
 Repository for tools developed for axonal connectomics
 
