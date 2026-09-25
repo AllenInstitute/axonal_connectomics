@@ -12,8 +12,8 @@ from acpreprocessing.stitching_modules.acstitch.zarrutils import get_zarr_array
 from acpreprocessing.stitching_modules.acstitch.io import read_pointmatch_file,save_pointmatch_file
 
 
-def run_ccorr(p_ds,q_ds,p_pts,q_pts,n_cc_pts=1,axis_w=[32,32,32],pad_array=False,axis_shift=[0,0,0],axis_range=None,cc_threshold=0.8):
-    ppm,qpm = get_correspondences(p_ds,q_ds,p_pts,q_pts,numpy.asarray(axis_w),pad=pad_array,cc_threshold=cc_threshold)
+def run_ccorr(p_ds,q_ds,p_pts,q_pts,n_cc_pts=1,axis_w=[32,32,32],r=1,pad_array=False,axis_shift=[0,0,0],axis_range=None):
+    ppm,qpm = get_correspondences(p_ds,q_ds,p_pts,q_pts,numpy.asarray(axis_w),r=r,pad=pad_array)
     return ppm,qpm
 
 def run_sift(p_ds,q_ds,miplvl=0,sift_kwargs=None,stitch_kwargs=None):
@@ -41,7 +41,13 @@ def run_stitch_method(p_tilepath,q_tilepath,p_points,q_points,stitch_method,mipl
                   "q_ds":get_dataset_from_path(q_tilepath,miplvl),
                   "p_pts": p_points/(2**miplvl),
                   "q_pts": q_points/(2**miplvl)}
-        p_pts,q_pts = run_ccorr(**kwargs,**stitch_kwargs)
+
+        ccorr_kwargs = {
+            "axis_w": stitch_kwargs.get("axis_w", [32, 32, 32]),
+            "r": stitch_kwargs.get("r", 1),
+            "pad_array": stitch_kwargs.get("pad_array", False),
+        }
+        p_pts,q_pts = run_ccorr(**kwargs,**ccorr_kwargs)
     elif stitch_method == "sift":
         kwargs = {"p_ds":get_dataset_from_path(p_tilepath,miplvl),
                   "q_ds":get_dataset_from_path(q_tilepath,miplvl),
@@ -54,6 +60,7 @@ def run_stitch_method(p_tilepath,q_tilepath,p_points,q_points,stitch_method,mipl
 
 def stitch_tiles_from_pmfile(input_file,output_file,stitch_method,miplvl=0,sift_kwargs=None,stitch_kwargs=None):    
     in_pms = read_pointmatch_file(input_file)
+    print(in_pms)
     out_pms = []
     for tspec in in_pms:
         args = [tspec.get(key) for key in ["p_tile","q_tile","p_pts","q_pts"]]
@@ -70,15 +77,22 @@ class StitchTilesParameters(argschema.ArgSchema):
     output_file = argschema.fields.Str(required=True)
     stitch_method = argschema.fields.Str(required=True)
     miplvl = argschema.fields.Int(required=False,default=0)
-    sift_kwargs = argschema.fields.Dict(required=False,default=None)
-    stitch_kwargs = argschema.fields.Dict(required=False,default=None)
+    sift_kwargs = argschema.fields.Dict(required=False, default=None, allow_none=True)
+    stitch_kwargs = argschema.fields.Dict(required=False, default=None, allow_none=True)
 
 
 class StitchTiles(argschema.ArgSchemaParser):
     default_schema = StitchTilesParameters
-    
     def run(self):
-        stitch_tiles_from_pmfile(**self.args)
+        # CHANGED: forward all optional args, not just the first three.
+        stitch_tiles_from_pmfile(
+            self.args['input_file'],
+            self.args['output_file'],
+            self.args['stitch_method'],
+            self.args['miplvl'],
+            self.args['sift_kwargs'],
+            self.args['stitch_kwargs'],
+        )
 
 
 if __name__ == "__main__":
